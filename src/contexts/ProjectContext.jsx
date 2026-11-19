@@ -181,6 +181,7 @@ function saveProjectsToLS(tenantId, list) {
         createdBy: p.createdBy,
         createdByFirstName: p.createdByFirstName,
         creatorId: p.creatorId,
+        dateCreation: p.dateCreation,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt
       }));
@@ -419,9 +420,12 @@ export function ProjectProvider({ children }) {
   const updateProject = useCallback(async (patch) => {
     _setProject((prev) => {
       const updated = { ...(prev || {}), ...(patch || {}) };
+      // Préserver de manière immuable la date de création originale de la fiche projet
+      if (prev?.dateCreation) updated.dateCreation = prev.dateCreation;
+      if (prev?.createdAt) updated.createdAt = prev.createdAt;
       if (updated.id) {
-        _setProjects(list => (Array.isArray(list) ? list.map(item => item.id === updated.id ? { ...item, ...patch } : item) : list));
-        setAllProjects(list => (Array.isArray(list) ? list.map(item => item.id === updated.id ? { ...item, ...patch } : item) : list));
+        _setProjects(list => (Array.isArray(list) ? list.map(item => item.id === updated.id ? { ...item, ...patch, ...(prev?.dateCreation ? { dateCreation: prev.dateCreation } : {}), ...(prev?.createdAt ? { createdAt: prev.createdAt } : {}) } : item) : list));
+        setAllProjects(list => (Array.isArray(list) ? list.map(item => item.id === updated.id ? { ...item, ...patch, ...(prev?.dateCreation ? { dateCreation: prev.dateCreation } : {}), ...(prev?.createdAt ? { createdAt: prev.createdAt } : {}) } : item) : list));
       }
       return updated;
     });

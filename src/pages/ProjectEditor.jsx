@@ -38,11 +38,9 @@ import { calculateRequiredResteACharge } from "@/lib/profitabilityCalculations";
 import { formatGps, formatCoordinate } from "@/utils/formatGps";
 
 import { BATTERY_MODELS } from "@/data/batteryModels.js";
-import enedisService from "@/services/enedis";
-import MandatSignatureModal from "@/components/enedis/MandatSignatureModal";
-import PrmSelectionModal from "@/components/enedis/PrmSelectionModal";
 import GoogleSolarPanel from "@/components/solar/GoogleSolarPanel";
 import QuoteEditorModal from "@/components/devis/QuoteEditorModal";
+import { extractProjectCreationDate, formatProjectCreationDate, parseDateValue } from "@/utils/projectCreationDate";
 
 const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
   const percentage = Math.tan(i * Math.PI / 180) * 100;
@@ -232,100 +230,9 @@ export default function ProjectEditor() {
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
 
-  // États pour la recherche automatique de PRM Enedis & Signature Mandat
-  const [searchingPrm, setSearchingPrm] = useState(false);
-  const [prmCandidates, setPrmCandidates] = useState([]);
-  const [ambiguityModalOpen, setAmbiguityModalOpen] = useState(false);
-  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
   const { pvPortfolios, bessPortfolios, canManagePortfolios } = usePortfolios();
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
-
-  const handleTriggerSearchPrm = async (customAddress = null) => {
-    let targetAddr = (customAddress || p.address || '').trim();
-    let targetZip = (p.zip || '').trim();
-    let targetCity = (p.city || '').trim();
-
-    // Élimination des codes postaux ou communes dupliqués dans le champ adresse
-    if (targetZip && targetAddr.includes(targetZip)) {
-      targetAddr = targetAddr.replace(new RegExp(`\\b${targetZip}\\b`, 'g'), '').trim();
-    }
-    if (targetCity && targetAddr.toLowerCase().includes(targetCity.toLowerCase())) {
-      targetAddr = targetAddr.replace(new RegExp(`\\b${targetCity}\\b`, 'gi'), '').trim();
-    }
-    targetAddr = targetAddr.replace(/[,\s]+$/, '').trim();
-
-    const company = selectedCompany?.nom_raison_sociale || selectedCompany?.name || p.company || p.name;
-    const clientFullName = [p.firstName, p.name].filter(Boolean).join(' ');
-
-    if (!targetAddr && !targetZip && !targetCity) {
-      toast({
-        title: "Adresse requise",
-        description: "Veuillez renseigner une adresse ou un code postal pour rechercher le PRM Enedis.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setSearchingPrm(true);
-    setPrmCandidates([]);
-    setAmbiguityModalOpen(true); // Ouvre la modale immédiatement pour afficher le spinner
-    try {
-      const res = await enedisService.searchPrm({
-        address: targetAddr,
-        zip: targetZip,
-        city: targetCity,
-        citycode: p.citycode || p.inseeCode || '',
-        companyName: company,
-        clientName: clientFullName,
-        projectId: p.id
-      });
-
-      if (res.status === 'HIGH_CONFIDENCE' && res.selectedPrm?.prm) {
-        const updates = {
-          enedisPrm: res.selectedPrm.prm,
-          enedisSubscribedPower: res.selectedPrm.puissance_souscrite_kva || 36,
-          enedisTitulaire: res.selectedPrm.titulaire || company || '',
-          enedisSegment: res.selectedPrm.segment || 'BT <= 36 kVA'
-        };
-        if (!p.name && res.selectedPrm.titulaire && res.selectedPrm.titulaire !== 'Compteur Résidentiel' && res.selectedPrm.titulaire !== 'Saisie manuelle') {
-          updates.name = res.selectedPrm.titulaire;
-        }
-        if (!p.company && res.selectedPrm.titulaire && res.selectedPrm.titulaire !== 'Compteur Résidentiel' && res.selectedPrm.titulaire !== 'Saisie manuelle') {
-          updates.company = res.selectedPrm.titulaire;
-        }
-        if (!p.phone && (res.selectedPrm.phone || res.selectedPrm.telephone || res.selectedPrm.mobile)) {
-          updates.phone = res.selectedPrm.phone || res.selectedPrm.telephone || res.selectedPrm.mobile;
-        }
-        if (!p.email && (res.selectedPrm.email || res.selectedPrm.mail)) {
-          updates.email = res.selectedPrm.email || res.selectedPrm.mail;
-        }
-        updateProject(updates);
-        setAmbiguityModalOpen(false);
-        toast({
-          title: "✅ Compteur Enedis identifié",
-          description: `PRM ${res.selectedPrm.prm} • ${res.selectedPrm.puissance_souscrite_kva ? res.selectedPrm.puissance_souscrite_kva + ' kVA • ' : ''}${res.selectedPrm.titulaire || company}`
-        });
-      } else if (res.candidates && res.candidates.length > 0) {
-        setPrmCandidates(res.candidates);
-        setAmbiguityModalOpen(true);
-      } else {
-        // 0 compteur trouvé : la modale reste ouverte pour afficher l'alerte et la saisie manuelle 14 chiffres
-        setPrmCandidates([]);
-        setAmbiguityModalOpen(true);
-      }
-    } catch (err) {
-      setPrmCandidates([]);
-      setAmbiguityModalOpen(true);
-      toast({
-        title: "Erreur Enedis",
-        description: err.message || "Erreur lors de la recherche Enedis",
-        variant: "destructive"
-      });
-    } finally {
-      setSearchingPrm(false);
-    }
-  };
 
   const [activeConfigTab, setActiveConfigTab] = useState('buildings'); // 'buildings' or 'battery'
   const [selectedBatteryId, setSelectedBatteryId] = useState(BATTERY_MODELS[0].id);
@@ -381,6 +288,7 @@ export default function ProjectEditor() {
     const loadProject = async () => {
       // If creating new project, set init state
       if (projectId === 'new') {
+        const nowIso = new Date().toISOString();
         const emptyProject = {
           id: `proj_${Date.now()}`,
           name: '',
@@ -406,7 +314,8 @@ export default function ProjectEditor() {
           windZone: '',
           panelAspect: 0,
           roofWeighting: 50,
-          createdAt: new Date().toISOString()
+          dateCreation: nowIso,
+          createdAt: nowIso
         };
         setProject(() => emptyProject);
         setRemountKey(k => k + 1);
@@ -436,6 +345,52 @@ export default function ProjectEditor() {
             cleaned.pv_portfolio = null;
             mustUpdate = true;
           }
+
+          // Verrouiller la date de création immuable de la fiche projet si elle n'est pas encore figée dans dateCreation
+          if (!parseDateValue(cleaned.dateCreation)) {
+            let resolvedCreationDate = parseDateValue(cleaned.createdAt || cleaned.created_at || cleaned.date_creation || cleaned.creationDate);
+            if (!resolvedCreationDate) {
+              // Si createdAt avait été écrasé dans le passé, rechercher dans les activités / contacts liés ou artefacts du projet
+              try {
+                const { getDocs, query, collection, where } = await import('firebase/firestore');
+                const { db } = await import('@/config/firebase.js');
+                const candidates = [];
+                const artDate = extractProjectCreationDate(cleaned);
+                if (artDate) candidates.push(artDate.getTime());
+
+                const [actSnap, contSnap] = await Promise.all([
+                  getDocs(query(collection(db, 'activities'), where('itemId', '==', projectId))).catch(() => null),
+                  getDocs(query(collection(db, 'contacts'), where('projectId', '==', projectId))).catch(() => null)
+                ]);
+                if (actSnap) {
+                  actSnap.forEach(d => {
+                    const dt = parseDateValue(d.data()?.timestamp || d.data()?.createdAt);
+                    if (dt) candidates.push(dt.getTime());
+                  });
+                }
+                if (contSnap) {
+                  contSnap.forEach(d => {
+                    const dt = parseDateValue(d.data()?.createdAt);
+                    if (dt) candidates.push(dt.getTime());
+                  });
+                }
+                if (candidates.length > 0) {
+                  resolvedCreationDate = new Date(Math.min(...candidates));
+                }
+              } catch (_) {}
+            }
+            if (!resolvedCreationDate) {
+              resolvedCreationDate = extractProjectCreationDate(cleaned) || new Date();
+            }
+            cleaned.dateCreation = resolvedCreationDate.toISOString();
+            if (projectId && projectId !== 'new') {
+              apiService.updateProject(projectId, {
+                dateCreation: cleaned.dateCreation,
+                _lockCreationDate: true
+              }, true).catch(() => {});
+            }
+          }
+
           if (mustUpdate && projectId && projectId !== 'new') {
             apiService.updateProject(projectId, {
               bess_portfolio: cleaned.bess_portfolio || null,
@@ -750,6 +705,7 @@ export default function ProjectEditor() {
       seismicZone: '',
       snowZone: '',
       windZone: '',
+      dateCreation: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };
 
@@ -1025,7 +981,7 @@ export default function ProjectEditor() {
       <div className={cn("grid grid-cols-1 gap-4 lg:gap-6 mb-6 items-stretch", isEmbedded ? "grid-cols-1" : "lg:grid-cols-12")}>
         <section className={cn("rounded-2xl bg-white p-3 lg:p-6 shadow-sm h-full flex flex-col justify-between", isEmbedded ? "col-span-1 w-full" : "col-span-1 lg:col-span-9")}>
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-4">
-            <div className="flex items-center justify-between lg:justify-start gap-3 w-full lg:w-auto">
+            <div className="flex flex-wrap items-center justify-between lg:justify-start gap-2.5 w-full lg:w-auto">
               <Button
                 type="button"
                 onClick={() => navigate('/crm?tab=projects')}
@@ -1061,9 +1017,31 @@ export default function ProjectEditor() {
                 <RotateCcw size={16} className="mr-2" />
                 Remise à zéro
               </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setQuoteModalOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 rounded-md shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                title="Ouvrir l'éditeur de devis, chiffrage et génération de proposition commerciale avec fiches techniques"
+              >
+                <span>📑</span>
+                <span>Éditeur de Devis &amp; Offre</span>
+              </Button>
             </div>
-            {/* Dropdowns: sur une ligne sur mobile, 5 colonnes sur desktop */}
-            <div className="flex flex-wrap gap-2 items-end w-full lg:w-auto mt-2 lg:mt-0 lg:grid lg:grid-cols-5 lg:gap-3">
+            {/* Date de création + Dropdowns: sur une ligne sur mobile, 6 colonnes sur desktop */}
+            <div className="flex flex-wrap gap-2 items-end w-full lg:w-auto mt-2 lg:mt-0 lg:grid lg:grid-cols-6 lg:gap-2.5">
+              <div className="flex-1 min-w-[95px]">
+                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1 whitespace-nowrap">
+                  Date de création
+                </label>
+                <div
+                  className="flex items-center justify-center h-10 w-full rounded-md border border-input bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm select-none whitespace-nowrap"
+                  title="Date de création de la fiche projet (immuable)"
+                >
+                  {formatProjectCreationDate(p)}
+                </div>
+              </div>
+
               <div className="flex-1 min-w-[80px]">
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Commercial</label>
                 <Select
@@ -1327,48 +1305,6 @@ export default function ProjectEditor() {
                 <div className="flex-1"><label className="text-xs font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-0.5 h-8" placeholder="Ville" /></div>
               </div>
 
-              {/* Mobile: Enedis PRM & Mandat */}
-              <div className="p-3 bg-gradient-to-r from-blue-50/80 via-slate-50 to-amber-50/60 rounded-xl border border-blue-100 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">PRM Enedis</span>
-                    {p.enedisSubscribedPower && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                        {p.enedisSubscribedPower} kVA
-                      </span>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleTriggerSearchPrm()}
-                    disabled={searchingPrm}
-                    className="h-7 px-2 text-[11px] font-bold text-blue-700 hover:bg-blue-100/60 flex items-center gap-1"
-                  >
-                    {searchingPrm ? <RotateCw className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-                    <span>{p.enedisPrm ? 'Rechercher' : 'Détecter PRM'}</span>
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    value={p.enedisPrm || ''}
-                    onChange={e => updateProject({ enedisPrm: e.target.value.replace(/\D/g, '').slice(0, 14) })}
-                    placeholder="PRM (14 chiffres)"
-                    className="h-8 flex-1 font-mono font-bold text-xs bg-white"
-                    maxLength={14}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => setSignatureModalOpen(true)}
-                    className="h-8 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-2.5 rounded-lg shrink-0"
-                  >
-                    ✍️ Mandat
-                  </Button>
-                </div>
-              </div>
-
               {/* GPS + Projet on same line */}
               <div className="flex gap-2">
                 <div className="flex-1 min-w-[120px]"><label className="text-xs font-medium">GPS</label><div className="flex gap-1 mt-0.5"><Input placeholder="Lat" value={p.gps ? formatCoordinate(p.gps.split(',')[0]) : ''} onChange={e => { const lat = e.target.value; const lon = p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''; updateProject({ gps: `${lat}, ${lon}` }); }} className="h-8 min-w-0 font-mono text-xs" /><Input placeholder="Lon" value={p.gps && p.gps.includes(',') ? formatCoordinate(p.gps.split(',')[1]) : ''} onChange={e => { const lat = p.gps ? p.gps.split(',')[0].trim() : ''; updateProject({ gps: `${lat}, ${e.target.value}` }); }} className="h-8 min-w-0 font-mono text-xs" /></div></div>
@@ -1564,79 +1500,6 @@ export default function ProjectEditor() {
               </div>
               <div className="col-span-2"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-1 h-10" placeholder="Code postal" /></div>
               <div className="col-span-4"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1 h-10" placeholder="Ville" /></div>
-
-              {/* Desktop: Enedis PRM & Mandat */}
-              <div className="col-span-12 bg-gradient-to-r from-blue-50/80 via-slate-50 to-amber-50/60 p-3.5 rounded-xl border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-3 shadow-sm">
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                  <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-                    ⚡
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                        Compteur Enedis (PRM / PDL)
-                      </span>
-                      {p.enedisSubscribedPower && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          {p.enedisSubscribedPower} kVA
-                        </span>
-                      )}
-                      {p.enedisTitulaire && (
-                        <span className="text-[11px] text-slate-500 italic hidden sm:inline">
-                          • {p.enedisTitulaire}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Input
-                        value={p.enedisPrm || ''}
-                        onChange={e => updateProject({ enedisPrm: e.target.value.replace(/\D/g, '').slice(0, 14) })}
-                        placeholder="Ex: 16138350177475"
-                        className="h-9 w-48 font-mono font-bold text-xs bg-white border-slate-300 tracking-wider"
-                        maxLength={14}
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleTriggerSearchPrm()}
-                        disabled={searchingPrm}
-                        className="h-9 px-3 text-xs font-semibold border-blue-300 text-blue-700 hover:bg-blue-50 flex items-center gap-1.5"
-                        title="Recherche automatique du PRM par adresse et raison sociale Enedis"
-                      >
-                        {searchingPrm ? (
-                          <RotateCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
-                        ) : (
-                          <Search className="w-3.5 h-3.5 text-blue-600" />
-                        )}
-                        <span>{p.enedisPrm ? 'Ré-identifier' : 'Rechercher le PRM'}</span>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                  <Button
-                    type="button"
-                    onClick={() => setQuoteModalOpen(true)}
-                    className="h-9 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
-                    title="Ouvrir l'éditeur de devis, chiffrage et génération de proposition commerciale avec fiches techniques"
-                  >
-                    <span>📑</span>
-                    <span>Éditeur de Devis & Offre</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    onClick={() => setSignatureModalOpen(true)}
-                    className="h-9 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs px-3.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
-                    title="Générer le lien de signature du mandat Enedis eIDAS à envoyer au client"
-                  >
-                    <span>✍️</span>
-                    <span>Faire Signer le Mandat Enedis</span>
-                  </Button>
-                </div>
-              </div>
 
               {/* Desktop: GPS + Type + Projet + kWc (1 seule ligne) */}
               <div className="col-span-2">
@@ -3045,66 +2908,6 @@ export default function ProjectEditor() {
           </>
         )}
       </div>
-
-      {/* Modale de sélection de PRM en cas d'ambiguïté ou chargement Enedis */}
-      <PrmSelectionModal
-        isOpen={ambiguityModalOpen}
-        onClose={() => setAmbiguityModalOpen(false)}
-        candidates={prmCandidates}
-        isLoading={searchingPrm}
-        address={`${p.address || ''} ${p.zip || ''} ${p.city || ''}`.trim()}
-        companyName={selectedCompany?.nom_raison_sociale || selectedCompany?.name || p.company || p.name || ''}
-        clientName={[p.firstName, p.name].filter(Boolean).join(' ')}
-        onSelectPrm={(selected) => {
-          const updates = {
-            enedisPrm: selected.prm,
-            enedisSubscribedPower: selected.puissance_souscrite_kva || 36,
-            enedisTitulaire: selected.titulaire || p.name || '',
-            enedisSegment: selected.segment || 'BT <= 36 kVA'
-          };
-          if (!p.name && selected.titulaire && selected.titulaire !== 'Compteur Résidentiel' && selected.titulaire !== 'Saisie manuelle') {
-            updates.name = selected.titulaire;
-          }
-          if (!p.company && selected.titulaire && selected.titulaire !== 'Compteur Résidentiel' && selected.titulaire !== 'Saisie manuelle') {
-            updates.company = selected.titulaire;
-          }
-          if (!p.phone && (selected.phone || selected.telephone || selected.mobile)) {
-            updates.phone = selected.phone || selected.telephone || selected.mobile;
-          }
-          if (!p.email && (selected.email || selected.mail)) {
-            updates.email = selected.email || selected.mail;
-          }
-          updateProject(updates);
-          toast({
-            title: "✅ Compteur sélectionné",
-            description: `PRM ${selected.prm} ${selected.puissance_souscrite_kva ? '(' + selected.puissance_souscrite_kva + ' kVA)' : ''}`
-          });
-        }}
-      />
-
-      {/* Modale de signature du Mandat Enedis eIDAS */}
-      <MandatSignatureModal
-        isOpen={signatureModalOpen}
-        onClose={() => setSignatureModalOpen(false)}
-        initialPrm={p.enedisPrm || ''}
-        initialClientName={[p.firstName, p.name].filter(Boolean).join(' ') || p.enedisTitulaire || ''}
-        initialCompany={selectedCompany?.nom_raison_sociale || selectedCompany?.name || p.company || p.clientSociete || ''}
-        initialEmail={p.email || ''}
-        initialPhone={p.phone || ''}
-        initialAddress={p.address || ''}
-        initialZip={p.zip || ''}
-        initialCity={p.city || ''}
-        projectId={p.id || projectId}
-        onSignatureSuccess={(data) => {
-          if (data?.prm) {
-            updateProject({ enedisPrm: data.prm });
-          }
-          toast({
-            title: "Lien de mandat généré",
-            description: "Le lien de signature Enedis est prêt à être partagé au client."
-          });
-        }}
-      />
 
       {/* Pop-up de construction & rédaction de Devis et Proposition Commerciale */}
       <QuoteEditorModal

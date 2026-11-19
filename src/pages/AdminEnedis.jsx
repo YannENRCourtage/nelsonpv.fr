@@ -9,6 +9,8 @@ import enedisService from '@/services/enedis';
 import ConsumptionChart from '@/components/enedis/ConsumptionChart';
 import EnedisPrintLayout from '@/components/enedis/EnedisPrintLayout';
 import MandatSignatureModal from '@/components/enedis/MandatSignatureModal';
+import PrmSelectionModal from '@/components/enedis/PrmSelectionModal';
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import SafraBessProposalModule from '@/components/enedis/SafraBessProposalModule';
 import ManualDataModal from '@/components/enedis/ManualDataModal';
 import { useNavigate } from 'react-router-dom';
@@ -156,12 +158,117 @@ export default function AdminEnedis() {
   // État du modal de signature omnicanal (Email, SMS, WhatsApp, Tablette)
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
 
+  // États pour la recherche de PRM / PDL par adresse directement sur la page ENEDIS
+  const [isPrmSearchOpen, setIsPrmSearchOpen] = useState(false);
+  const [searchAddress, setSearchAddress] = useState('');
+  const [searchZip, setSearchZip] = useState('');
+  const [searchCity, setSearchCity] = useState('');
+  const [searchCitycode, setSearchCitycode] = useState('');
+  const [searchCompany, setSearchCompany] = useState('');
+  const [searchingPrm, setSearchingPrm] = useState(false);
+  const [prmCandidates, setPrmCandidates] = useState([]);
+  const [ambiguityModalOpen, setAmbiguityModalOpen] = useState(false);
+  const [subscribedPower, setSubscribedPower] = useState(null);
+
   // État du modal de consentement (email uniquement)
   const [consentModal, setConsentModal] = useState(false);
   const [consentForm, setConsentForm] = useState({ name: '', email: '' });
   const [consentSent, setConsentSent] = useState(false);
 
   const { toast } = useToast();
+
+  const handleSearchAddressSelect = (feature) => {
+    const props = feature?.properties || {};
+    const { name = '', postcode = '', city = '', housenumber = '', street = '', citycode = '', label = '' } = props;
+    let cleanStreet = '';
+    if (housenumber && street) {
+      cleanStreet = `${housenumber} ${street}`.trim();
+    } else if (street) {
+      cleanStreet = street.trim();
+    } else if (name) {
+      cleanStreet = name.trim();
+      if (postcode) cleanStreet = cleanStreet.replace(new RegExp(`\\b${postcode}\\b`, 'g'), '').trim();
+      if (city) cleanStreet = cleanStreet.replace(new RegExp(`\\b${city}\\b`, 'gi'), '').trim();
+    } else if (label) {
+      cleanStreet = label.split(',')[0].trim();
+    }
+    cleanStreet = cleanStreet.replace(/[,\s]+$/, '').trim();
+    setSearchAddress(cleanStreet || name || label || '');
+    if (postcode) setSearchZip(postcode);
+    if (city) setSearchCity(city);
+    if (citycode) setSearchCitycode(citycode);
+  };
+
+  const handleTriggerSearchPrm = async () => {
+    let targetAddr = (searchAddress || '').trim();
+    let targetZip = (searchZip || '').trim();
+    let targetCity = (searchCity || '').trim();
+
+    if (targetZip && targetAddr.includes(targetZip)) {
+      targetAddr = targetAddr.replace(new RegExp(`\\b${targetZip}\\b`, 'g'), '').trim();
+    }
+    if (targetCity && targetAddr.toLowerCase().includes(targetCity.toLowerCase())) {
+      targetAddr = targetAddr.replace(new RegExp(`\\b${targetCity}\\b`, 'gi'), '').trim();
+    }
+    targetAddr = targetAddr.replace(/[,\s]+$/, '').trim();
+
+    if (!targetAddr && !targetZip && !targetCity) {
+      toast({
+        title: "Adresse requise",
+        description: "Veuillez renseigner une adresse ou un code postal pour rechercher le PRM / PDL Enedis.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSearchingPrm(true);
+    setPrmCandidates([]);
+    setAmbiguityModalOpen(true);
+    try {
+      const res = await enedisService.searchPrm({
+        address: targetAddr,
+        zip: targetZip,
+        city: targetCity,
+        citycode: searchCitycode || '',
+        companyName: searchCompany,
+        clientName: searchCompany || ownerName,
+        projectId: 'admin_test'
+      });
+
+      if (res.status === 'HIGH_CONFIDENCE' && res.selectedPrm?.prm) {
+        setPrm(res.selectedPrm.prm);
+        setSubscribedPower(res.selectedPrm.puissance_souscrite_kva || 36);
+        const titulaire = res.selectedPrm.titulaire || searchCompany || '';
+        if (titulaire && titulaire !== 'Compteur Résidentiel' && titulaire !== 'Saisie manuelle') {
+          setOwnerName(titulaire);
+          if (!searchCompany) setSearchCompany(titulaire);
+        }
+        const fullAddr = [targetAddr, targetZip, targetCity].filter(Boolean).join(' ').trim();
+        if (fullAddr) setOwnerAddress(fullAddr);
+        setAmbiguityModalOpen(false);
+        toast({
+          title: "✅ Compteur Enedis identifié",
+          description: `PRM ${res.selectedPrm.prm} • ${res.selectedPrm.puissance_souscrite_kva ? res.selectedPrm.puissance_souscrite_kva + ' kVA • ' : ''}${titulaire}`
+        });
+      } else if (res.candidates && res.candidates.length > 0) {
+        setPrmCandidates(res.candidates);
+        setAmbiguityModalOpen(true);
+      } else {
+        setPrmCandidates([]);
+        setAmbiguityModalOpen(true);
+      }
+    } catch (err) {
+      setPrmCandidates([]);
+      setAmbiguityModalOpen(true);
+      toast({
+        title: "Erreur Enedis",
+        description: err.message || "Erreur lors de la recherche Enedis",
+        variant: "destructive"
+      });
+    } finally {
+      setSearchingPrm(false);
+    }
+  };
 
   // Charger les consentements via API Admin (contourne les règles Firestore)
   const loadConsents = useCallback(async () => {
@@ -735,15 +842,98 @@ export default function AdminEnedis() {
                     </div>
 
                     <div className="space-y-3">
-                      <label className="text-xs font-bold uppercase text-slate-500 tracking-widest ml-1">Numéro PRM (14 chiffres)</label>
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-xs font-bold uppercase text-slate-500 tracking-widest ml-1">Numéro PRM (14 chiffres)</label>
+                        {subscribedPower && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            {subscribedPower} kVA
+                          </span>
+                        )}
+                      </div>
                       <div className="relative">
                         <Input 
                           value={prm}
-                          onChange={e => setPrm(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                          onChange={e => {
+                            setPrm(e.target.value.replace(/\D/g, '').slice(0, 14));
+                            setSubscribedPower(null);
+                          }}
                           placeholder="Ex: 16138350177475"
                           className="font-mono text-2xl h-16 border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 pl-14 transition-all"
                         />
                         <Database className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={24} />
+                      </div>
+
+                      {/* Recherche de PRM / PDL par adresse et raison sociale */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsPrmSearchOpen(v => !v)}
+                          className="w-full flex items-center justify-between text-xs font-bold text-blue-700 hover:text-blue-800 cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <Search size={14} className="text-blue-600" />
+                            <span>Rechercher un PRM / PDL par adresse</span>
+                          </span>
+                          {isPrmSearchOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                        </button>
+
+                        {isPrmSearchOpen && (
+                          <div className="space-y-2 pt-1.5 border-t border-slate-200/80 animate-in fade-in duration-200">
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Adresse du compteur</label>
+                              <AddressAutocomplete
+                                value={searchAddress}
+                                onChange={e => setSearchAddress(e.target.value)}
+                                onSelect={handleSearchAddressSelect}
+                                className="h-9 text-xs bg-white"
+                                placeholder="Ex: 129 impasse Maison Neuve..."
+                              />
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">CP</label>
+                                <Input
+                                  value={searchZip}
+                                  onChange={e => setSearchZip(e.target.value)}
+                                  placeholder="24340"
+                                  className="h-9 text-xs bg-white"
+                                />
+                              </div>
+                              <div className="col-span-2">
+                                <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Ville</label>
+                                <Input
+                                  value={searchCity}
+                                  onChange={e => setSearchCity(e.target.value)}
+                                  placeholder="Mareuil en Périgord"
+                                  className="h-9 text-xs bg-white"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Nom / Raison sociale (optionnel)</label>
+                              <Input
+                                value={searchCompany}
+                                onChange={e => setSearchCompany(e.target.value)}
+                                placeholder="Ex: DUFRESNE Christophe / EARL..."
+                                className="h-9 text-xs bg-white"
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleTriggerSearchPrm}
+                              disabled={searchingPrm}
+                              className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                            >
+                              {searchingPrm ? (
+                                <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Search className="w-3.5 h-3.5" />
+                              )}
+                              <span>{prm ? 'Ré-identifier le PRM' : 'Rechercher le PRM'}</span>
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1492,13 +1682,43 @@ export default function AdminEnedis() {
         </div>
       )}
 
+      {/* Modale de sélection de PRM en cas d'ambiguïté ou chargement Enedis */}
+      <PrmSelectionModal
+        isOpen={ambiguityModalOpen}
+        onClose={() => setAmbiguityModalOpen(false)}
+        candidates={prmCandidates}
+        isLoading={searchingPrm}
+        address={`${searchAddress || ''} ${searchZip || ''} ${searchCity || ''}`.trim() || ownerAddress}
+        companyName={searchCompany || ownerName || ''}
+        clientName={ownerName || searchCompany || ''}
+        onSelectPrm={(selected) => {
+          if (selected?.prm) {
+            setPrm(selected.prm);
+            setSubscribedPower(selected.puissance_souscrite_kva || null);
+            if (selected.titulaire && selected.titulaire !== 'Compteur Résidentiel' && selected.titulaire !== 'Saisie manuelle') {
+              setOwnerName(selected.titulaire);
+              if (!searchCompany) setSearchCompany(selected.titulaire);
+            }
+            const fullAddr = [searchAddress, searchZip, searchCity].filter(Boolean).join(' ').trim();
+            if (fullAddr) setOwnerAddress(fullAddr);
+            toast({
+              title: "✅ Compteur sélectionné",
+              description: `PRM ${selected.prm} ${selected.puissance_souscrite_kva ? '(' + selected.puissance_souscrite_kva + ' kVA)' : ''}`
+            });
+          }
+        }}
+      />
+
       {/* Modal de signature du Mandat Enedis eIDAS */}
       <MandatSignatureModal
         isOpen={signatureModalOpen}
         onClose={() => setSignatureModalOpen(false)}
         initialPrm={prm}
         initialClientName={ownerName}
-        initialAddress={ownerAddress}
+        initialCompany={searchCompany}
+        initialAddress={searchAddress || ownerAddress}
+        initialZip={searchZip}
+        initialCity={searchCity}
         onSignatureSuccess={(res) => {
           loadConsents();
           if (res?.prm) handleFetch(res.prm);

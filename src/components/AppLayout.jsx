@@ -531,6 +531,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
       seismicZone: '',
       snowZone: '',
       windZone: '',
+      dateCreation: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };
 

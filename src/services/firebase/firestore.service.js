@@ -15,6 +15,7 @@ import {
     writeBatch
 } from 'firebase/firestore';
 import { db } from '@/config/firebase.js';
+import { extractProjectCreationDate, parseDateValue } from '@/utils/projectCreationDate.js';
 
 // ============================================================================
 // TENANTS
@@ -162,16 +163,19 @@ export const createProject = async (projectData, userId, tenantId = 'green-inves
     // Remove temporary ID
     const { id, ...data } = projectData;
     const cleanData = removeUndefinedFields(data);
+    const existingDate = parseDateValue(cleanData.dateCreation || cleanData.createdAt);
+    const createdAtIso = existingDate ? existingDate.toISOString() : new Date().toISOString();
     const project = {
         ...cleanData,
         tenantId,
         createdBy: userId,
         status: projectData.status || 'draft',
+        dateCreation: createdAtIso,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
     };
     await setDoc(projectRef, project);
-    return { id: projectRef.id, ...project };
+    return { id: projectRef.id, ...project, createdAt: createdAtIso, dateCreation: createdAtIso };
 };
 
 export const getProject = async (projectId) => {
@@ -189,6 +193,16 @@ export const getProject = async (projectId) => {
 export const updateProject = async (projectId, data) => {
     if (!projectId || typeof projectId !== 'string') return;
     const cleanData = removeUndefinedFields(data);
+    const allowLockCreationDate = Boolean(cleanData._lockCreationDate);
+    delete cleanData._lockCreationDate;
+    // Ne jamais écraser la date de création originale lors d'une modification du projet
+    delete cleanData.createdAt;
+    delete cleanData.created_at;
+    delete cleanData.date_creation;
+    delete cleanData.creationDate;
+    if (!allowLockCreationDate) {
+        delete cleanData.dateCreation;
+    }
     await updateDoc(doc(db, 'projects', projectId), {
         ...cleanData,
         updatedAt: serverTimestamp()
@@ -255,8 +269,8 @@ export const listProjects = async (userId, canViewAll = false, tenantId = 'green
 
     // Client-side sorting
     return projects.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        const dateA = extractProjectCreationDate(a) || new Date(0);
+        const dateB = extractProjectCreationDate(b) || new Date(0);
         return dateB - dateA; // Descending
     });
 };
@@ -278,8 +292,8 @@ export const subscribeToProjects = (userId, canViewAll, callback, tenantId = 'gr
         const projects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         // Sort before callback
         projects.sort((a, b) => {
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+            const dateA = extractProjectCreationDate(a) || new Date(0);
+            const dateB = extractProjectCreationDate(b) || new Date(0);
             return dateB - dateA;
         });
         callback(projects);
