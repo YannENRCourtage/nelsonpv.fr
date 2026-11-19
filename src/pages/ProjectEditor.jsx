@@ -1035,7 +1035,7 @@ export default function ProjectEditor() {
                   Date de création
                 </label>
                 <div
-                  className="flex items-center justify-center h-10 w-full rounded-md border border-input bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm select-none whitespace-nowrap"
+                  className="flex items-center h-10 w-full py-2 text-xs font-semibold text-slate-700 select-none whitespace-nowrap"
                   title="Date de création de la fiche projet (immuable)"
                 >
                   {formatProjectCreationDate(p)}
