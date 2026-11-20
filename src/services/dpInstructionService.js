@@ -207,17 +207,33 @@ export function resolveProjectDepositDate(project, stepState = null) {
   );
   const isOfficiallyValidated = Boolean(p.dp_status === 'validated' || p.dp_certificate_obtained || s?.status === 'validated');
 
-  // 1. Priorité absolue : état actif de l'étape si une date vient d'être saisie ou injectée via récépissé
-  const stepCandidates = [
+  // 1. Priorité absolue : date de dépôt explicitement saisie par l'utilisateur ou enregistrée sur le dossier
+  const explicitCandidates = [
     s?.depositDate,
     s?.dp_deposit_date,
     s?.dateDepotDP,
+    p.dp_deposit_date,
+    p.dpDepositDate,
+    p.dateDepotDP,
+    p.date_depot_dp,
+    p.depositDate,
+    p.deposit_date,
+    p.devWorkflow?.dp?.depositDate,
+    p.stepsState?.dp?.depositDate,
+    p.urbanisme?.dp?.dateDepot,
+    p.urbanisme?.dp?.date_depot,
+    p.steps?.dp?.date,
   ];
-  for (const sc of stepCandidates) {
-    if (sc) {
-      const parsedSc = parseFrenchOrIsoDate(sc);
-      if (parsedSc) {
-        return parsedSc;
+  for (const ec of explicitCandidates) {
+    if (ec) {
+      const parsed = parseFrenchOrIsoDate(ec);
+      if (parsed) {
+        const iso = formatToIsoDate(parsed);
+        // Ignorer l'ancienne fausse date auto-injectée (02/11/2026) uniquement si le projet n'a aucun numéro DP
+        if (iso === '2026-11-02' && !hasRealDp && !isOfficiallyValidated) {
+          continue;
+        }
+        return parsed;
       }
     }
   }
@@ -232,7 +248,7 @@ export function resolveProjectDepositDate(project, stepState = null) {
     }
   }
 
-  // 3. Cas officiels certifiés pour les récépissés de nos dossiers projets déposés :
+  // 3. Cas officiels certifiés pour les récépissés de nos dossiers projets déposés (uniquement si aucune date saisie) :
   // A. Dossier BERTRANDIE (DP 024 276 26 00015 à Monestier, Dordogne - Récépissé officiel déposé le 02/11/2026)
   if (cleanDp.includes('0242762600015') || projName.includes('BERTRANDIE')) {
     return parseFrenchOrIsoDate('02/11/2026');
@@ -243,46 +259,7 @@ export function resolveProjectDepositDate(project, stepState = null) {
     return parseFrenchOrIsoDate('21/09/2026');
   }
 
-  // 4. Champs explicites du projet (base de données / Firestore)
-  const candidates = [
-    p.dp_deposit_date,
-    p.dpDepositDate,
-    p.dateDepotDP,
-    p.date_depot_dp,
-    p.depositDate,
-    p.deposit_date,
-    p.devWorkflow?.dp?.depositDate,
-    p.stepsState?.dp?.depositDate,
-    p.urbanisme?.dp?.dateDepot,
-    p.urbanisme?.dp?.date_depot,
-    p.steps?.dp?.date,
-  ];
-
-  for (const c of candidates) {
-    if (c) {
-      const parsed = parseFrenchOrIsoDate(c);
-      if (parsed) {
-        const iso = formatToIsoDate(parsed);
-        // Si la date trouvée est aujourd'hui (02/11/2026) alors que le projet n'a AUCUN numéro DP officiel
-        // et n'est pas validé (ex: ROBY, HUGUENIN), c'est une fausse date auto-injectée par défaut : on l'ignore.
-        if (iso === '2026-11-02' && !hasRealDp && !isOfficiallyValidated) {
-          continue; // Ne pas considérer cette date par défaut comme un vrai dépôt
-        }
-
-        return parsed;
-      }
-    }
-  }
-
-  // 5. Si aucune date explicite n'est trouvée mais que le dossier possède un vrai numéro officiel de DP
-  // (ex: dossier GIOT DP 023 108 26 A0005) ou est validé, utiliser les jalons d'intervention du dossier
-  if (hasRealDp || isOfficiallyValidated) {
-    const milestoneDate = resolveMilestoneInterventionDate(p, s);
-    if (milestoneDate) {
-      return milestoneDate;
-    }
-  }
-
+  // Ne jamais remplacer ou inventer une date de dépôt à partir de lastIntervention / createdAt / date du jour
   return null;
 }
 

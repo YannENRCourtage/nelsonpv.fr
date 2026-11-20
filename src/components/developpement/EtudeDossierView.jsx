@@ -221,13 +221,13 @@ export default function EtudeDossierView({
           };
         }
         if (key === 'dp') {
-          const resolvedDate = resolveProjectDepositDate(project, initialized.dp);
-          if (resolvedDate) {
-            initialized.dp.depositDate = formatToIsoDate(resolvedDate);
-          } else if (initialized.dp.depositDate) {
-            // Conserver la date déjà renseignée dans le workflow
+          if (initialized.dp.depositDate) {
+            // Toujours conserver la date de dépôt déjà saisie par l'utilisateur
+            const normalized = formatToIsoDate(initialized.dp.depositDate);
+            if (normalized) initialized.dp.depositDate = normalized;
           } else {
-            initialized.dp.depositDate = '';
+            const resolvedDate = resolveProjectDepositDate(project, initialized.dp);
+            initialized.dp.depositDate = resolvedDate ? formatToIsoDate(resolvedDate) : '';
           }
         }
       });
@@ -350,26 +350,25 @@ export default function EtudeDossierView({
         }
       }
 
-      // Notification immédiate du composant parent (mise à jour selectedProject et projects en temps réel)
+      // Notification immédiate du composant parent (mise à jour selectedProject, projects et Firestore via handleUpdateProjectData)
       if (onUpdateProject) {
         onUpdateProject(project.id, projectUpdates);
-      }
-
-      if (stepSaveTimeoutRef.current) {
-        clearTimeout(stepSaveTimeoutRef.current);
-      }
-
-      const delay = updates.registrationNumber !== undefined ? 500 : 0;
-      stepSaveTimeoutRef.current = setTimeout(async () => {
-        try {
-          await apiService.updateProject(project.id, {
-            ...projectUpdates,
-            updatedAt: new Date().toISOString(),
-          });
-        } catch (err) {
-          console.error('Erreur mise à jour devWorkflow Firestore:', err);
+      } else {
+        if (stepSaveTimeoutRef.current) {
+          clearTimeout(stepSaveTimeoutRef.current);
         }
-      }, delay);
+        const delay = updates.registrationNumber !== undefined ? 500 : 0;
+        stepSaveTimeoutRef.current = setTimeout(async () => {
+          try {
+            await apiService.updateProject(project.id, {
+              ...projectUpdates,
+              updatedAt: new Date().toISOString(),
+            });
+          } catch (err) {
+            console.error('Erreur mise à jour devWorkflow Firestore:', err);
+          }
+        }, delay);
+      }
     }
   };
 

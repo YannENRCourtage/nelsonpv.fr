@@ -78,13 +78,15 @@ export default function DpInstructionCard({
     const curDp = stepState?.registrationNumber || project?.dp_registration_number || project?.numero_dp || project?.num_dp || '';
     setDpNumber(curDp);
     
-    // Résolution robuste de la date de dépôt pour ne jamais afficher "Invalid Date"
+    // Résolution robuste de la date de dépôt : toujours conserver la date saisie par l'utilisateur
     const resolved = resolveProjectDepositDate(project, stepState);
     const isoDate = resolved ? formatToIsoDate(resolved) : '';
-    if (isoDate) {
+    if (stepState?.depositDate) {
+      setDepositDate(formatToIsoDate(stepState.depositDate) || stepState.depositDate);
+    } else if (isoDate) {
       setDepositDate(isoDate);
-    } else if (stepState?.depositDate) {
-      setDepositDate(stepState.depositDate);
+    } else {
+      setDepositDate('');
     }
 
     setRegime(stepState?.regime || project?.dp_regime || '1_mois');
@@ -145,8 +147,8 @@ export default function DpInstructionCard({
       if (res.mairieInfo) {
         setMairieInfo(res.mairieInfo);
       }
-      const finalDepositDate = res.depositDateIso || depositDate;
-      if (finalDepositDate) {
+      const finalDepositDate = depositDate || res.depositDateIso || '';
+      if (finalDepositDate && !depositDate) {
         setDepositDate(finalDepositDate);
       }
       const tl = res.timeline || calculateDpTimeline({
