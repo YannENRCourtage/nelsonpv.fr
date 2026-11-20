@@ -7,7 +7,7 @@ import { saveAs } from 'file-saver';
 import { smartFillCerfa, resolveDemandeurNames } from './SmartCerfaService';
 import { PlateNoticeSecuriteIncendieBess } from '@/components/editor/DPPlates';
 import { preloadProjectImages } from '@/utils/imageProxy';
-import { generateCourrierDepotDpDocx } from './courrierDepotDpService';
+import { generateCourrierDepotDpPdf } from './courrierDepotDpService';
 
 /**
  * Capture un élément DOM précis et le convertit en Uint8Array (PDF individuel haute définition)
@@ -501,11 +501,11 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
       }
     }
 
-    // J. Courrier d'envoi / dépôt DP en Mairie (.docx modifiable)
+    // J. Courrier d'envoi / dépôt DP en Mairie (PDF)
     if (!selectedPages || selectedPages.courrier_dp !== false) {
       try {
-        notify('Génération du Courrier d\'envoi DP (.docx modifiable)...');
-        const courrierRes = await generateCourrierDepotDpDocx(safeProject, mairieInfo, {
+        notify('Génération du Courrier d\'envoi DP (PDF)...');
+        const courrierRes = await generateCourrierDepotDpPdf(safeProject, mairieInfo, {
           download: false,
           docType: type
         });
@@ -513,7 +513,7 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
           zip.file(courrierRes.filename, courrierRes.uint8Array);
         }
       } catch (courrierErr) {
-        console.warn('[exportDossierDepotZip] Erreur génération courrier DP .docx:', courrierErr);
+        console.warn('[exportDossierDepotZip] Erreur génération courrier DP PDF:', courrierErr);
       }
     }
 

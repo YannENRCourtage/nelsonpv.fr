@@ -1,7 +1,9 @@
 import PizZip from 'pizzip';
+import jsPDF from 'jspdf';
 import { saveAs } from 'file-saver';
 import { findBessOdreData } from '@/data/bessOdreMatrix.js';
 import { guessCiviliteFromFirstName, parseSurfaceM2 } from '@/services/promesseBailFaradayService.js';
+import { ENR_COURTAGE_LOGO_BASE64 } from '@/assets/logoBase64.js';
 
 const COURRIER_TEMPLATE_URL = '/templates/COURRIER_DEPOT_DP_BATTERIE.docx';
 
@@ -403,6 +405,346 @@ export async function generateCourrierDepotDpDocx(project = {}, mairieInfo = nul
     .replace(/^_|_$/g, '');
 
   const filename = `Courrier_Depot_DP_Batterie_${cleanClientForFile || 'Client'}.docx`;
+
+  if (download) {
+    saveAs(blob, filename);
+  }
+
+  return { blob, uint8Array, filename };
+}
+
+/**
+ * Génère le fichier PDF officiel du Courrier d'envoi / dépôt de DP Batterie
+ * à la date du jour et avec les coordonnées de Yann BARBERIS.
+ */
+export async function generateCourrierDepotDpPdf(project = {}, mairieInfo = null, options = {}) {
+  const { download = true, docType = 'dp' } = options;
+
+  // Coordonnées GPS éventuelles pour recherche matrice BESS ODRE
+  let lat = project?.lat ? Number(project.lat) : null;
+  let lng = project?.lng ? Number(project.lng) : null;
+  if ((!lat || !lng) && project?.gps && typeof project.gps === 'string') {
+    const parts = project.gps.split(',');
+    if (parts.length >= 2) {
+      lat = parseFloat(parts[0].trim());
+      lng = parseFloat(parts[1].trim());
+    }
+  }
+
+  const bessData = findBessOdreData(
+    project?.name || project?.projectName || project?.client || '',
+    project?.city || project?.commune || '',
+    project?.address || '',
+    lat,
+    lng
+  );
+
+  // 1. Résolution du Demandeur / Mandant
+  const rawLast = (project?.name || project?.lastName || project?.demandeur || bessData?.siteName || 'CLIENT')
+    .replace(/\s+\d+$/, '')
+    .trim();
+  const rawFirst = (project?.firstName || '').trim();
+  const companyRegex = /\b(GFA|SCI|EARL|SAS|SASU|SARL|EURL|SCEA|GAEC|SA|GIE|SOCIETE|SOCIÉTÉ|HOLDING)\b/i;
+
+  let demandeurComplet = '';
+  if (companyRegex.test(rawLast)) {
+    demandeurComplet = /^la\s+soci[eé]t[eé]\b/i.test(rawLast) ? rawLast : `la société ${rawLast.toUpperCase()}`;
+  } else {
+    const civ = project?.civilite && project.civilite !== 'Monsieur et Madame'
+      ? project.civilite
+      : guessCiviliteFromFirstName(rawFirst);
+
+    const lastClean = rawFirst
+      ? rawLast.replace(new RegExp(`\\b${rawFirst.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'), '').trim()
+      : rawLast;
+
+    demandeurComplet = [civ, rawFirst, (lastClean || rawLast).toUpperCase()]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+  }
+
+  // 2. Commune, Code postal & Adresse Mairie
+  const communeUpper = (
+    project?.dp_config?.terrain?.ville ||
+    project?.city ||
+    project?.commune ||
+    bessData?.commune ||
+    'COMMUNE'
+  )
+    .trim()
+    .toUpperCase();
+
+  const cp = String(
+    project?.dp_config?.terrain?.code_postal ||
+    project?.zip ||
+    project?.zipCode ||
+    project?.codePostal ||
+    bessData?.codePostal ||
+    ''
+  ).trim();
+
+  const mairieStreet = await resolveMairieStreetAddress({
+    insee: project?.insee || project?.code_insee || project?.cadastre_code_insee,
+    codePostal: cp,
+    commune: communeUpper,
+    mairieInfo
+  });
+
+  // 3. Références cadastrales, Lieu-Dit et Superficie
+  const prefixe = (project?.cadastre_prefixe || '000').trim() || '000';
+  const section = (
+    project?.dp_config?.terrain?.section ||
+    project?.cadastre_section ||
+    project?.section ||
+    bessData?.section ||
+    ''
+  )
+    .replace(/^Sec\.?\s*/i, '')
+    .trim()
+    .toUpperCase();
+
+  const rawNumero = (
+    project?.dp_config?.terrain?.parcelle ||
+    project?.cadastre_numero ||
+    project?.numero ||
+    bessData?.numero ||
+    ''
+  )
+    .replace(/^n°?\s*/i, '')
+    .trim();
+  const numero = rawNumero.replace(/^0+(?=\d)/, '') || rawNumero;
+
+  const rawSurface = parseSurfaceM2(
+    project?.dp_config?.terrain?.contenance_m2 ||
+    project?.cadastre_surface ||
+    project?.surface_terrain ||
+    project?.surface ||
+    bessData?.contenance ||
+    0
+  );
+  const surfaceFormatted = rawSurface > 0
+    ? rawSurface.toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, ' ')
+    : '';
+
+  const rawAddr =
+    project?.dp_config?.terrain?.adresse ||
+    project?.address ||
+    project?.adresse ||
+    bessData?.address ||
+    '';
+  const lieuDit = extractLieuDitOrStreet(rawAddr, cp, communeUpper);
+
+  const puissanceKw = project?.dp_config?.technique?.puissance_kw || 500;
+  const cerfaNumber = docType === 'pc' ? '13404*' : '16702*03';
+
+  const todayFormatted = new Date().toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  // ── CONSTRUCTION DU PDF A4 OFFICIEL ───────────────────────────────────────
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const margin = 18;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const contentWidth = pageWidth - margin * 2;
+  const navy = [15, 30, 80];
+  const dark = [30, 41, 59];
+  const muted = [100, 100, 100];
+
+  // Logo ENR COURTAGE + bloc émetteur à gauche
+  if (ENR_COURTAGE_LOGO_BASE64) {
+    try {
+      doc.addImage(ENR_COURTAGE_LOGO_BASE64, 'PNG', margin, 14, 42, 12);
+    } catch (_) {}
+  }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...navy);
+  doc.text('SASU ENR COURTAGE', margin, 31);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...muted);
+  doc.text('7 Rue Gutenberg — 33700 MÉRIGNAC', margin, 35.5);
+  doc.text('Email : contact@enr-courtage.fr | Web : www.enr-courtage.fr', margin, 39.5);
+
+  // Destinataire Mairie à droite
+  const rightColX = 115;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(...navy);
+  doc.text(`MAIRIE DE ${communeUpper}`, rightColX, 20);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...dark);
+  let mairieY = 25;
+  doc.text('Service Urbanisme', rightColX, mairieY);
+  mairieY += 4.5;
+  if (mairieStreet) {
+    const streetLines = doc.splitTextToSize(mairieStreet, pageWidth - margin - rightColX);
+    doc.text(streetLines, rightColX, mairieY);
+    mairieY += streetLines.length * 4.5;
+  }
+  doc.text(`${cp} ${communeUpper}`.trim(), rightColX, mairieY);
+
+  // Date du jour alignée à droite
+  let y = Math.max(48, mairieY + 10);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...dark);
+  doc.text(`Mérignac, le ${todayFormatted}`, pageWidth - margin, y, { align: 'right' });
+
+  // Dossier suivi par Yann BARBERIS
+  y += 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...dark);
+  const suiviPrefix = 'Dossier suivi par : ';
+  doc.text(suiviPrefix, margin, y);
+  const suiviPrefixW = doc.getTextWidth(suiviPrefix);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...navy);
+  doc.text('Mr Yann BARBERIS  |  Tél : 07 63 87 71 40  |  E-mail : y.barberis@enr-courtage.fr', margin + suiviPrefixW, y);
+
+  // Objet
+  y += 8;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...navy);
+  const objPrefix = 'Objet : ';
+  doc.text(objPrefix, margin, y);
+  const objPrefixW = doc.getTextWidth(objPrefix);
+  doc.setTextColor(...dark);
+  const objText = `Dépôt de Déclaration Préalable (DP) – Unité de stockage par batterie de soutien réseau (${puissanceKw} kW)`;
+  const objLines = doc.splitTextToSize(objText, contentWidth - objPrefixW);
+  doc.text(objLines, margin + objPrefixW, y);
+  y += objLines.length * 4.8 + 4;
+
+  // Tableau récapitulatif (4 lignes)
+  const communeWithCp = cp ? `${communeUpper} (${cp})` : communeUpper;
+  const refCadText =
+    `Parcelle ${prefixe} ${section} ${numero}`.replace(/\s+/g, ' ').trim() +
+    (lieuDit ? ` – ${lieuDit}` : '') +
+    (surfaceFormatted ? ` (Superficie : ${surfaceFormatted} m²)` : '');
+
+  const tableRows = [
+    ['Demandeur / Mandant :', demandeurComplet],
+    ['Commune du projet :', communeWithCp],
+    ['Référence cadastrale :', refCadText],
+    ['Nature du projet :', `Installation de batterie de soutien réseau (BESS) – Puissance : ${puissanceKw} kW`]
+  ];
+
+  const col1W = 48;
+  doc.setDrawColor(224, 224, 224);
+  doc.setLineWidth(0.25);
+
+  tableRows.forEach(([label, val]) => {
+    const valLines = doc.splitTextToSize(val, contentWidth - col1W - 4);
+    const rowH = Math.max(7, valLines.length * 4.2 + 2.8);
+    doc.line(margin, y, pageWidth - margin, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...navy);
+    doc.text(label, margin + 1.5, y + 4.8);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...dark);
+    doc.text(valLines, margin + col1W, y + 4.8);
+    y += rowH;
+  });
+  doc.line(margin, y, pageWidth - margin, y);
+
+  // Corps de la lettre
+  y += 10;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...dark);
+  doc.text('Monsieur le Maire,', margin, y);
+  y += 4.8;
+  doc.text('Madame, Monsieur le Responsable de l’Urbanisme,', margin, y);
+
+  y += 7.5;
+  const p1 = `Agissant pour le compte et sur mandat de ${demandeurComplet}, la société ENR COURTAGE a l’honneur de vous transmettre le présent dossier de Déclaration Préalable (DP) relatif à l'implantation d'une unité autonome de stockage par batterie de soutien au réseau (BESS), d'une puissance de ${puissanceKw} kW.`;
+  const p1Lines = doc.splitTextToSize(p1, contentWidth);
+  doc.text(p1Lines, margin, y);
+  y += p1Lines.length * 4.6 + 3.5;
+
+  const lieuClause = lieuDit ? `, au ${lieuDit}` : '';
+  const p2 = `Le projet se situe sur la parcelle cadastrée section ${prefixe} ${section} n° ${numero}${lieuClause} sur votre commune. Cette installation participe activement à la stabilisation, à l’équilibrage et à la transition énergétique du réseau électrique public.`;
+  const p2Lines = doc.splitTextToSize(p2, contentWidth);
+  doc.text(p2Lines, margin, y);
+  y += p2Lines.length * 4.6 + 5;
+
+  // Pièces jointes
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Pièces jointes au dossier :', margin, y);
+  y += 5.5;
+
+  const bullets = [
+    `Formulaire Cerfa n° ${cerfaNumber} dûment complété et signé ;`,
+    'DP1 – Plan de situation du terrain ;',
+    'DP2 – Plan de masse coté dans les 3 dimensions ;',
+    'DP3 – Plan en coupe du terrain et de la construction ;',
+    'DP6 – Document graphique d’insertion paysagère (3D) ;',
+    'DP7 & DP8 – Photographies d’environnement proche et lointain ;',
+    'Notice technique descriptive de l’équipement et du raccordement ;',
+    'Notice de sécurité incendie, prévention du risque feux de forêt (DFCI) & dispositions SDIS.'
+  ];
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  bullets.forEach((b) => {
+    doc.text('•', margin + 4, y);
+    doc.text(b, margin + 9, y);
+    y += 4.5;
+  });
+
+  y += 3.5;
+  doc.setFontSize(10);
+  const p3 = 'Nous vous prions de bien vouloir procéder à l’enregistrement de cette déclaration et nous retourner le récépissé de dépôt officiel comportant son numéro d’enregistrement ainsi que la date limite d\'instruction.';
+  const p3Lines = doc.splitTextToSize(p3, contentWidth);
+  doc.text(p3Lines, margin, y);
+  y += p3Lines.length * 4.6 + 3.5;
+
+  const p4 = 'Notre collaborateur en charge du dossier, Monsieur Yann BARBERIS (07 63 87 71 40 – y.barberis@enr-courtage.fr), reste à votre disposition pour toute information complémentaire.';
+  const p4Lines = doc.splitTextToSize(p4, contentWidth);
+  doc.text(p4Lines, margin, y);
+  y += p4Lines.length * 4.6 + 4.5;
+
+  doc.text("Nous vous prions d'agréer, Madame, Monsieur, l'expression de nos respectueuses salutations.", margin, y);
+
+  // Signature alignée à droite
+  y += 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...navy);
+  doc.text('Pour le demandeur,', pageWidth - margin, y, { align: 'right' });
+  y += 4.5;
+  doc.text('SASU ENR COURTAGE', pageWidth - margin, y, { align: 'right' });
+  y += 5;
+  doc.setTextColor(...dark);
+  doc.text('Yann BARBERIS', pageWidth - margin, y, { align: 'right' });
+  y += 4.5;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  doc.text('Service Administratif & Urbanisme', pageWidth - margin, y, { align: 'right' });
+
+  const arrayBuffer = doc.output('arraybuffer');
+  const uint8Array = new Uint8Array(arrayBuffer);
+  const blob = new Blob([uint8Array], { type: 'application/pdf' });
+
+  const cleanClientForFile = [rawLast.toUpperCase(), rawFirst]
+    .filter(Boolean)
+    .join('_')
+    .replace(/[^a-zA-Z0-9À-ÿ_-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  const filename = `Courrier_Depot_DP_Batterie_${cleanClientForFile || 'Client'}.pdf`;
 
   if (download) {
     saveAs(blob, filename);

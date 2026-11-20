@@ -12,7 +12,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { fetchUrbanismeMairiePortal } from '@/services/urbanismeRoutingService';
 import { exportDossierDepotZip, downloadNoticeSecuriteIncendiePdf } from '@/services/DPGeneratorService';
-import { generateCourrierDepotDpDocx } from '@/services/courrierDepotDpService';
+import { generateCourrierDepotDpPdf } from '@/services/courrierDepotDpService';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames, parseFrenchAddress, DEFAULT_BESS_CADRE_4_1, getBessCadre41Text } from '@/services/SmartCerfaService';
 import { downloadPieceDwg } from '@/services/DwgExportService';
 import { cadastreService } from '@/services/CadastreService';
@@ -7033,19 +7033,19 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       setDownloadingPieceId('courrier_dp');
       try {
         const { finalProject } = await prepareProjectPayload();
-        const res = await generateCourrierDepotDpDocx(finalProject, mairieRouting?.data, {
+        const res = await generateCourrierDepotDpPdf(finalProject, mairieRouting?.data, {
           download: true,
           docType: type || 'dp'
         });
         toast({
-          title: "Courrier d'envoi DP (.docx) téléchargé",
-          description: `${res.filename} généré à la date du jour (100 % modifiable dans Word).`,
+          title: "Courrier d'envoi DP (PDF) téléchargé",
+          description: `${res.filename} généré à la date du jour.`,
         });
       } catch (err) {
-        console.error('[UrbanismeWizard] Erreur téléchargement Courrier DP:', err);
+        console.error('[UrbanismeWizard] Erreur téléchargement Courrier DP PDF:', err);
         toast({
           title: "Erreur lors du téléchargement",
-          description: err.message || "Impossible de générer le courrier Word.",
+          description: err.message || "Impossible de générer le courrier PDF.",
           variant: "destructive"
         });
       } finally {
@@ -9948,7 +9948,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         ...(isBatActive ? [{ id: 'dp_notice_dedicated', code: 'NOTICE', title: 'Notice Descriptive', desc: 'Notice d\'insertion & descriptive du projet (Pleine page)', badge: 'Pièce complémentaire', color: 'indigo' }] : []),
                         ...(isBatActive ? [{ id: 'notice_incendie', code: 'SDIS / DFCI', title: 'Notice Sécurité Incendie & DFCI', desc: 'Notice sécurité incendie, DFCI & dispositions SDIS (Art. R.111-2 — 2 pages)', badge: 'Pièce additionnelle', color: 'rose' }] : []),
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA', desc: 'CERFA 13404 officiel pré-rempli', badge: 'Administratif', color: 'amber' },
-                        { id: 'courrier_dp', code: 'COURRIER', title: 'Courrier envoi DP', desc: 'Courrier de dépôt en Mairie au nom du client (.docx modifiable)', badge: 'Word .DOCX', color: 'indigo', isDocx: true },
+                        { id: 'courrier_dp', code: 'COURRIER', title: 'Courrier envoi DP', desc: 'Courrier de dépôt en Mairie au nom du client (PDF)', badge: 'Administratif', color: 'indigo' },
                       ] : type === 'dp' ? [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
                         { id: 'situation', code: 'DP1', title: 'Plan de situation', desc: 'IGN cartographique & Satellite', badge: 'Obligatoire', color: 'indigo' },
@@ -9973,7 +9973,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         ...(isBatActive ? [{ id: 'dp_notice_dedicated', code: 'NOTICE', title: 'Notice Descriptive', desc: 'Notice d\'insertion & descriptive du projet (Pleine page)', badge: 'Pièce complémentaire', color: 'indigo' }] : []),
                         ...(isBatActive ? [{ id: 'notice_incendie', code: 'SDIS / DFCI', title: 'Notice Sécurité Incendie & DFCI', desc: 'Notice sécurité incendie, DFCI & dispositions SDIS (Art. R.111-2 — 2 pages)', badge: 'Pièce additionnelle', color: 'rose' }] : []),
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA DP', desc: 'Déclaration préalable officielle', badge: 'Administratif', color: 'amber' },
-                        { id: 'courrier_dp', code: 'COURRIER', title: 'Courrier envoi DP', desc: 'Courrier de dépôt en Mairie au nom du client (.docx modifiable)', badge: 'Word .DOCX', color: 'indigo', isDocx: true },
+                        { id: 'courrier_dp', code: 'COURRIER', title: 'Courrier envoi DP', desc: 'Courrier de dépôt en Mairie au nom du client (PDF)', badge: 'Administratif', color: 'indigo' },
                       ] : [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte', badge: 'Recommandé', color: 'blue' },
                         { id: 'situation', code: 'CU1', title: 'Plan de situation', desc: 'Localisation du terrain', badge: 'Obligatoire', color: 'indigo' },
