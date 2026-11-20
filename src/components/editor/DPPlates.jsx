@@ -1486,10 +1486,10 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
 
     const textLen = cleanNoticeText.length;
     const lineCount = cleanNoticeText.split('\n').length;
-    const noticeFontSize = (textLen > 2700 || lineCount > 32) ? '6.7pt' : (textLen > 2200 || lineCount > 26) ? '7.0pt' : '7.3pt';
-    const noticeLineHeight = (textLen > 2700 || lineCount > 32) ? '1.16' : (textLen > 2200 || lineCount > 26) ? '1.20' : '1.26';
+    const noticeFontSize = (textLen > 2700 || lineCount > 32) ? '7.7pt' : (textLen > 2200 || lineCount > 26) ? '8.0pt' : '8.3pt';
+    const noticeLineHeight = (textLen > 2700 || lineCount > 32) ? '1.14' : (textLen > 2200 || lineCount > 26) ? '1.18' : '1.22';
     const noticeParagraphs = cleanNoticeText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-    const paraGap = (textLen > 2200 || lineCount > 26) ? '1.1mm' : '1.6mm';
+    const paraGap = (textLen > 2200 || lineCount > 26) ? '0.9mm' : '1.3mm';
 
     return (
         <div style={{ ...PAGE_STYLE, padding: hasNotice ? '5.5mm 10mm 7.5mm 10mm' : PAGE_STYLE.padding }} id="dp-plate-coupe">
@@ -1633,8 +1633,8 @@ export const PlateNoticeDedicated = ({ project, noticeText }) => {
     const nLen = cleanNotice.length;
     const nLines = cleanNotice.split('\n').length;
     const bodyFontSize = isBattery
-        ? ((nLen > 2600 || nLines > 31) ? '5.9pt' : (nLen > 2100 || nLines > 25) ? '6.2pt' : '6.5pt')
-        : ((nLen > 2600 || nLines > 31) ? '6.4pt' : '6.8pt');
+        ? ((nLen > 2600 || nLines > 31) ? '6.9pt' : (nLen > 2100 || nLines > 25) ? '7.2pt' : '7.5pt')
+        : ((nLen > 2600 || nLines > 31) ? '7.4pt' : '7.8pt');
     const bodyLineHeight = isBattery
         ? ((nLen > 2600 || nLines > 31) ? '1.18' : '1.22')
         : '1.28';

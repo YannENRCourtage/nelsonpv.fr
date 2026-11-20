@@ -141,7 +141,7 @@ export function getBessCadre41Text(project = {}) {
     ? ` Maintien des haies végétales existantes en écran visuel.`
     : '';
 
-  return `Installation d'une station autonome de stockage d'énergie par batteries (BESS Stand-Alone) d'une puissance nominale de ${nominalPower} / ${nominalCapacite} (${armoiresText}) sur dalle béton armé (emprise au sol : 19,84 m², surface de plancher : 0 m² ; 0 place de stationnement), ceinturée d'une clôture rigide H 2,00 m avec portillon d'accès sécurisé.
+  return `Installation d'une station autonome de stockage d'énergie par batteries (BESS Stand-Alone) — Puissance = ${nominalPower} / Capacité = ${nominalCapacite} (${armoiresText}) sur dalle béton armé (emprise au sol : 19,84 m², surface de plancher : 0 m² ; 0 place de stationnement), ceinturée d'une clôture rigide H 2,00 m avec portillon d'accès sécurisé.
 
 Équipement d'intérêt collectif raccordé en souterrain au réseau public Enedis HTA 20 kV assurant la régulation et l'équilibrage du réseau. Installation Non Classée ICPE (rubrique 2925, <= 600 kW), non soumise à la Loi sur l'eau (emprise < 20 m²), avec dispositifs de sécurité incendie et coupure d'urgence conformes aux prescriptions SDIS. Durée d'exploitation : 20 ans avec démantèlement et remise en état intégrale du site.${paysagerHoussaitText}`;
 }
