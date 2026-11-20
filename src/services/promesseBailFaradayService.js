@@ -22,6 +22,73 @@ function escapeXml(str) {
 }
 
 /**
+ * Devine la civilité ("Madame" ou "Monsieur") à partir du prénom français
+ */
+export function guessCiviliteFromFirstName(firstName) {
+  if (!firstName || typeof firstName !== 'string') return 'Monsieur';
+  const clean = firstName
+    .trim()
+    .split(/[\s,]+/)[0]
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (!clean) return 'Monsieur';
+
+  const maleExceptions = new Set([
+    'pierre', 'christophe', 'stephane', 'philippe', 'guillaume', 'alexandre', 'antoine',
+    'maxime', 'baptiste', 'jerome', 'sebastien', 'claude', 'jean-claude', 'luc', 'marc',
+    'paul', 'jean', 'michel', 'alain', 'bernard', 'patrick', 'daniel', 'christian', 'eric',
+    'laurent', 'david', 'nicolas', 'julien', 'thomas', 'romain', 'vincent', 'frederic',
+    'olivier', 'pascal', 'thierry', 'gilles', 'didier', 'bruno', 'franck', 'gerard',
+    'jacques', 'serge', 'henri', 'andre', 'marcel', 'rene', 'roger', 'raymond', 'robert',
+    'guy', 'yves', 'georges', 'maurice', 'louis', 'francois', 'herve', 'patrice', 'fabrice',
+    'cedric', 'arnaud', 'benoit', 'damien', 'yann', 'yannick', 'loic', 'gael', 'kevin',
+    'anthony', 'jeremy', 'mathieu', 'matthieu', 'quentin', 'clement', 'adrien', 'valentin',
+    'florian', 'benjamin', 'alexis', 'lucas', 'hugo', 'leo', 'nathan', 'enzo', 'theo',
+    'tom', 'gabriel', 'arthur', 'raphael', 'jules', 'adam', 'mael', 'noah', 'liam',
+    'ethan', 'nolan', 'sacha', 'marius', 'timeo', 'gabin', 'axel', 'evan', 'bastien',
+    'remi', 'remy', 'sylvain', 'fabien', 'gregory', 'mickael', 'jonathan', 'kamel',
+    'karim', 'mehdi', 'samir', 'rachid', 'mohamed', 'ali', 'etienne', 'gilles', 'charles',
+    'emile', 'eugene', 'gregoire', 'theophile', 'benoit', 'corentin', 'tanguy', 'tristan',
+    'romuald', 'arnauld', 'florent', 'guylain', 'maxence', 'dorian', 'morgan', 'camille'
+  ]);
+
+  if (maleExceptions.has(clean)) return 'Monsieur';
+
+  const femaleNames = new Set([
+    'claire', 'marie', 'anne', 'sophie', 'julie', 'sarah', 'laura', 'lea', 'chloe', 'manon',
+    'emma', 'lucie', 'alice', 'pauline', 'emilie', 'amelie', 'celine', 'nathalie', 'valerie',
+    'sandrine', 'isabelle', 'catherine', 'christine', 'sylvie', 'martine', 'monique',
+    'francoise', 'brigitte', 'nicole', 'patricia', 'veronique', 'corinne', 'stephanie',
+    'aurelie', 'melanie', 'virginie', 'delphine', 'laetitia', 'sabrina', 'jessica', 'marine',
+    'oceane', 'margaux', 'mathilde', 'charlotte', 'caroline', 'helene', 'elodie', 'audrey',
+    'beatrice', 'nadine', 'chantal', 'josette', 'yvette', 'colette', 'jeanne', 'marguerite',
+    'madeleine', 'genevieve', 'huguette', 'bernadette', 'solange', 'danielle', 'michelle',
+    'jacqueline', 'gisele', 'renee', 'denise', 'simone', 'odette', 'raymonde', 'paulette',
+    'suzanne', 'therese', 'claudine', 'evelyne', 'christiane', 'annick', 'mireille',
+    'ghislaine', 'nadia', 'fatima', 'karine', 'sonia', 'vanessa', 'laurence', 'agnes',
+    'ines', 'zoe', 'jade', 'louise', 'leonie', 'rose', 'anna', 'eva', 'lina', 'mia',
+    'elena', 'victoria', 'gabrielle', 'raphaelle', 'estelle', 'benedicte', 'geraldine',
+    'magali', 'aurore', 'cecile', 'perrine', 'clemence', 'fanny', 'maeva', 'morgane',
+    'noemie', 'justine', 'marion', 'tiphaine', 'ophelie', 'gaelle', 'mylene', 'muriel',
+    'berengere', 'severine', 'fabiola', 'elisabeth', 'elizabeth', 'barbara', 'laure',
+    'florence', 'christelle', 'blandine', 'carole', 'dorothee', 'edwige', 'fiona', 'gaetane',
+    'ingrid', 'joelle', 'karen', 'katia', 'lise', 'ludivine', 'lydie', 'maud', 'melissa',
+    'myriam', 'nadia', 'noelle', 'odette', 'olivia', 'pascale', 'rachel', 'regine', 'romy',
+    'roxane', 'salome', 'solene', 'tatiana', 'tiffany', 'valentine', 'wendy', 'yasmina',
+    'clara', 'juliette', 'lou', 'nina', 'romane', 'elise', 'lola', 'maelys', 'amelia'
+  ]);
+
+  if (femaleNames.has(clean)) return 'Madame';
+  if (/(ette|elle|ine|ise|enne|aine|euse|ance|ence|ie|ee)$/.test(clean)) return 'Madame';
+  if (clean.endsWith('a') && !['joshua', 'luca', 'sacha', 'andrea', 'mustapha', 'moussa'].includes(clean)) {
+    return 'Madame';
+  }
+  return 'Monsieur';
+}
+
+/**
  * Normalise une surface en m² (nombre entier)
  */
 export function parseSurfaceM2(val) {
@@ -150,12 +217,14 @@ export function extractDefaultPromesseFaradayData(project = {}) {
   const totalM2 = defaultParcelles.reduce((acc, p) => acc + parseSurfaceM2(p.surfaceM2), 0);
   const autoHa = totalM2 > 0 ? m2ToHectaresString(totalM2) : (saved.superficieTotaleHa || '0.00');
 
+  const guessedCiv = guessCiviliteFromFirstName(rawFirstName);
+
   // Signataires personnes physiques
   const defaultSignataires = Array.isArray(saved.signataires) && saved.signataires.length > 0
     ? saved.signataires
     : [
         {
-          civilite: saved.civilite || 'Monsieur',
+          civilite: saved.civilite || guessedCiv,
           prenom: rawFirstName,
           nom: rawName.replace(/\s+\d+$/, ''), // retire un éventuel index de projet ex: "LINDMANN 1" -> "LINDMANN"
           nomCompletOrdre: 'nom_prenom', // 'prenom_nom' ou 'nom_prenom'
@@ -173,7 +242,7 @@ export function extractDefaultPromesseFaradayData(project = {}) {
     rcsVille: saved.societe?.rcsVille || rawCity || '',
     siren: saved.societe?.siren || project?.siren || '',
     siegeSocial: saved.societe?.siegeSocial || fullBailleurAddress,
-    repCivilite: saved.societe?.repCivilite || 'Monsieur',
+    repCivilite: saved.societe?.repCivilite || guessedCiv,
     repPrenom: saved.societe?.repPrenom || rawFirstName || '',
     repNom: saved.societe?.repNom || (!companyRegex.test(rawName) ? rawName.replace(/\s+\d+$/, '') : '') || '',
     repAdresse: saved.societe?.repAdresse || fullBailleurAddress,
@@ -786,7 +855,9 @@ export async function generatePromesseBailFaradayDocx(formData, options = {}) {
 
   // 8. Injection de l'image du plan d'implantation centrée en Annexe 2 (Page 23) sans ajout du cadre flottant
   const firstParcel = (Array.isArray(formData.parcelles) && formData.parcelles[0]) || {};
-  const preparedPlan = await prepareAnnexe2PlanImageWithCartouche(formData.planImageUrl, {
+  const preparedPlan = formData.planImageUrl === '__NONE__'
+    ? null
+    : await prepareAnnexe2PlanImageWithCartouche(formData.planImageUrl, {
     lat: formData.lat,
     lng: formData.lng,
     addressLine1: firstParcel.adresse || formData.commune || '',

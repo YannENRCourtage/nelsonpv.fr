@@ -789,13 +789,6 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
         <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
           {isProjectPage ? (
             <>
-              <span 
-                className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[120px] lg:max-w-[180px] xl:max-w-[240px]" 
-                title={getProjectTitle()}
-              >
-                {getProjectTitle()}
-              </span>
-
               {/* Bouton Générer le PDF */}
               <Button 
                 onClick={handleGeneratePdf} 

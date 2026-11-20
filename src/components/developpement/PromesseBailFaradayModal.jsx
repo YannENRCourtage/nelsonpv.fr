@@ -24,6 +24,7 @@ import {
   prepareAnnexe2PlanImageWithCartouche,
   parseSurfaceM2,
   m2ToHectaresString,
+  guessCiviliteFromFirstName,
   DEFAULT_BENEFICIAIRE_TEXT
 } from '@/services/promesseBailFaradayService.js';
 import { apiService } from '@/services/api';
@@ -83,7 +84,7 @@ export default function PromesseBailFaradayModal({
     if (!isOpen) return;
 
     const timer = setTimeout(async () => {
-      if (!formData.planImageUrl && (!formData.lat || !formData.lng)) {
+      if (formData.planImageUrl === '__NONE__' || (!formData.planImageUrl && (!formData.lat || !formData.lng))) {
         if (active) setPreviewCartoucheUrl('');
         return;
       }
@@ -247,7 +248,14 @@ export default function PromesseBailFaradayModal({
   const updateSignataire = (index, field, value) => {
     setFormData((prev) => {
       const list = [...(prev.signataires || [])];
-      list[index] = { ...list[index], [field]: value };
+      const current = list[index] || {};
+      const next = { ...current, [field]: value };
+      if (field === 'civilite') {
+        next.civiliteManual = true;
+      } else if (field === 'prenom' && !current.civiliteManual && value.trim()) {
+        next.civilite = guessCiviliteFromFirstName(value);
+      }
+      list[index] = next;
       return { ...prev, signataires: list };
     });
   };
@@ -451,9 +459,12 @@ export default function PromesseBailFaradayModal({
     try {
       await persistToProject(true);
       const result = await generatePromesseBailFaradayDocx(formData, { download: true });
+      const generatedName = result?.filename || result?.fileName || '';
       setStatusMessage({
         type: 'success',
-        text: `Document Word généré avec succès : ${result.fileName} (100 % modifiable dans Word et LibreOffice).`
+        text: generatedName
+          ? `Document Word généré avec succès : ${generatedName} (100 % modifiable dans Word et LibreOffice).`
+          : 'Document Word généré avec succès (100 % modifiable dans Word et LibreOffice).'
       });
     } catch (err) {
       console.error('[PromesseBailFaradayModal] Erreur génération DOCX:', err);
@@ -606,13 +617,12 @@ export default function PromesseBailFaradayModal({
                       <div>
                         <label className="block text-[11px] font-bold text-slate-600 mb-1">Civilité</label>
                         <select
-                          value={sig.civilite || 'Monsieur'}
+                          value={sig.civilite === 'Monsieur et Madame' ? 'Monsieur' : (sig.civilite || 'Monsieur')}
                           onChange={(e) => updateSignataire(idx, 'civilite', e.target.value)}
                           className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                         >
                           <option value="Monsieur">Monsieur</option>
                           <option value="Madame">Madame</option>
-                          <option value="Monsieur et Madame">Monsieur et Madame</option>
                         </select>
                       </div>
                       <div>
@@ -636,38 +646,12 @@ export default function PromesseBailFaradayModal({
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Ordre d'affichage</label>
-                        <select
-                          value={sig.nomCompletOrdre || 'nom_prenom'}
-                          onChange={(e) => updateSignataire(idx, 'nomCompletOrdre', e.target.value)}
-                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
-                          <option value="nom_prenom">Civilité NOM Prénom</option>
-                          <option value="prenom_nom">Civilité Prénom NOM</option>
-                        </select>
-                      </div>
-                      <div>
                         <label className="block text-[11px] font-bold text-slate-600 mb-1">Nationalité</label>
                         <input
                           type="text"
                           value={sig.nationalite || 'française'}
                           onChange={(e) => updateSignataire(idx, 'nationalite', e.target.value)}
                           placeholder="française"
-                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          Adresse complète du Promettant
-                        </label>
-                        <input
-                          type="text"
-                          value={sig.adresse || ''}
-                          onChange={(e) => updateSignataire(idx, 'adresse', e.target.value)}
-                          placeholder="Ex: 4102 Route du Couzeau 24560 MONTAUT"
                           className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                         />
                       </div>
@@ -680,6 +664,21 @@ export default function PromesseBailFaradayModal({
                           value={sig.lieuNaissance || ''}
                           onChange={(e) => updateSignataire(idx, 'lieuNaissance', e.target.value)}
                           placeholder="Ex: BERGERAC (24100)"
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-2">
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Adresse complète du Promettant
+                        </label>
+                        <input
+                          type="text"
+                          value={sig.adresse || ''}
+                          onChange={(e) => updateSignataire(idx, 'adresse', e.target.value)}
+                          placeholder="Ex: 4102 Route du Couzeau 24560 MONTAUT"
                           className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                         />
                       </div>
@@ -705,7 +704,7 @@ export default function PromesseBailFaradayModal({
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Ajouter un co-indivisaire / co-promettant (« Et »)
+                  Ajouter un co-signataire
                 </button>
               </div>
             ) : (
@@ -958,10 +957,9 @@ export default function PromesseBailFaradayModal({
                     <th className="py-2.5 px-3 border-r border-slate-300 w-28 text-center">SECTION</th>
                     <th className="py-2.5 px-3 border-r border-slate-300 w-32 text-center">NUMÉRO</th>
                     <th className="py-2.5 px-3 border-r border-slate-300">ADRESSE / LIEU-DIT</th>
-                    <th className="py-2.5 px-3 border-r border-slate-300 w-48 text-center">
+                    <th className="py-2.5 px-3 w-48 text-center">
                       SURFACE CADASTRALE (m²)
                     </th>
-                    <th className="py-2.5 px-2 w-12 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
@@ -1003,7 +1001,7 @@ export default function PromesseBailFaradayModal({
                           className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
                         />
                       </td>
-                      <td className="p-2 border-r border-slate-200">
+                      <td className="p-2">
                         <div className="flex items-center gap-1">
                           <input
                             type="text"
@@ -1021,18 +1019,6 @@ export default function PromesseBailFaradayModal({
                             <RefreshCw className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      </td>
-                      <td className="p-2 text-center">
-                        {(formData.parcelles || []).length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeParcelle(idx)}
-                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
-                            title="Supprimer cette ligne"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
                       </td>
                     </tr>
                   ))}
@@ -1072,26 +1058,11 @@ export default function PromesseBailFaradayModal({
                   3. Plan d'implantation à insérer et centrer en Annexe 2 (Page 23)
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Importez un fichier image, collez directement une capture (Ctrl+V) dans la zone ci-dessous ou choisissez une capture du projet
+                  Importez un fichier image ou collez directement une capture (Ctrl+V) dans la zone ci-dessous
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {Array.isArray(formData.availableCaptures) && formData.availableCaptures.length > 0 && (
-                  <select
-                    value={formData.planImageUrl || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, planImageUrl: e.target.value }))
-                    }
-                    className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium"
-                  >
-                    {formData.availableCaptures.map((cap) => (
-                      <option key={cap.id} value={cap.url}>
-                        {cap.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
                 <button
                   type="button"
                   onClick={handleClipboardButtonPaste}
@@ -1110,17 +1081,6 @@ export default function PromesseBailFaradayModal({
                     className="hidden"
                   />
                 </label>
-                {formData.planImageUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, planImageUrl: '' }))}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
-                    title="Retirer le plan sélectionné"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Effacer
-                  </button>
-                )}
               </div>
             </div>
 
@@ -1135,12 +1095,23 @@ export default function PromesseBailFaradayModal({
             >
               {previewCartoucheUrl ? (
                 <div className="flex flex-col items-center justify-center gap-2">
-                  <div className="rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center max-h-72 border border-slate-200">
+                  <div className="group relative rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center max-h-72 border border-slate-200">
                     <img
                       src={previewCartoucheUrl}
                       alt="Aperçu du plan centré pour l'Annexe 2"
                       className="max-h-72 w-auto object-contain"
                     />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFormData((prev) => ({ ...prev, planImageUrl: '__NONE__' }));
+                      }}
+                      title="Supprimer l'image"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 w-7 h-7 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-md cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                   <span className="text-[11px] text-slate-500 font-medium">
                     Cliquez dans cette zone et appuyez sur <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[10px] font-bold">Ctrl+V</kbd> pour remplacer par une autre image collée

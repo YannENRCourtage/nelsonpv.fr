@@ -1049,8 +1049,15 @@ export default function ProjectEditor() {
                 <span className="font-semibold text-slate-800">{formatProjectCreationDate(p)}</span>
               </div>
             </div>
-            {/* Dropdowns: sur une ligne sur mobile, 5 colonnes sur desktop */}
-            <div className="flex flex-wrap gap-2 items-end w-full lg:w-auto mt-2 lg:mt-0 lg:grid lg:grid-cols-5 lg:gap-2.5">
+            {/* Nom du projet au-dessus des 5 champs + Dropdowns décalés légèrement vers le bas */}
+            <div className="flex flex-col gap-1.5 w-full lg:w-auto mt-2 lg:mt-0">
+              <div
+                className="text-sm font-bold text-slate-800 uppercase tracking-tight truncate"
+                title={p.name ? `${p.name || ''} ${p.zip || ''} ${p.city || ''}`.trim().toUpperCase() : 'NOUVEAU PROJET'}
+              >
+                {p.name ? `${p.name || ''} ${p.zip || ''} ${p.city || ''}`.trim().toUpperCase() : 'NOUVEAU PROJET'}
+              </div>
+              <div className="flex flex-wrap gap-2 items-end w-full lg:w-auto lg:grid lg:grid-cols-5 lg:gap-2.5 pt-0.5">
 
               <div className="flex-1 min-w-[80px]">
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Commercial</label>
@@ -1188,6 +1195,7 @@ export default function ProjectEditor() {
                     <SelectItem value="Abandonné">Abandonné</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
               </div>
             </div>
           </div>
