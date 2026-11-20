@@ -1049,10 +1049,10 @@ export default function ProjectEditor() {
                 <span className="font-semibold text-slate-800">{formatProjectCreationDate(p)}</span>
               </div>
             </div>
-            {/* Nom du projet au-dessus des 5 champs + Dropdowns décalés légèrement vers le bas */}
+            {/* Nom du projet aligné à droite au-dessus des 5 champs + Dropdowns décalés légèrement vers le bas */}
             <div className="flex flex-col gap-1.5 w-full lg:w-auto mt-2 lg:mt-0">
               <div
-                className="text-sm font-bold text-slate-800 uppercase tracking-tight truncate"
+                className="text-sm font-bold text-slate-800 uppercase tracking-tight truncate text-right"
                 title={p.name ? `${p.name || ''} ${p.zip || ''} ${p.city || ''}`.trim().toUpperCase() : 'NOUVEAU PROJET'}
               >
                 {p.name ? `${p.name || ''} ${p.zip || ''} ${p.city || ''}`.trim().toUpperCase() : 'NOUVEAU PROJET'}
@@ -1184,7 +1184,10 @@ export default function ProjectEditor() {
 
               <div className="flex-1 min-w-[80px]">
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Statut</label>
-                <Select value={p.status || 'Nouveau'} onValueChange={(v) => updateProject({ status: v })}>
+                <Select
+                  value={['Nouveau', 'En cours', 'Terminé', 'Abandonné'].includes(p.status) ? p.status : 'Nouveau'}
+                  onValueChange={(v) => updateProject({ status: v })}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>

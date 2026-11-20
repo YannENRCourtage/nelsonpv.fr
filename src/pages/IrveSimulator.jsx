@@ -20,6 +20,7 @@ import BuildingStructureSimulator from '@/components/simulator/BuildingStructure
 import SechoirBatitechSimulator from '@/components/simulator/sechoir/SechoirBatitechSimulator';
 import SimulatorDatabaseTab from '@/components/simulator/SimulatorDatabaseTab';
 import SimulatorArchivesTab from '@/components/simulator/SimulatorArchivesTab';
+import BessGrosConsoProspector from '@/components/simulator/BessGrosConsoProspector';
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
 import CommercialOfferConfigModal from '@/components/simulator/CommercialOfferConfigModal';
 import { generateCommercialProposalPDF } from '@/services/CommercialProposalPdfGenerator';
@@ -129,8 +130,17 @@ export default function IrveSimulator() {
   const currentTenant = activeTenantId || user?.tenantId || 'green-invest';
   const isAcama = currentTenant === 'acama';
 
-  // ─── Navigation Principale Gauche : 'simulateurs' | 'archives' | 'database' ─
-  const [activeMainTab, setActiveMainTab] = useState('simulateurs');
+  // ─── Navigation Principale Gauche : 'simulateurs' | 'prospection' | 'archives' | 'database' ─
+  const [activeMainTab, setActiveMainTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['simulateurs', 'prospection', 'archives', 'database'].includes(tab)) {
+        return tab;
+      }
+    }
+    return 'simulateurs';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 1024;
@@ -666,6 +676,14 @@ export default function IrveSimulator() {
               activeRing: 'ring-blue-400'
             },
             {
+              id: 'prospection',
+              label: 'Prospection BESS',
+              desc: 'Gros Consommateurs C&I',
+              icon: Building2,
+              color: 'from-indigo-600 to-violet-600',
+              activeRing: 'ring-violet-400'
+            },
+            {
               id: 'archives',
               label: 'Archives',
               desc: `${simulations.length} étude(s) sauvegardée(s)`,
@@ -728,6 +746,7 @@ export default function IrveSimulator() {
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
               <h1 className="text-base sm:text-xl font-black text-slate-900 truncate">
                 {activeMainTab === 'simulateurs' && 'Interface de Simulation'}
+                {activeMainTab === 'prospection' && 'Automate Prospection BESS — Gros Consommateurs'}
                 {activeMainTab === 'archives' && 'Archives des Études Commerciales'}
                 {activeMainTab === 'database' && 'Base de Données & Paramétrage'}
               </h1>
@@ -905,7 +924,17 @@ export default function IrveSimulator() {
             </div>
           )}
 
-          {/* ═══ ONGLET 2 : ARCHIVES ═════════════════════════════════════════ */}
+          {/* ═══ ONGLET 2 : PROSPECTION BESS GROS CONSOMMATEURS ══════════════ */}
+          {activeMainTab === 'prospection' && (
+            <BessGrosConsoProspector
+              onOpenInSimulator={() => {
+                setActiveMainTab('simulateurs');
+                setActiveSolution('stockage');
+              }}
+            />
+          )}
+
+          {/* ═══ ONGLET 3 : ARCHIVES ═════════════════════════════════════════ */}
           {activeMainTab === 'archives' && (
             <SimulatorArchivesTab
               simulations={simulations}

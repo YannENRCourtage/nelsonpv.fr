@@ -71,6 +71,20 @@ export default function AdminEnedis() {
   const [isExtractingBill, setIsExtractingBill] = useState(false);
   const billFileInputRef = useRef(null);
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('nelson_enedis_prospect_prefill');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p?.name) setOwnerName(p.name);
+        if (p?.address || p?.codePostal || p?.commune) {
+          setOwnerAddress(`${p.address || ''} ${p.codePostal || ''} ${p.commune || ''}`.trim());
+        }
+        localStorage.removeItem('nelson_enedis_prospect_prefill');
+      }
+    } catch (_) {}
+  }, []);
+
   // Calculs de synthèse de consommation pour l'étude BESS SAFRA
   const { totalKwh, avgDaily, peakKw } = React.useMemo(() => {
     if (!data) return { totalKwh: 211781, avgDaily: 578.6, peakKw: 90.0 };
