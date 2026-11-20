@@ -2314,7 +2314,8 @@ function resolveBessNoticeInfo(project = {}, docType = 'dp') {
             if (/bertrandie/i.test(rawLast)) civ = 'M.';
             else if (/duport|michaud/i.test(rawLast)) civ = 'Mme';
         }
-        demandeur = `${civ ? civ + ' ' : ''}${rawLast.toUpperCase()}${rawFirst ? ' ' + rawFirst : ''}`.trim();
+        const alreadyHasFirst = rawFirst && rawLast.toLowerCase().includes(rawFirst.toLowerCase());
+        demandeur = `${civ ? civ + ' ' : ''}${rawLast.toUpperCase()}${rawFirst && !alreadyHasFirst ? ' ' + rawFirst : ''}`.trim();
     }
 
     const commune = (
@@ -2342,11 +2343,12 @@ function resolveBessNoticeInfo(project = {}, docType = 'dp') {
         ''
     ).trim();
 
+    const normStr = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s-]+/g, ' ').toLowerCase().trim();
     let adresse = rawAddress;
     if (!adresse) {
         adresse = `${cp ? cp + ' ' : ''}${commune.toUpperCase()}`;
-    } else if (!adresse.toLowerCase().includes(commune.toLowerCase())) {
-        adresse = `${adresse}, ${cp ? cp + ' ' : ''}${commune.toUpperCase()}`;
+    } else if (!normStr(adresse).includes(normStr(commune))) {
+        adresse = `${adresse} ${cp && !adresse.includes(cp) ? cp + ' ' : ''}${commune}`.trim();
     }
 
     const rawParcelles = (Array.isArray(project?.parcelles) && project.parcelles.length > 0)
@@ -2441,155 +2443,268 @@ export const PlateNoticeSecuriteIncendieBess = ({ project, docType = 'dp', page 
         overflow: 'hidden'
     };
 
+    const sectionTitleRowStyle = {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: '8px',
+        paddingBottom: '4px',
+        borderBottom: '1px solid #e2e8f0'
+    };
+
+    const sectionBadgeNumStyle = {
+        width: '20px',
+        height: '20px',
+        borderRadius: '4px',
+        backgroundColor: '#0f172a',
+        color: '#ffffff',
+        fontSize: '10.5px',
+        fontWeight: 900,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+    };
+
+    const sectionHeadingStyle = {
+        fontSize: '11.5px',
+        fontWeight: 900,
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em',
+        color: '#0f172a',
+        margin: 0
+    };
+
     if (page === 1) {
         return (
             <div style={portraitPageStyle} data-portrait="true">
                 <div>
                     {/* EN-TÊTE OFFICIEL */}
-                    <header className="flex items-start justify-between pb-3.5 border-b-2 border-slate-900 mb-4">
-                        <div className="flex flex-col items-start">
+                    <header
+                        style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            paddingBottom: '14px',
+                            borderBottom: '2px solid #0f172a',
+                            marginBottom: '16px'
+                        }}
+                    >
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                             <img
                                 src={LOGO_ENR_COURTAGE_BASE64}
                                 alt="ENR COURTAGE"
                                 style={{ height: '34px', width: 'auto', objectFit: 'contain', display: 'block' }}
                             />
-                            <div className="mt-1">
-                                <div className="text-[8.5px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+                            <div style={{ marginTop: '4px' }}>
+                                <div style={{ fontSize: '8.5px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', lineHeight: 1.1 }}>
                                     Ingénierie &amp; Infrastructures de Stockage Réseau
                                 </div>
-                                <div className="text-[8.5px] text-slate-500 mt-0.5">
+                                <div style={{ fontSize: '8.5px', color: '#64748b', marginTop: '2px' }}>
                                     7 Rue Gutenberg, 33700 Mérignac • SIREN 881 890 982
                                 </div>
                             </div>
                         </div>
 
-                        <div className="text-right">
-                            <span className="inline-block px-2.5 py-1 rounded bg-rose-100 text-rose-900 border border-rose-300 text-[9.5px] font-extrabold uppercase tracking-wider">
+                        <div style={{ textAlign: 'right' }}>
+                            <span
+                                style={{
+                                    display: 'inline-block',
+                                    padding: '4px 10px',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#ffe4e6',
+                                    color: '#881337',
+                                    border: '1px solid #fda4af',
+                                    fontSize: '9.5px',
+                                    fontWeight: 800,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
+                                }}
+                            >
                                 PIÈCE COMPLÉMENTAIRE {info.typePrefix} • SÉCURITÉ INCENDIE
                             </span>
-                            <div className="text-[9.5px] font-bold text-slate-700 mt-1">
+                            <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#334155', marginTop: '4px' }}>
                                 Justification Article R.111-2 du Code de l'urbanisme
                             </div>
-                            <div className="text-[8.5px] text-slate-500">
+                            <div style={{ fontSize: '8.5px', color: '#64748b' }}>
                                 Prévention du risque feux de forêt (DFCI) &amp; Dispositions SDIS
                             </div>
                         </div>
                     </header>
 
                     {/* BANDEAU TITRE & IDENTIFICATION DU PROJET */}
-                    <div className="bg-slate-900 text-white rounded-xl p-4 mb-4">
-                        <div className="text-[9.5px] font-bold uppercase tracking-widest text-amber-400 mb-0.5">
+                    <div
+                        style={{
+                            backgroundColor: '#0f172a',
+                            color: '#ffffff',
+                            borderRadius: '12px',
+                            padding: '16px',
+                            marginBottom: '16px'
+                        }}
+                    >
+                        <div style={{ fontSize: '9.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#fbbf24', marginBottom: '2px' }}>
                             {info.isPC
                                 ? 'ANNEXE TECHNIQUE AU PERMIS DE CONSTRUIRE'
                                 : 'ANNEXE TECHNIQUE À LA DÉCLARATION PRÉALABLE DE TRAVAUX'}
                         </div>
-                        <h1 className="text-[15px] font-black uppercase tracking-tight leading-snug text-white">
+                        <h1 style={{ fontSize: '15px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1.35, color: '#ffffff', margin: 0 }}>
                             NOTICE DE SÉCURITÉ INCENDIE, PRÉVENTION DU RISQUE FEUX DE FORÊT (DFCI) &amp; DISPOSITIONS D'INTERVENTION SDIS
                         </h1>
-                        <div className="mt-3 pt-2.5 border-t border-slate-700 grid grid-cols-4 gap-3 text-[10.5px]">
+                        <div
+                            style={{
+                                marginTop: '12px',
+                                paddingTop: '10px',
+                                borderTop: '1px solid #334155',
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                                gap: '12px',
+                                fontSize: '10.5px'
+                            }}
+                        >
                             <div>
-                                <span className="text-slate-400 text-[8.5px] uppercase font-bold block">Demandeur / Pétitionnaire</span>
-                                <strong className="text-white font-bold block mt-0.5">{info.demandeur}</strong>
+                                <span style={{ color: '#94a3b8', fontSize: '8.5px', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Demandeur / Pétitionnaire</span>
+                                <strong style={{ color: '#ffffff', fontWeight: 700, display: 'block', marginTop: '2px' }}>{info.demandeur}</strong>
                             </div>
                             <div>
-                                <span className="text-slate-400 text-[8.5px] uppercase font-bold block">Commune &amp; Adresse</span>
-                                <strong className="text-white font-bold block mt-0.5">{info.adresse}</strong>
+                                <span style={{ color: '#94a3b8', fontSize: '8.5px', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Commune &amp; Adresse</span>
+                                <strong style={{ color: '#ffffff', fontWeight: 700, display: 'block', marginTop: '2px' }}>{info.adresse}</strong>
                             </div>
                             <div>
-                                <span className="text-slate-400 text-[8.5px] uppercase font-bold block">Référence Cadastrale &amp; {info.typePrefix}</span>
-                                <strong className="text-amber-300 font-bold font-mono block mt-0.5">{info.cadastre}</strong>
+                                <span style={{ color: '#94a3b8', fontSize: '8.5px', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Référence Cadastrale &amp; {info.typePrefix}</span>
+                                <strong style={{ color: '#fcd34d', fontWeight: 700, fontFamily: 'monospace', display: 'block', marginTop: '2px' }}>{info.cadastre}</strong>
                             </div>
                             <div>
-                                <span className="text-slate-400 text-[8.5px] uppercase font-bold block">Installation projetée</span>
-                                <strong className="text-emerald-400 font-bold block mt-0.5">{info.installation}</strong>
+                                <span style={{ color: '#94a3b8', fontSize: '8.5px', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Installation projetée</span>
+                                <strong style={{ color: '#34d399', fontWeight: 700, display: 'block', marginTop: '2px' }}>{info.installation}</strong>
                             </div>
                         </div>
                     </div>
 
                     {/* SECTION 1 : CADRE RÉGLEMENTAIRE & NON-CLASSEMENT ICPE 2925 */}
-                    <section className="mb-4">
-                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
-                            <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">1</span>
-                            <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
+                    <section style={{ marginBottom: '16px' }}>
+                        <div style={sectionTitleRowStyle}>
+                            <span style={sectionBadgeNumStyle}>1</span>
+                            <h2 style={sectionHeadingStyle}>
                                 Contexte Réglementaire, Non-Classement ICPE (Rubrique 2925) &amp; Art. R.111-2
                             </h2>
                         </div>
-                        <p className="text-[10px] text-slate-700 leading-relaxed text-justify">
+                        <p style={{ fontSize: '10px', color: '#334155', lineHeight: 1.55, textAlign: 'justify', margin: 0 }}>
                             La présente notice technique détaille l'ensemble des dispositifs constructifs, technologiques et opérationnels de sécurité incendie intégrés au projet d'implantation d'une unité compacte de stockage d'énergie par batteries stationnaires (<em>BESS Stand-Alone</em>) d'une puissance nominale de <strong>500 kW</strong> (capacité <strong>1 044 kWh</strong>), installée sur une dalle en béton armé incombustible de <strong>19,84 m²</strong> (&lt; 20 m²) raccordée au réseau public HTA 20 kV Enedis.
                         </p>
 
-                        <div className="mt-2 p-2.5 rounded-lg border border-emerald-300 bg-emerald-50/70 text-[9.5px] text-slate-800 leading-snug">
-                            <div className="flex items-center justify-between font-bold text-emerald-950 uppercase text-[9px] mb-1">
-                                <span className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+                        <div
+                            style={{
+                                marginTop: '8px',
+                                padding: '10px',
+                                borderRadius: '8px',
+                                border: '1px solid #6ee7b7',
+                                backgroundColor: '#ecfdf5',
+                                fontSize: '9.5px',
+                                color: '#1e293b',
+                                lineHeight: 1.4
+                            }}
+                        >
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    fontWeight: 700,
+                                    color: '#022c22',
+                                    textTransform: 'uppercase',
+                                    fontSize: '9px',
+                                    marginBottom: '4px'
+                                }}
+                            >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#059669', display: 'inline-block' }}></span>
                                     Justification Formelle du Non-Classement ICPE (Rubrique 2925)
                                 </span>
-                                <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 font-extrabold text-[8.5px]">
+                                <span
+                                    style={{
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        backgroundColor: '#a7f3d0',
+                                        color: '#064e3b',
+                                        fontWeight: 800,
+                                        fontSize: '8.5px'
+                                    }}
+                                >
                                     NON CLASSÉ (NC)
                                 </span>
                             </div>
-                            <p>
+                            <p style={{ margin: 0 }}>
                                 L'installation est formellement <strong>Non Classée (NC)</strong> au titre de la nomenclature des Installations Classées pour la Protection de l'Environnement (ICPE). En effet, selon la <strong>rubrique 2925-2</strong>, le seuil de soumission au régime de la Déclaration est fixé à une puissance maximale de courant continu utilisable pour l'opération de charge <strong>strictement supérieure à 600 kW</strong>. La station projetée présente une puissance maximale de charge de <strong>500 kW par site (&le; 600 kW)</strong>. Par ailleurs, les accumulateurs LFP étanches n'émettent aucun hydrogène en fonctionnement normal (rubrique 2925-1 non concernée).
                             </p>
                         </div>
 
-                        <p className="text-[10px] text-slate-700 leading-relaxed text-justify mt-2">
+                        <p style={{ fontSize: '10px', color: '#334155', lineHeight: 1.55, textAlign: 'justify', marginTop: '8px', marginBottom: 0 }}>
                             Au titre de l'<strong>article R.111-2 du Code de l'urbanisme</strong> (sécurité publique et prévention incendie / DFCI), la présente notice formalise les prescriptions techniques et opérationnelles selon notre <strong>Triple barrière de protection</strong> : <strong>(1) Confinement intrinsèque à la source sans flamme externe</strong> (LFP + Aérosol NFPA 855), <strong>(2) Coupure minérale incombustible et OLD 50 mètres</strong>, et <strong>(3) Dispositifs dédiés d'accès et d'intervention pour le SDIS</strong>.
                         </p>
                     </section>
 
                     {/* SECTION 2 : CARACTÉRISTIQUES TECHNIQUES & STABILITÉ THERMIQUE LFP */}
-                    <section className="mb-4">
-                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
-                            <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">2</span>
-                            <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
+                    <section style={{ marginBottom: '16px' }}>
+                        <div style={sectionTitleRowStyle}>
+                            <span style={sectionBadgeNumStyle}>2</span>
+                            <h2 style={sectionHeadingStyle}>
                                 Caractéristiques Techniques &amp; Sécurité Intrinsèque des Armoires (Chimie LFP)
                             </h2>
                         </div>
-                        <p className="text-[10.5px] text-slate-700 leading-relaxed mb-2">
+                        <p style={{ fontSize: '10.5px', color: '#334155', lineHeight: 1.5, marginBottom: '8px', marginTop: 0 }}>
                             L'installation ne comporte aucun bâtiment clos visitable ni local recevant du public. Elle est constituée de <strong>4 armoires métalliques extérieures autonomes</strong> de marque <strong>CESC / SolaX Power – Modèle Mercury 261</strong> (125 kW / 261 kWh par armoire) :
                         </p>
 
-                        <div className="overflow-hidden rounded-lg border border-slate-200">
-                            <table className="w-full text-left border-collapse text-[10px]">
+                        <div style={{ overflow: 'hidden', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '10px' }}>
                                 <thead>
-                                    <tr className="bg-slate-100 text-slate-800 border-b border-slate-200 font-extrabold uppercase text-[9px]">
-                                        <th className="py-1.5 px-3 w-1/3">Paramètre de Sécurité</th>
-                                        <th className="py-1.5 px-3">Spécification Technique Certifiée</th>
+                                    <tr style={{ backgroundColor: '#f1f5f9', color: '#1e293b', borderBottom: '1px solid #e2e8f0', fontWeight: 800, textTransform: 'uppercase', fontSize: '9px' }}>
+                                        <th style={{ padding: '7px 12px', width: '33%' }}>Paramètre de Sécurité</th>
+                                        <th style={{ padding: '7px 12px' }}>Spécification Technique Certifiée</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-200 text-slate-700">
-                                    <tr>
-                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Configuration &amp; Gabarit</td>
-                                        <td className="py-1.5 px-3">4 armoires métalliques extérieures monoblocs sur dalle béton (Dimensions unitaires : L 1,15 m × P 1,44 m × H 2,38 m).</td>
+                                <tbody style={{ color: '#334155' }}>
+                                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <td style={{ padding: '7px 12px', fontWeight: 700, color: '#0f172a', backgroundColor: '#f8fafc' }}>Configuration &amp; Gabarit</td>
+                                        <td style={{ padding: '7px 12px' }}>4 armoires métalliques extérieures monoblocs sur dalle béton (Dimensions unitaires : L 1,15 m × P 1,44 m × H 2,38 m).</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <td style={{ padding: '7px 12px', fontWeight: 700, color: '#0f172a', backgroundColor: '#f8fafc' }}>Chimie des Cellules</td>
+                                        <td style={{ padding: '7px 12px' }}><strong style={{ color: '#047857' }}>LiFePO4 (Lithium-Fer-Phosphate – LFP)</strong> sans nickel ni cobalt. Chimie la plus stable de l'industrie (seuil de décomposition thermique &gt; 270 °C contre 150 °C en NMC, liaison covalente P-O empêchant toute libération d'oxygène).</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <td style={{ padding: '7px 12px', fontWeight: 700, color: '#0f172a', backgroundColor: '#f8fafc' }}>Enveloppe &amp; Étanchéité</td>
+                                        <td style={{ padding: '7px 12px' }}>Acier galvanisé thermolaqué incombustible (<strong>Classe A1 / M0</strong>), indice de protection <strong>IP55 / IP66</strong> (armoire) et <strong>IP67</strong> (modules), interdisant toute projection d'escarbilles, de gouttelettes ou d'arc électrique vers l'extérieur.</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <td style={{ padding: '7px 12px', fontWeight: 700, color: '#0f172a', backgroundColor: '#f8fafc' }}>Refroidissement Actif</td>
+                                        <td style={{ padding: '7px 12px' }}>Régulation thermique par <strong>refroidissement liquide (Liquide HVAC)</strong> maintenant les cellules entre 20 °C et 25 °C et éliminant tout point chaud.</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Chimie des Cellules</td>
-                                        <td className="py-1.5 px-3"><strong className="text-emerald-700">LiFePO4 (Lithium-Fer-Phosphate – LFP)</strong> sans nickel ni cobalt. Chimie la plus stable de l'industrie (seuil de décomposition thermique &gt; 270 °C contre 150 °C en NMC, liaison covalente P-O empêchant toute libération d'oxygène).</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Enveloppe &amp; Étanchéité</td>
-                                        <td className="py-1.5 px-3">Acier galvanisé thermolaqué incombustible (<strong>Classe A1 / M0</strong>), indice de protection <strong>IP55 / IP66</strong> (armoire) et <strong>IP67</strong> (modules), interdisant toute projection d'escarbilles, de gouttelettes ou d'arc électrique vers l'extérieur.</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Refroidissement Actif</td>
-                                        <td className="py-1.5 px-3">Régulation thermique par <strong>refroidissement liquide (Liquide HVAC)</strong> maintenant les cellules entre 20 °C et 25 °C et éliminant tout point chaud.</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Normes &amp; Certifications Feux</td>
-                                        <td className="py-1.5 px-3"><strong className="text-slate-900">UL 9540A</strong> (Essai de non-propagation d'emballement thermique entre cellules), <strong className="text-slate-900">NFPA 855</strong> (Standard de protection incendie des systèmes BESS), <strong>CEI 62619</strong>, <strong>CEI 62933-5-2</strong>, <strong>UN 38.3</strong>.</td>
+                                        <td style={{ padding: '7px 12px', fontWeight: 700, color: '#0f172a', backgroundColor: '#f8fafc' }}>Normes &amp; Certifications Feux</td>
+                                        <td style={{ padding: '7px 12px' }}><strong style={{ color: '#0f172a' }}>UL 9540A</strong> (Essai de non-propagation d'emballement thermique entre cellules), <strong style={{ color: '#0f172a' }}>NFPA 855</strong> (Standard de protection incendie des systèmes BESS), <strong>CEI 62619</strong>, <strong>CEI 62933-5-2</strong>, <strong>UN 38.3</strong>.</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                     </section>
-
                 </div>
 
                 {/* PIED DE PAGE 1 */}
-                <footer className="pt-2.5 border-t border-slate-200 flex items-center justify-between text-[8.5px] text-slate-500 mt-3">
+                <footer
+                    style={{
+                        paddingTop: '10px',
+                        borderTop: '1px solid #e2e8f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '8.5px',
+                        color: '#64748b',
+                        marginTop: '12px'
+                    }}
+                >
                     <div><strong>ENR COURTAGE SAS</strong> • Notice de Sécurité Incendie &amp; DFCI (Art. R.111-2 du Code de l'urbanisme)</div>
-                    <div className="font-mono font-bold">Page 1 / 2</div>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 700 }}>Page 1 / 2</div>
                 </footer>
             </div>
         );
@@ -2600,84 +2715,121 @@ export const PlateNoticeSecuriteIncendieBess = ({ project, docType = 'dp', page 
         <div style={portraitPageStyle} data-portrait="true">
             <div>
                 {/* RAPPEL EN-TÊTE PAGE 2 */}
-                <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-200 text-[9px] text-slate-500">
-                    <span className="font-bold text-slate-800 uppercase">
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingBottom: '8px',
+                        marginBottom: '12px',
+                        borderBottom: '1px solid #e2e8f0',
+                        fontSize: '9px',
+                        color: '#64748b'
+                    }}
+                >
+                    <span style={{ fontWeight: 700, color: '#1e293b', textTransform: 'uppercase' }}>
                         Notice de Sécurité Incendie &amp; DFCI / SDIS — Station BESS 500 kW / 1 044 kWh
                     </span>
-                    <span className="font-mono font-semibold text-slate-700">{info.refP2}</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#334155' }}>{info.refP2}</span>
                 </div>
 
                 {/* SECTION 3 : SYSTÈME D'EXTINCTION AUTOMATIQUE INTÉGRÉ */}
-                <section className="mb-3">
-                    <div className="flex items-center gap-2 mb-1.5 pb-1 border-b border-slate-200">
-                        <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">3</span>
-                        <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                <section style={{ marginBottom: '12px' }}>
+                    <div style={{ ...sectionTitleRowStyle, marginBottom: '6px' }}>
+                        <span style={sectionBadgeNumStyle}>3</span>
+                        <h2 style={{ ...sectionHeadingStyle, fontSize: '11px' }}>
                             Système Intégré de Détection Précoce &amp; d'Extinction Automatique (Norme NFPA 855)
                         </h2>
                     </div>
-                    <p className="text-[9.5px] text-slate-700 leading-snug mb-2">
+                    <p style={{ fontSize: '9.5px', color: '#334155', lineHeight: 1.4, marginBottom: '8px', marginTop: 0 }}>
                         Chaque armoire CESC Mercury 261 embarque nativement une défense incendie active autonome à <strong>4 niveaux de sécurité redondants</strong> :
                     </p>
 
-                    <div className="grid grid-cols-2 gap-2 text-[9px]">
-                        <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
-                            <strong className="text-slate-900 block mb-0.5">1. Surveillance BMS 24h/24 à la milliseconde</strong>
-                            <span className="text-slate-600 leading-snug block">Contrôle continu de la tension, du courant et de la température de chaque cellule. Coupure galvanique instantanée au moindre écart avant toute surchauffe.</span>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                            gap: '8px',
+                            fontSize: '9px'
+                        }}
+                    >
+                        <div style={{ padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                            <strong style={{ color: '#0f172a', display: 'block', marginBottom: '2px' }}>1. Surveillance BMS 24h/24 à la milliseconde</strong>
+                            <span style={{ color: '#475569', lineHeight: 1.38, display: 'block' }}>Contrôle continu de la tension, du courant et de la température de chaque cellule. Coupure galvanique instantanée au moindre écart avant toute surchauffe.</span>
                         </div>
-                        <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
-                            <strong className="text-slate-900 block mb-0.5">2. Détection précoce multi-capteurs (Gaz / Fumée / T°)</strong>
-                            <span className="text-slate-600 leading-snug block">Capteurs de gaz de dégazage précoce (H₂ et CO), détecteurs optiques de fumée et sondes thermiques vélocimétriques intégrés dans chaque compartiment.</span>
+                        <div style={{ padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                            <strong style={{ color: '#0f172a', display: 'block', marginBottom: '2px' }}>2. Détection précoce multi-capteurs (Gaz / Fumée / T°)</strong>
+                            <span style={{ color: '#475569', lineHeight: 1.38, display: 'block' }}>Capteurs de gaz de dégazage précoce (H₂ et CO), détecteurs optiques de fumée et sondes thermiques vélocimétriques intégrés dans chaque compartiment.</span>
                         </div>
-                        <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
-                            <strong className="text-slate-900 block mb-0.5">3. Évents de décompression &amp; anti-déflagration</strong>
-                            <span className="text-slate-600 leading-snug block">Soupapes de surpression calibrées et ventilation d'extraction ATEX évitant toute accumulation gazeuse interne.</span>
+                        <div style={{ padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                            <strong style={{ color: '#0f172a', display: 'block', marginBottom: '2px' }}>3. Évents de décompression &amp; anti-déflagration</strong>
+                            <span style={{ color: '#475569', lineHeight: 1.38, display: 'block' }}>Soupapes de surpression calibrées et ventilation d'extraction ATEX évitant toute accumulation gazeuse interne.</span>
                         </div>
-                        <div className="p-2 rounded-lg border border-rose-200 bg-rose-50/50">
-                            <strong className="text-rose-900 block mb-0.5">4. Extinction automatique par Aérosol NFPA 855</strong>
-                            <span className="text-slate-700 leading-snug block">Déclenchement automatique d'un <strong>générateur d'aérosol ignifuge condensé</strong> étouffant instantanément tout départ de feu à l'intérieur de l'enveloppe close, sans flamme extérieure.</span>
+                        <div style={{ padding: '8px', borderRadius: '8px', border: '1px solid #fecdd3', backgroundColor: '#fff1f2' }}>
+                            <strong style={{ color: '#881337', display: 'block', marginBottom: '2px' }}>4. Extinction automatique par Aérosol NFPA 855</strong>
+                            <span style={{ color: '#334155', lineHeight: 1.38, display: 'block' }}>Déclenchement automatique d'un <strong>générateur d'aérosol ignifuge condensé</strong> étouffant instantanément tout départ de feu à l'intérieur de l'enveloppe close, sans flamme extérieure.</span>
                         </div>
                     </div>
                 </section>
 
                 {/* SECTION 4 : AMÉNAGEMENT DU SITE ET COUPURE DE COMBUSTIBLE DFCI */}
-                <section className="mb-3">
-                    <div className="flex items-center gap-2 mb-1.5 pb-1 border-b border-slate-200">
-                        <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">4</span>
-                        <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                <section style={{ marginBottom: '12px' }}>
+                    <div style={{ ...sectionTitleRowStyle, marginBottom: '6px' }}>
+                        <span style={sectionBadgeNumStyle}>4</span>
+                        <h2 style={{ ...sectionHeadingStyle, fontSize: '11px' }}>
                             Aménagement du Site &amp; Coupure de Combustible DFCI (Prescriptions Spéciales R.111-2)
                         </h2>
                     </div>
-                    <p className="text-[9.5px] text-slate-700 leading-snug mb-2">
+                    <p style={{ fontSize: '9.5px', color: '#334155', lineHeight: 1.4, marginBottom: '8px', marginTop: 0 }}>
                         Bien que le projet soit implanté au sein d'un secteur agricole déjà anthropisé et entretenu (hors massif boisé), le maître d'ouvrage met en œuvre une <strong>triple coupure de combustible minérale et végétale</strong> supprimant tout risque d'éclosion ou de propagation vers l'environnement :
                     </p>
 
-                    <div className="grid grid-cols-12 gap-3 items-center mb-1">
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: '7fr 5fr',
+                            gap: '12px',
+                            alignItems: 'center',
+                            marginBottom: '4px'
+                        }}
+                    >
                         {/* Liste des 4 barrières physiques */}
-                        <div className="col-span-7 space-y-1.5 text-[9px]">
-                            <div className="p-1.5 rounded-lg border border-slate-200 bg-slate-50">
-                                <strong className="text-slate-900">A. Socle 100 % minéral incombustible (Dalle béton A1 / M0) :</strong>
-                                <p className="text-slate-600 mt-0.5">Les 4 armoires reposent sur une dalle pleine en béton armé de <strong>6,20 m × 3,20 m (19,84 m²)</strong>, surélevée de 15 cm par rapport au terrain naturel.</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '9px' }}>
+                            <div style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                                <strong style={{ color: '#0f172a' }}>A. Socle 100 % minéral incombustible (Dalle béton A1 / M0) :</strong>
+                                <p style={{ color: '#475569', marginTop: '2px', marginBottom: 0, lineHeight: 1.35 }}>Les 4 armoires reposent sur une dalle pleine en béton armé de <strong>6,20 m × 3,20 m (19,84 m²)</strong>, surélevée de 15 cm par rapport au terrain naturel.</p>
                             </div>
-                            <div className="p-1.5 rounded-lg border border-amber-200 bg-amber-50/40">
-                                <strong className="text-amber-950">B. Ceinture stérile en graviers concassés sur 2,00 mètres :</strong>
-                                <p className="text-slate-700 mt-0.5">Une bande périphérique de <strong>2,00 m de largeur tout autour de la dalle béton</strong> est intégralement décapée, équipée d'un feutre géotextile anti-végétation et recouverte de <strong>graviers concassés minéraux incombustibles (ép. 10 cm)</strong>. Aucune herbe sèche ne peut se trouver au contact de la station.</p>
+                            <div style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid #fde68a', backgroundColor: '#fffbeb' }}>
+                                <strong style={{ color: '#451a03' }}>B. Ceinture stérile en graviers concassés sur 2,00 mètres :</strong>
+                                <p style={{ color: '#334155', marginTop: '2px', marginBottom: 0, lineHeight: 1.35 }}>Une bande périphérique de <strong>2,00 m de largeur tout autour de la dalle béton</strong> est intégralement décapée, équipée d'un feutre géotextile anti-végétation et recouverte de <strong>graviers concassés minéraux incombustibles (ép. 10 cm)</strong>. Aucune herbe sèche ne peut se trouver au contact de la station.</p>
                             </div>
-                            <div className="p-1.5 rounded-lg border border-slate-200 bg-slate-50">
-                                <strong className="text-slate-900">C. Clôture rigide périmétrique de sécurité (H 2,00 m) :</strong>
-                                <p className="text-slate-600 mt-0.5">Enceinte en panneaux treillis soudés rigides thermolaqués (RAL 6005) avec portillon verrouillé interdisant toute intrusion.</p>
+                            <div style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                                <strong style={{ color: '#0f172a' }}>C. Clôture rigide périmétrique de sécurité (H 2,00 m) :</strong>
+                                <p style={{ color: '#475569', marginTop: '2px', marginBottom: 0, lineHeight: 1.35 }}>Enceinte en panneaux treillis soudés rigides thermolaqués (RAL 6005) avec portillon verrouillé interdisant toute intrusion.</p>
                             </div>
-                            <div className="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50/40">
-                                <strong className="text-emerald-950">D. Obligations Légales de Débroussaillement (OLD — Rayon 50 m) :</strong>
-                                <p className="text-slate-700 mt-0.5">Maintien permanent d'une <strong>zone débroussaillée de 50 mètres de rayon</strong> autour de l'installation (fauchage régulier, absence de broussailles ou de stockage de matériaux combustibles, mise à distance des houppiers).</p>
+                            <div style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid #a7f3d0', backgroundColor: '#ecfdf5' }}>
+                                <strong style={{ color: '#022c22' }}>D. Obligations Légales de Débroussaillement (OLD — Rayon 50 m) :</strong>
+                                <p style={{ color: '#334155', marginTop: '2px', marginBottom: 0, lineHeight: 1.35 }}>Maintien permanent d'une <strong>zone débroussaillée de 50 mètres de rayon</strong> autour de l'installation (fauchage régulier, absence de broussailles ou de stockage de matériaux combustibles, mise à distance des houppiers).</p>
                             </div>
                         </div>
 
                         {/* Schéma technique SVG de la coupe / vue en plan DFCI */}
-                        <div className="col-span-5 border border-slate-200 rounded-xl p-2 bg-slate-50 flex flex-col items-center justify-center">
-                            <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 text-center">
+                        <div
+                            style={{
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '12px',
+                                padding: '8px',
+                                backgroundColor: '#f8fafc',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <span style={{ fontSize: '8px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#475569', marginBottom: '6px', textAlign: 'center' }}>
                                 Schéma de Principe — Ceinture Incombustible DFCI
                             </span>
-                            <svg viewBox="0 0 280 210" className="w-full h-auto max-w-[215px]">
+                            <svg viewBox="0 0 280 210" style={{ width: '100%', height: 'auto', maxWidth: '215px', display: 'block' }}>
                                 <rect x="6" y="6" width="268" height="198" rx="10" fill="#ecfdf5" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4 3" />
                                 <text x="140" y="20" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#047857">ZONE DÉBROUSSAILLÉE ENTRETENUE (OLD 50m)</text>
 
@@ -2712,50 +2864,85 @@ export const PlateNoticeSecuriteIncendieBess = ({ project, docType = 'dp', page 
                 </section>
 
                 {/* SECTION 5 : DISPOSITIONS OPÉRATIONNELLES POUR LE SDIS */}
-                <section className="mb-3">
-                    <div className="flex items-center gap-2 mb-1.5 pb-1 border-b border-slate-200">
-                        <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">5</span>
-                        <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                <section style={{ marginBottom: '12px' }}>
+                    <div style={{ ...sectionTitleRowStyle, marginBottom: '6px' }}>
+                        <span style={sectionBadgeNumStyle}>5</span>
+                        <h2 style={{ ...sectionHeadingStyle, fontSize: '11px' }}>
                             Accessibilité &amp; Dispositions Opérationnelles dédiées aux Services de Secours ({info.sdisLabel})
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-[9px]">
-                        <div className="p-2 rounded-lg border border-slate-200 bg-white">
-                            <strong className="text-slate-900 block mb-0.5">🚒 Desserte &amp; Accès Engins</strong>
-                            <p className="text-slate-600 leading-snug">Implantation en bordure immédiate d'une voie carrossable (largeur ≥ 3,00 m, hauteur libre ≥ 3,50 m, portance 16 tonnes) permettant le stationnement d'un fourgon d'incendie à moins de 10 m.</p>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                            gap: '8px',
+                            fontSize: '9px'
+                        }}
+                    >
+                        <div style={{ padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+                            <strong style={{ color: '#0f172a', display: 'block', marginBottom: '2px' }}>🚒 Desserte &amp; Accès Engins</strong>
+                            <p style={{ color: '#475569', lineHeight: 1.38, margin: 0 }}>Implantation en bordure immédiate d'une voie carrossable (largeur ≥ 3,00 m, hauteur libre ≥ 3,50 m, portance 16 tonnes) permettant le stationnement d'un fourgon d'incendie à moins de 10 m.</p>
                         </div>
-                        <div className="p-2 rounded-lg border border-slate-200 bg-white">
-                            <strong className="text-rose-700 block mb-0.5">🛑 Coupure d'Urgence Pompier</strong>
-                            <p className="text-slate-600 leading-snug">Bouton d'<strong>Arrêt d'Urgence (AU) général sous boîtier bris de glace</strong> positionné en limite extérieure de clôture, assurant l'isolement galvanique instantané des batteries et du réseau HTA Enedis.</p>
+                        <div style={{ padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+                            <strong style={{ color: '#be123c', display: 'block', marginBottom: '2px' }}>🛑 Coupure d'Urgence Pompier</strong>
+                            <p style={{ color: '#475569', lineHeight: 1.38, margin: 0 }}>Bouton d'<strong>Arrêt d'Urgence (AU) général sous boîtier bris de glace</strong> positionné en limite extérieure de clôture, assurant l'isolement galvanique instantané des batteries et du réseau HTA Enedis.</p>
                         </div>
-                        <div className="p-2 rounded-lg border border-slate-200 bg-white">
-                            <strong className="text-slate-900 block mb-0.5">📞 Affichage &amp; Astreinte 24/7</strong>
-                            <p className="text-slate-600 leading-snug">Panneau inaltérable sur le portillon indiquant la chimie LFP, le schéma unifilaire de coupure, les consignes d'intervention SDIS et le numéro d'astreinte télésurveillance 24h/24.</p>
+                        <div style={{ padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+                            <strong style={{ color: '#0f172a', display: 'block', marginBottom: '2px' }}>📞 Affichage &amp; Astreinte 24/7</strong>
+                            <p style={{ color: '#475569', lineHeight: 1.38, margin: 0 }}>Panneau inaltérable sur le portillon indiquant la chimie LFP, le schéma unifilaire de coupure, les consignes d'intervention SDIS et le numéro d'astreinte télésurveillance 24h/24.</p>
                         </div>
                     </div>
                 </section>
 
                 {/* SECTION 6 : ENGAGEMENT FORMEL DU PÉTITIONNAIRE */}
-                <section className="p-2.5 rounded-xl border-2 border-slate-900 bg-slate-50">
-                    <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-900">
+                <section
+                    style={{
+                        padding: '10px',
+                        borderRadius: '12px',
+                        border: '2px solid #0f172a',
+                        backgroundColor: '#f8fafc'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0f172a' }}>
                             6. Engagement Formel du Pétitionnaire (Application de l'Article R.111-2 du Code de l'Urbanisme)
                         </span>
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 text-[8px] font-extrabold border border-emerald-300">
+                        <span
+                            style={{
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                backgroundColor: '#d1fae5',
+                                color: '#064e3b',
+                                fontSize: '8px',
+                                fontWeight: 800,
+                                border: '1px solid #6ee7b7'
+                            }}
+                        >
                             ENGAGEMENT FERME &amp; OPPOSABLE
                         </span>
                     </div>
-                    <p className="text-[9px] text-slate-700 leading-snug text-justify">
+                    <p style={{ fontSize: '9px', color: '#334155', lineHeight: 1.4, textAlign: 'justify', margin: 0 }}>
                         Le demandeur et la société <strong>ENR COURTAGE SAS</strong> s'engagent expressément à mettre en œuvre et à maintenir pendant toute la durée d'exploitation de la station BESS l'intégralité des mesures de sécurité décrites dans la présente notice : <strong>(1) Utilisation exclusive d'armoires certifiées LFP avec extinction automatique par aérosol NFPA 855 intégrée</strong>, <strong>(2) Dalle en béton armé incombustible entourée d'une bande stérile de graviers minéraux de 2,00 m</strong>, <strong>(3) Respect permanent des Obligations Légales de Débroussaillement (OLD) dans un rayon de 50 mètres</strong>, et <strong>(4) Installation d'une coupure d'urgence externe accessible au SDIS</strong>. Le demandeur accepte que ces dispositions soient inscrites à titre de <strong>prescriptions spéciales</strong> dans l'arrêté {info.isPC ? 'accordant le Permis de Construire' : 'de non-opposition à la Déclaration Préalable'}.
                     </p>
                 </section>
             </div>
 
             {/* PIED DE PAGE 2 */}
-            <footer className="pt-2.5 border-t border-slate-200 flex items-center justify-between text-[8.5px] text-slate-500 mt-3">
+            <footer
+                style={{
+                    paddingTop: '10px',
+                    borderTop: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '8.5px',
+                    color: '#64748b',
+                    marginTop: '12px'
+                }}
+            >
                 <div><strong>ENR COURTAGE SAS</strong> • 7 Rue Gutenberg, 33700 Mérignac • contact@enr-courtage.fr • 07.63.87.71.40</div>
-                <div className="font-mono font-bold">Page 2 / 2</div>
+                <div style={{ fontFamily: 'monospace', fontWeight: 700 }}>Page 2 / 2</div>
             </footer>
         </div>
     );

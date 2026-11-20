@@ -7,6 +7,7 @@ import { saveAs } from 'file-saver';
 import { smartFillCerfa, resolveDemandeurNames } from './SmartCerfaService';
 import { PlateNoticeSecuriteIncendieBess } from '@/components/editor/DPPlates';
 import { preloadProjectImages } from '@/utils/imageProxy';
+import { generateCourrierDepotDpDocx } from './courrierDepotDpService';
 
 /**
  * Capture un élément DOM précis et le convertit en Uint8Array (PDF individuel haute définition)
@@ -500,6 +501,22 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
       }
     }
 
+    // J. Courrier d'envoi / dépôt DP en Mairie (.docx modifiable)
+    if (!selectedPages || selectedPages.courrier_dp !== false) {
+      try {
+        notify('Génération du Courrier d\'envoi DP (.docx modifiable)...');
+        const courrierRes = await generateCourrierDepotDpDocx(safeProject, mairieInfo, {
+          download: false,
+          docType: type
+        });
+        if (courrierRes?.uint8Array && courrierRes?.filename) {
+          zip.file(courrierRes.filename, courrierRes.uint8Array);
+        }
+      } catch (courrierErr) {
+        console.warn('[exportDossierDepotZip] Erreur génération courrier DP .docx:', courrierErr);
+      }
+    }
+
     // ── 3. Fichier récapitulatif INSTRUCTIONS_DEPOT.txt ────────────────────────
     notify('Génération des instructions de dépôt...');
     const names = resolveDemandeurNames(safeProject);
@@ -802,7 +819,8 @@ export async function downloadNoticeSecuriteIncendiePdf(project, docType = 'dp')
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const names = resolveDemandeurNames(project);
     const clientName = (names.demandeur || project?.client_name || project?.name || project?.lastName || 'Projet').trim().replace(/[\s\/\\:]+/g, '_');
-    const fileName = `Notice_Securite_Incendie_ICPE_SDIS_${clientName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    const docPrefix = isPC ? 'PC' : 'DP';
+    const fileName = `${docPrefix}_Piece_Complementaire_Notice_Securite_Incendie_DFCI_SDIS_${clientName}.pdf`;
     saveAs(blob, fileName);
     return true;
   } finally {

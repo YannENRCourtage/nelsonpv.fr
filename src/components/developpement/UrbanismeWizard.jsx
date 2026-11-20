@@ -12,6 +12,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { fetchUrbanismeMairiePortal } from '@/services/urbanismeRoutingService';
 import { exportDossierDepotZip, downloadNoticeSecuriteIncendiePdf } from '@/services/DPGeneratorService';
+import { generateCourrierDepotDpDocx } from '@/services/courrierDepotDpService';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames, parseFrenchAddress, DEFAULT_BESS_CADRE_4_1, getBessCadre41Text } from '@/services/SmartCerfaService';
 import { downloadPieceDwg } from '@/services/DwgExportService';
 import { cadastreService } from '@/services/CadastreService';
@@ -2298,6 +2299,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     pc8: true,
     notice_incendie: true,
     cerfa: true,
+    courrier_dp: true,
   });
 
   const [additionalRoof, setAdditionalRoof] = useState({
@@ -7027,6 +7029,30 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       }
       return;
     }
+    if (item.id === 'courrier_dp') {
+      setDownloadingPieceId('courrier_dp');
+      try {
+        const { finalProject } = await prepareProjectPayload();
+        const res = await generateCourrierDepotDpDocx(finalProject, mairieRouting?.data, {
+          download: true,
+          docType: type || 'dp'
+        });
+        toast({
+          title: "Courrier d'envoi DP (.docx) téléchargé",
+          description: `${res.filename} généré à la date du jour (100 % modifiable dans Word).`,
+        });
+      } catch (err) {
+        console.error('[UrbanismeWizard] Erreur téléchargement Courrier DP:', err);
+        toast({
+          title: "Erreur lors du téléchargement",
+          description: err.message || "Impossible de générer le courrier Word.",
+          variant: "destructive"
+        });
+      } finally {
+        setDownloadingPieceId(null);
+      }
+      return;
+    }
     if (!onGenerate) return;
     setDownloadingPieceId(item.id);
     setIsGenerating(true);
@@ -9879,6 +9905,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                             dp8: true,
                             notice_incendie: true,
                             cerfa: true,
+                            courrier_dp: true,
                           })}
                           className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
                         >
@@ -9899,6 +9926,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                             dp8: false,
                             notice_incendie: false,
                             cerfa: false,
+                            courrier_dp: false,
                           })}
                           className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
                         >
@@ -9920,6 +9948,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         ...(isBatActive ? [{ id: 'dp_notice_dedicated', code: 'NOTICE', title: 'Notice Descriptive', desc: 'Notice d\'insertion & descriptive du projet (Pleine page)', badge: 'Pièce complémentaire', color: 'indigo' }] : []),
                         ...(isBatActive ? [{ id: 'notice_incendie', code: 'SDIS / DFCI', title: 'Notice Sécurité Incendie & DFCI', desc: 'Notice sécurité incendie, DFCI & dispositions SDIS (Art. R.111-2 — 2 pages)', badge: 'Pièce additionnelle', color: 'rose' }] : []),
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA', desc: 'CERFA 13404 officiel pré-rempli', badge: 'Administratif', color: 'amber' },
+                        { id: 'courrier_dp', code: 'COURRIER', title: 'Courrier envoi DP', desc: 'Courrier de dépôt en Mairie au nom du client (.docx modifiable)', badge: 'Word .DOCX', color: 'indigo', isDocx: true },
                       ] : type === 'dp' ? [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
                         { id: 'situation', code: 'DP1', title: 'Plan de situation', desc: 'IGN cartographique & Satellite', badge: 'Obligatoire', color: 'indigo' },
@@ -9944,6 +9973,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         ...(isBatActive ? [{ id: 'dp_notice_dedicated', code: 'NOTICE', title: 'Notice Descriptive', desc: 'Notice d\'insertion & descriptive du projet (Pleine page)', badge: 'Pièce complémentaire', color: 'indigo' }] : []),
                         ...(isBatActive ? [{ id: 'notice_incendie', code: 'SDIS / DFCI', title: 'Notice Sécurité Incendie & DFCI', desc: 'Notice sécurité incendie, DFCI & dispositions SDIS (Art. R.111-2 — 2 pages)', badge: 'Pièce additionnelle', color: 'rose' }] : []),
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA DP', desc: 'Déclaration préalable officielle', badge: 'Administratif', color: 'amber' },
+                        { id: 'courrier_dp', code: 'COURRIER', title: 'Courrier envoi DP', desc: 'Courrier de dépôt en Mairie au nom du client (.docx modifiable)', badge: 'Word .DOCX', color: 'indigo', isDocx: true },
                       ] : [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte', badge: 'Recommandé', color: 'blue' },
                         { id: 'situation', code: 'CU1', title: 'Plan de situation', desc: 'Localisation du terrain', badge: 'Obligatoire', color: 'indigo' },
@@ -10025,11 +10055,11 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                   ) : (
                                     <>
                                       <Download className="w-3 h-3" />
-                                      <span>PDF</span>
+                                      <span>{item.isDocx ? 'DOCX' : 'PDF'}</span>
                                     </>
                                   )}
                                 </button>
-                                {item.id !== 'cover' && item.id !== 'cerfa' && item.id !== 'notice_incendie' && item.id !== 'dp_notice_dedicated' && (
+                                {item.id !== 'cover' && item.id !== 'cerfa' && item.id !== 'courrier_dp' && item.id !== 'notice_incendie' && item.id !== 'dp_notice_dedicated' && (
                                   <button
                                     type="button"
                                     disabled={isGenerating}
