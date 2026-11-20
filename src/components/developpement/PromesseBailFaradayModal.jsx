@@ -13,7 +13,8 @@ import {
   Sparkles,
   Upload,
   Save,
-  Eye
+  Eye,
+  ClipboardPaste
 } from 'lucide-react';
 import {
   extractDefaultPromesseFaradayData,
@@ -97,7 +98,7 @@ export default function PromesseBailFaradayModal({
           section: firstParcel.section || '',
           numero: firstParcel.numero || '',
           zoning: formData.cartoucheZonage || 'N / PLUi',
-          stampCartouche: Boolean(formData.stampCartoucheSurface)
+          stampCartouche: false
         });
         if (active && res?.dataUrl) {
           setPreviewCartoucheUrl(res.dataUrl);
@@ -323,17 +324,77 @@ export default function PromesseBailFaradayModal({
     });
   };
 
-  // Upload d'une image personnalisée pour le plan Annexe 2
-  const handleUploadPlanImage = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const readFileAsPlanImage = (file) => {
+    if (!file || !file.type?.startsWith('image/')) return;
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
         setFormData((prev) => ({ ...prev, planImageUrl: reader.result }));
+        setStatusMessage({
+          type: 'success',
+          text: 'Plan d’implantation chargé pour l’Annexe 2.'
+        });
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  // Upload d'une image personnalisée pour le plan Annexe 2
+  const handleUploadPlanImage = (e) => {
+    const file = e.target.files?.[0];
+    if (file) readFileAsPlanImage(file);
+  };
+
+  // Coller une image depuis le presse-papiers (Ctrl+V dans la zone dédiée)
+  const handlePastePlanImage = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        e.preventDefault();
+        const blob = items[i].getAsFile();
+        if (blob) readFileAsPlanImage(blob);
+        return;
+      }
+    }
+  };
+
+  // Glisser-déposer d'une image dans la zone dédiée
+  const handleDropPlanImage = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files?.[0];
+    if (file) readFileAsPlanImage(file);
+  };
+
+  // Bouton Coller via l'API Clipboard du navigateur
+  const handleClipboardButtonPaste = async () => {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+        setStatusMessage({
+          type: 'warning',
+          text: 'Cliquez dans la zone ci-dessous et faites Ctrl+V pour coller votre image.'
+        });
+        return;
+      }
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        const imageType = item.types.find((t) => t.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          readFileAsPlanImage(blob);
+          return;
+        }
+      }
+      setStatusMessage({
+        type: 'warning',
+        text: 'Aucune image détectée dans le presse-papiers. Copiez une image puis réessayez (ou Ctrl+V dans la zone).'
+      });
+    } catch (_) {
+      setStatusMessage({
+        type: 'warning',
+        text: 'Cliquez dans la zone de collage ci-dessous puis appuyez sur Ctrl+V.'
+      });
+    }
   };
 
   // Sauvegarde des données de la promesse sur la fiche projet NELSON
@@ -830,7 +891,7 @@ export default function PromesseBailFaradayModal({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 mb-1">
                   Commune du site (MAJUSCULES)
@@ -858,7 +919,7 @@ export default function PromesseBailFaradayModal({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-[11px] font-bold text-slate-600">
-                    Superficie totale (hectares — Préambule)
+                    Superficie totale (en Ha)
                   </label>
                   <label className="inline-flex items-center gap-1 text-[10px] text-indigo-600 font-semibold cursor-pointer">
                     <input
@@ -885,18 +946,6 @@ export default function PromesseBailFaradayModal({
                     ha
                   </span>
                 </div>
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                  Nature du site (Préambule §2)
-                </label>
-                <input
-                  type="text"
-                  value={formData.descriptionSite || ''}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, descriptionSite: e.target.value }))}
-                  placeholder="un site agricole dédié à la culture céréalière notamment"
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
               </div>
             </div>
 
@@ -1014,172 +1063,100 @@ export default function PromesseBailFaradayModal({
             </div>
           </div>
 
-          {/* 3. CADRE EN BAS À GAUCHE (SURFACE À GAUCHE DU N° DE PARCELLE) & PLAN ANNEXE 2 */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <div className="pb-4 mb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          {/* 3. PLAN D'IMPLANTATION À INJÉCTER EN ANNEXE 2 (PAGE 23) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+            <div className="pb-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
                   <Eye className="w-4 h-4 text-amber-600" />
-                  3. Cadre en bas à gauche de la Carte (Surface à gauche du n° de parcelle) & Annexe 2
+                  3. Plan d'implantation à insérer et centrer en Annexe 2 (Page 23)
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Vérifiez l'affichage du cartouche en bas à gauche où la surface de la parcelle est positionnée à gauche du numéro de parcelle
+                  Importez un fichier image, collez directement une capture (Ctrl+V) dans la zone ci-dessous ou choisissez une capture du projet
                 </p>
               </div>
-              <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={Boolean(formData.stampCartoucheSurface)}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, stampCartoucheSurface: e.target.checked }))
-                  }
-                  className="rounded text-amber-600"
-                />
-                Incruster le cartouche avec surface à gauche du n° de parcelle sur l'Annexe 2
-              </label>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Aperçu fidèle du cadre en bas à gauche */}
-              <div className="lg:col-span-5 space-y-3">
-                <div className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  Aperçu du cadre en bas à gauche (Carte & Annexe 2) :
-                </div>
-
-                {/* Reproduction exacte du cartouche MapTargetInfo */}
-                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-inner">
-                  <div className="bg-white/95 rounded-lg p-3 shadow-md border border-slate-200 max-w-[300px] text-xs font-sans">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="font-bold text-blue-600 text-[12px]">
-                        {formData.lat && formData.lng
-                          ? `${Number(formData.lat).toFixed(5)}, ${Number(formData.lng).toFixed(5)}`
-                          : '45.14191, -0.46489'}
-                      </span>
-                      <span className="text-slate-400 font-bold text-xs">×</span>
-                    </div>
-
-                    <div className="text-slate-800 mb-2 leading-tight">
-                      📍 <strong className="text-slate-900">{firstParcel.adresse || formData.commune || '15 Barré'}</strong>
-                      <br />
-                      <span className="text-slate-500 pl-4">
-                        {formData.codePostal || '33920'} {formData.commune || 'SAINT-SAVIN'}
-                      </span>
-                    </div>
-
-                    {/* LIGNE CLÉ : Altitude à gauche | Surface À GAUCHE du Numéro de parcelle */}
-                    <div className="flex justify-between items-center border-t border-slate-200 pt-1.5 text-slate-600 gap-2">
-                      <span title="Altitude NGF">⛰️ {formData.cartoucheAltitude || '125.0 m'}</span>
-                      <div className="flex items-center gap-2 ml-auto">
-                        <span
-                          title="Surface de la parcelle (à gauche du numéro de parcelle)"
-                          className="font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"
-                        >
-                          📐 {formattedPreviewSurface}
-                        </span>
-                        <span
-                          title="Référence cadastrale"
-                          className="font-bold text-slate-800"
-                        >
-                          🏷️ {formattedPreviewSection} {formattedPreviewNumero}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-slate-200 mt-1.5 pt-1.5 flex items-center gap-1.5">
-                      <span>🏛️</span>
-                      <span className="text-slate-600 font-semibold">Zonage:</span>
-                      <span className="font-bold text-slate-800">
-                        {formData.cartoucheZonage || 'N / PLUi'}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-emerald-300 mt-2.5 flex items-center gap-1.5 font-medium">
-                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                    La surface ({formattedPreviewSurface}) est positionnée à gauche du numéro ({formattedPreviewSection} {formattedPreviewNumero}).
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Altitude affichée (Cartouche)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cartoucheAltitude || ''}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, cartoucheAltitude: e.target.value }))
-                      }
-                      placeholder="125.0 m"
-                      className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Zonage affiché (Cartouche)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cartoucheZonage || ''}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, cartoucheZonage: e.target.value }))
-                      }
-                      placeholder="N / PLUi"
-                      className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Sélecteur et aperçu de l'image complète de l'Annexe 2 */}
-              <div className="lg:col-span-7 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    Plan d'implantation injecté en Annexe 2 (Page 23) :
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {Array.isArray(formData.availableCaptures) && formData.availableCaptures.length > 0 && (
-                      <select
-                        value={formData.planImageUrl || ''}
-                        onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, planImageUrl: e.target.value }))
-                        }
-                        className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium"
-                      >
-                        {formData.availableCaptures.map((cap) => (
-                          <option key={cap.id} value={cap.url}>
-                            {cap.label}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 cursor-pointer transition-colors">
-                      <Upload className="w-3.5 h-3.5" />
-                      Importer un plan (.png/.jpg)
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleUploadPlanImage}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                {previewCartoucheUrl ? (
-                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center max-h-64">
-                    <img
-                      src={previewCartoucheUrl}
-                      alt="Aperçu Annexe 2 avec cartouche"
-                      className="max-h-64 w-auto object-contain"
-                    />
-                  </div>
-                ) : (
-                  <div className="border border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 text-xs text-slate-500">
-                    Aucune capture de carte sélectionnée. Si le projet possède des coordonnées GPS, une vue satellite avec le cartouche en bas à gauche sera générée automatiquement, ou vous pouvez importer une capture ci-dessus.
-                  </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {Array.isArray(formData.availableCaptures) && formData.availableCaptures.length > 0 && (
+                  <select
+                    value={formData.planImageUrl || ''}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, planImageUrl: e.target.value }))
+                    }
+                    className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium"
+                  >
+                    {formData.availableCaptures.map((cap) => (
+                      <option key={cap.id} value={cap.url}>
+                        {cap.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  type="button"
+                  onClick={handleClipboardButtonPaste}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 cursor-pointer transition-colors"
+                >
+                  <ClipboardPaste className="w-3.5 h-3.5" />
+                  Coller une image
+                </button>
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 cursor-pointer transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  Importer un plan (.png/.jpg)
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadPlanImage}
+                    className="hidden"
+                  />
+                </label>
+                {formData.planImageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, planImageUrl: '' }))}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
+                    title="Retirer le plan sélectionné"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Effacer
+                  </button>
                 )}
               </div>
+            </div>
+
+            {/* Zone de collage (Ctrl+V) et de glisser-déposer + aperçu centré */}
+            <div
+              tabIndex={0}
+              onPaste={handlePastePlanImage}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDropPlanImage}
+              className="border-2 border-dashed border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none rounded-xl p-4 bg-slate-50 transition-colors cursor-pointer"
+              title="Cliquez ici puis faites Ctrl+V pour coller une capture d'écran, ou déposez une image"
+            >
+              {previewCartoucheUrl ? (
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <div className="rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center max-h-72 border border-slate-200">
+                    <img
+                      src={previewCartoucheUrl}
+                      alt="Aperçu du plan centré pour l'Annexe 2"
+                      className="max-h-72 w-auto object-contain"
+                    />
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Cliquez dans cette zone et appuyez sur <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[10px] font-bold">Ctrl+V</kbd> pour remplacer par une autre image collée
+                  </span>
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-slate-500 space-y-2">
+                  <ClipboardPaste className="w-7 h-7 mx-auto text-slate-400" />
+                  <p className="font-semibold text-slate-700">
+                    Cliquez ici et faites <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-bold">Ctrl+V</kbd> pour coller un plan, ou glissez-déposez une image
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Vous pouvez aussi utiliser le bouton « Importer un plan (.png/.jpg) » ci-dessus. Seul ce plan sera inséré et centré en Annexe 2.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

@@ -982,77 +982,75 @@ export default function ProjectEditor() {
     <div className={cn("w-full bg-gray-50", isEmbedded ? "p-2 lg:p-4" : "px-2 lg:px-4 py-4 lg:py-6")}>
       <div className={cn("grid grid-cols-1 gap-4 lg:gap-6 mb-6 items-stretch", isEmbedded ? "grid-cols-1" : "lg:grid-cols-12")}>
         <section className={cn("rounded-2xl bg-white p-3 lg:p-6 shadow-sm h-full flex flex-col justify-between", isEmbedded ? "col-span-1 w-full" : "col-span-1 lg:col-span-9")}>
-          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-4">
-            <div className="flex flex-wrap items-center justify-between lg:justify-start gap-2.5 w-full lg:w-auto">
-              <Button
-                type="button"
-                onClick={() => navigate('/crm?tab=projects')}
-                variant="outline"
-                size="sm"
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                title="Retour à la liste des projets CRM"
-              >
-                <ArrowLeft className="w-4 h-4 text-slate-700" />
-                <span>Retour</span>
-              </Button>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold">Client &amp; Projet</h2>
-                <button
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 mb-4">
+            <div className="flex flex-col gap-1.5 w-full lg:w-auto">
+              <div className="flex flex-wrap items-center justify-between lg:justify-start gap-2 w-full lg:w-auto">
+                <Button
                   type="button"
-                  className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-100 transition-colors"
-                  onClick={() => setIsClientOpen(v => !v)}
-                  title={isClientOpen ? 'Replier' : 'Déplier la section client'}
+                  onClick={() => navigate('/crm?tab=projects')}
+                  variant="outline"
+                  size="sm"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                  title="Retour à la liste des projets CRM"
                 >
-                  <Users size={14} />
-                  <span>{isClientOpen ? 'Masquer Client' : 'Voir Client'}</span>
-                  {isClientOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </button>
-              </div>
-              <Button
-                type="button"
-                onClick={handleReset}
-                variant="outline"
-                size="sm"
-                className="text-gray-600 hover:text-red-600 hover:border-red-600"
-                title="Réinitialiser tous les champs et la carte"
-              >
-                <RotateCcw size={16} className="mr-2" />
-                Remise à zéro
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setQuoteModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 rounded-md shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
-                title="Ouvrir l'éditeur de devis, chiffrage et génération de proposition commerciale avec fiches techniques"
-              >
-                <span>📑</span>
-                <span>Éditeur de Devis &amp; Offre</span>
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setPromesseFaradayModalOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 rounded-md shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
-                title="Générer la Promesse de Bail Emphytéotique Batterie FARADAY au format Word (.docx) 100 % modifiable"
-              >
-                <span>📄</span>
-                <span>Promesse de Bail FARADAY (.docx)</span>
-              </Button>
-            </div>
-            {/* Date de création + Dropdowns: sur une ligne sur mobile, 6 colonnes sur desktop */}
-            <div className="flex flex-wrap gap-2 items-end w-full lg:w-auto mt-2 lg:mt-0 lg:grid lg:grid-cols-6 lg:gap-2.5">
-              <div className="flex-1 min-w-[95px]">
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1 whitespace-nowrap">
-                  Date de création
-                </label>
-                <div
-                  className="flex items-center h-10 w-full py-2 text-xs font-semibold text-slate-700 select-none whitespace-nowrap"
-                  title="Date de création de la fiche projet (immuable)"
-                >
-                  {formatProjectCreationDate(p)}
+                  <ArrowLeft className="w-4 h-4 text-slate-700" />
+                  <span>Retour</span>
+                </Button>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold whitespace-nowrap">Client &amp; Projet</h2>
+                  <button
+                    type="button"
+                    className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-100 transition-colors"
+                    onClick={() => setIsClientOpen(v => !v)}
+                    title={isClientOpen ? 'Replier' : 'Déplier la section client'}
+                  >
+                    <Users size={14} />
+                    <span>{isClientOpen ? 'Masquer Client' : 'Voir Client'}</span>
+                    {isClientOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
                 </div>
+                <Button
+                  type="button"
+                  onClick={handleReset}
+                  variant="outline"
+                  size="sm"
+                  className="text-gray-600 hover:text-red-600 hover:border-red-600 whitespace-nowrap"
+                  title="Réinitialiser tous les champs et la carte"
+                >
+                  <RotateCcw size={16} className="mr-1.5" />
+                  Remise à zéro
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setQuoteModalOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 rounded-md shadow-sm flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap"
+                  title="Ouvrir l'éditeur de devis, chiffrage et génération de proposition commerciale avec fiches techniques"
+                >
+                  <span>📑</span>
+                  <span>Éditeur de Devis</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setPromesseFaradayModalOpen(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 rounded-md shadow-sm flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap"
+                  title="Générer la Promesse de Bail Emphytéotique Batterie au format Word (.docx) 100 % modifiable"
+                >
+                  <span>📄</span>
+                  <span>Promesse de bail (.docx)</span>
+                </Button>
               </div>
+              <div
+                className="text-xs text-slate-700 select-none whitespace-nowrap pl-0.5"
+                title="Date de création de la fiche projet (immuable)"
+              >
+                <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Date de création :</span>{' '}
+                <span className="font-semibold text-slate-800">{formatProjectCreationDate(p)}</span>
+              </div>
+            </div>
+            {/* Dropdowns: sur une ligne sur mobile, 5 colonnes sur desktop */}
+            <div className="flex flex-wrap gap-2 items-end w-full lg:w-auto mt-2 lg:mt-0 lg:grid lg:grid-cols-5 lg:gap-2.5">
 
               <div className="flex-1 min-w-[80px]">
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Commercial</label>
@@ -1120,15 +1118,15 @@ export default function ProjectEditor() {
 
               <div className="flex-1 min-w-[90px]">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider block font-bold">Portefeuille BESS</label>
+                  <label className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider block font-bold">SPV BESS</label>
                   {canManagePortfolios && (
                     <button
                       type="button"
                       onClick={() => setIsPortfolioModalOpen(true)}
-                      className="text-[9px] text-blue-600 hover:text-blue-800 font-bold hover:underline flex items-center gap-0.5"
-                      title="Gérer les portefeuilles (Admin)"
+                      className="text-[11px] text-blue-600 hover:text-blue-800 font-bold hover:underline flex items-center gap-0.5"
+                      title="Gérer les SPV (Admin)"
                     >
-                      + Gérer
+                      +
                     </button>
                   )}
                 </div>
@@ -1149,15 +1147,15 @@ export default function ProjectEditor() {
 
               <div className="flex-1 min-w-[90px]">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider block font-bold">Portefeuille PV</label>
+                  <label className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider block font-bold">SPV PV</label>
                   {canManagePortfolios && (
                     <button
                       type="button"
                       onClick={() => setIsPortfolioModalOpen(true)}
-                      className="text-[9px] text-amber-600 hover:text-amber-800 font-bold hover:underline flex items-center gap-0.5"
-                      title="Gérer les portefeuilles (Admin)"
+                      className="text-[11px] text-amber-600 hover:text-amber-800 font-bold hover:underline flex items-center gap-0.5"
+                      title="Gérer les SPV (Admin)"
                     >
-                      + Gérer
+                      +
                     </button>
                   )}
                 </div>
@@ -1236,15 +1234,15 @@ export default function ProjectEditor() {
                 <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option></select></div>
                 <div className="flex-1 min-w-[110px]">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-blue-600">Portefeuille BESS</label>
+                    <label className="text-xs font-medium text-blue-600">SPV BESS</label>
                     {canManagePortfolios && (
                       <button
                         type="button"
                         onClick={() => setIsPortfolioModalOpen(true)}
-                        className="text-[9px] text-blue-600 font-bold hover:underline"
-                        title="Gérer les portefeuilles"
+                        className="text-[11px] text-blue-600 font-bold hover:underline"
+                        title="Gérer les SPV"
                       >
-                        + Gérer
+                        +
                       </button>
                     )}
                   </div>
@@ -1264,15 +1262,15 @@ export default function ProjectEditor() {
                 </div>
                 <div className="flex-1 min-w-[110px]">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-amber-600 font-bold">Portefeuille PV</label>
+                    <label className="text-xs font-medium text-amber-600 font-bold">SPV PV</label>
                     {canManagePortfolios && (
                       <button
                         type="button"
                         onClick={() => setIsPortfolioModalOpen(true)}
-                        className="text-[9px] text-amber-600 font-bold hover:underline"
-                        title="Gérer les portefeuilles"
+                        className="text-[11px] text-amber-600 font-bold hover:underline"
+                        title="Gérer les SPV"
                       >
-                        + Gérer
+                        +
                       </button>
                     )}
                   </div>

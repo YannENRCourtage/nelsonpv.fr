@@ -85,15 +85,20 @@ export function extractDefaultPromesseFaradayData(project = {}) {
   const rawZip = (project?.zip || project?.zipCode || bessData?.codePostal || '').trim();
   const rawAddr = (project?.address || bessData?.address || '').trim();
 
-  // Construction de l'adresse complète du bailleur sans doublon CP/Ville
+  // Construction de l'adresse complète du bailleur sans doublon CP/Ville (gère espaces et tirets ex: Saint-Savin / SAINT SAVIN)
   let cleanStreet = rawAddr;
-  if (rawZip && cleanStreet.includes(rawZip)) {
-    cleanStreet = cleanStreet.replace(new RegExp(`\\b${rawZip}\\b`, 'g'), '').trim();
+  if (rawZip) {
+    const escapedZip = rawZip.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    cleanStreet = cleanStreet.replace(new RegExp(`\\b${escapedZip}\\b`, 'g'), ' ').trim();
   }
-  if (rawCity && cleanStreet.toLowerCase().includes(rawCity.toLowerCase())) {
-    cleanStreet = cleanStreet.replace(new RegExp(`\\b${rawCity}\\b`, 'gi'), '').trim();
+  if (rawCity) {
+    const cityPattern = rawCity
+      .trim()
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/[\s-]+/g, '[\\s-]+');
+    cleanStreet = cleanStreet.replace(new RegExp(`\\b${cityPattern}\\b`, 'gi'), ' ').trim();
   }
-  cleanStreet = cleanStreet.replace(/[,\s]+$/, '').trim();
+  cleanStreet = cleanStreet.replace(/[\s,-]+$/, '').replace(/\s{2,}/g, ' ').trim();
 
   const fullBailleurAddress = [cleanStreet, rawZip, rawCity.toUpperCase()].filter(Boolean).join(' ').trim();
 
@@ -199,7 +204,9 @@ export function extractDefaultPromesseFaradayData(project = {}) {
     signataires: defaultSignataires,
     societe: defaultSociete,
     beneficiaireText: saved.beneficiaireText || DEFAULT_BENEFICIAIRE_TEXT,
-    descriptionSite: saved.descriptionSite || 'un site agricole dédié à la culture céréalière notamment',
+    descriptionSite: saved.descriptionSite && saved.descriptionSite !== 'un site agricole dédié à la culture céréalière notamment'
+      ? saved.descriptionSite
+      : 'un terrain',
     commune: (saved.commune || rawCity || '').toUpperCase(),
     codePostal: saved.codePostal || rawZip || '',
     superficieTotaleHa: saved.superficieTotaleHa && totalM2 === 0 ? saved.superficieTotaleHa : autoHa,
@@ -213,7 +220,7 @@ export function extractDefaultPromesseFaradayData(project = {}) {
     faitLe: saved.faitLe || '',
     mentionSignataireBailleur: saved.mentionSignataireBailleur || '',
     planImageUrl: saved.planImageUrl || (availableCaptures[0]?.url || ''),
-    stampCartoucheSurface: saved.stampCartoucheSurface !== undefined ? Boolean(saved.stampCartoucheSurface) : true,
+    stampCartoucheSurface: false,
     cartoucheAltitude: saved.cartoucheAltitude || '125.0 m',
     cartoucheZonage: saved.cartoucheZonage || 'N / PLUi',
     lat,
@@ -614,8 +621,8 @@ function buildArticle4TableXml(parcelles = []) {
       ? '<w:shd w:val="clear" w:color="auto" w:fill="D9D9D9" w:themeFill="background1" w:themeFillShade="D9"/>'
       : '';
     const rPr = isHeader
-      ? '<w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Calibri" w:hAnsi="Arial" w:cs="Calibri"/><w:b/><w:bCs/><w:color w:val="000000"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>'
-      : '<w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Calibri" w:hAnsi="Arial" w:cs="Calibri"/><w:color w:val="000000"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>';
+      ? '<w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:eastAsiaTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:color w:val="000000"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>'
+      : '<w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:eastAsiaTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:color w:val="000000"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>';
     const run = text !== ''
       ? `<w:r>${rPr}<w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>`
       : '';
@@ -708,8 +715,11 @@ export async function generatePromesseBailFaradayDocx(formData, options = {}) {
     docXml = docXml.replace(/<w:p w14:paraId="3147F858"[\s\S]*?<\/w:p>/, customBenefXml);
   }
 
-  // 4. Remplacement du Préambule Point 2 (Page 2 : description du site, superficie en hectares, commune et code postal)
-  const siteDesc = (formData.descriptionSite || 'un site agricole dédié à la culture céréalière notamment').trim();
+  // 4. Remplacement du Préambule Point 2 (Page 2 : terrain, superficie en hectares, commune et code postal)
+  const rawSiteDesc = (formData.descriptionSite || '').trim();
+  const siteDesc = (!rawSiteDesc || rawSiteDesc === 'un site agricole dédié à la culture céréalière notamment' || rawSiteDesc.toLowerCase() === 'terrain')
+    ? 'un terrain'
+    : rawSiteDesc;
   const totalHa = (formData.superficieTotaleHa || '0.00').toString().replace(',', '.').trim();
   const communeUpper = (formData.commune || '..........').trim().toUpperCase();
   const cp = (formData.codePostal || '.....').trim();
@@ -774,7 +784,7 @@ export async function generatePromesseBailFaradayDocx(formData, options = {}) {
     docXml = docXml.replace(/<w:p w14:paraId="5071C2E0"[\s\S]*?<\/w:p>/, sigMentionXml);
   }
 
-  // 8. Injection de l'image du plan d'implantation (avec surface dans le cadre en bas à gauche à gauche du n° de parcelle) en Annexe 2 (Page 23)
+  // 8. Injection de l'image du plan d'implantation centrée en Annexe 2 (Page 23) sans ajout du cadre flottant
   const firstParcel = (Array.isArray(formData.parcelles) && formData.parcelles[0]) || {};
   const preparedPlan = await prepareAnnexe2PlanImageWithCartouche(formData.planImageUrl, {
     lat: formData.lat,
@@ -786,7 +796,7 @@ export async function generatePromesseBailFaradayDocx(formData, options = {}) {
     section: firstParcel.section || '',
     numero: firstParcel.numero || '',
     zoning: formData.cartoucheZonage || 'N / PLUi',
-    stampCartouche: Boolean(formData.stampCartoucheSurface)
+    stampCartouche: false
   });
 
   if (preparedPlan && preparedPlan.dataUrl) {
