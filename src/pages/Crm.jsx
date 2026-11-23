@@ -1136,9 +1136,28 @@ export default function Crm() {
                 .sort((a, b) => (new Date(b.createdAt || 0) - new Date(a.createdAt || 0)) || (b.id - a.id)) // Sort by newest (using createdAt or fallback to id)
                 .slice(0, 20)
                 .map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                    <div><div className="font-bold text-sm lg:text-base text-slate-900">{p.name || 'Projet'}</div><div className="text-xs text-slate-500">{p.city || '-'} • {p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')}</div></div>
-                    <Button size="sm" variant="ghost" className="text-blue-600" onClick={() => navigate(`/project/${p.id}/edit`)}><ExternalLink className="w-4 h-4" /></Button>
+                  <div
+                    key={p.id}
+                    onClick={() => navigate(`/project/${p.id}/edit`)}
+                    className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-bold text-sm lg:text-base text-slate-900">
+                        {[p.name, p.zip, p.city].filter(Boolean).join(' ').toUpperCase() || 'Projet'}
+                      </div>
+                      <div className="text-xs text-slate-500">{p.city || '-'} • {p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')}</div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-blue-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/project/${p.id}/edit`);
+                      }}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
                   </div>
                 ))}
             </div>
