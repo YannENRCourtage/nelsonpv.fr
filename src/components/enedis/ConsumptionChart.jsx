@@ -5,12 +5,35 @@ import {
 } from 'recharts';
 import { Zap, TrendingDown, Calendar, Table2, BarChart3 } from 'lucide-react';
 
-// ─── Parsing Enedis v5 ───────────────────────────────────────────────────────
+// ─── Parsing Enedis Mesure synchrone V2 & rétrocompatibilité V5 ──────────────
 function parseIntervals(apiResult) {
   if (!apiResult || apiResult.error) return [];
-  return (apiResult?.meter_reading?.interval_reading || [])
-    .map(r => ({ date: r.date || '', value: parseFloat(r.value || 0) }))
-    .filter(r => r.date && !isNaN(r.value));
+
+  // 1. Priorité au tableau normalisé interval_reading (présent en V2 adaptateur et V5)
+  const v5Readings = apiResult?.meter_reading?.interval_reading;
+  if (Array.isArray(v5Readings) && v5Readings.length > 0) {
+    return v5Readings
+      .map(r => ({ date: r.date || r.d || '', value: parseFloat(r.value ?? r.v ?? 0) }))
+      .filter(r => r.date && !isNaN(r.value));
+  }
+
+  // 2. Lecture directe du format Mesure synchrone V2 (grandeur[].points[])
+  const grandeurs = Array.isArray(apiResult?.grandeur)
+    ? apiResult.grandeur
+    : (Array.isArray(apiResult?.grandeurs) ? apiResult.grandeurs : null);
+  if (grandeurs && grandeurs.length > 0) {
+    const g = grandeurs.find(item => Array.isArray(item.points) && item.points.length > 0) || grandeurs[0];
+    const unit = (g?.unite || '').toString().trim().toUpperCase();
+    const mult = (unit === 'KWH' || unit === 'KW' || unit === 'KVA') ? 1000 : 1;
+    return (g?.points || [])
+      .map(pt => ({
+        date: pt.date || pt.d || pt.horodate || '',
+        value: parseFloat(pt.valeur ?? pt.value ?? pt.v ?? 0) * mult
+      }))
+      .filter(r => r.date && !isNaN(r.value));
+  }
+
+  return [];
 }
 
 function aggregateByDay(readings) {

@@ -13,7 +13,10 @@ import {
   ShieldCheck,
   Edit3,
   Loader2,
-  Sparkles
+  Sparkles,
+  FileText,
+  ExternalLink,
+  KeyRound
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,13 +25,16 @@ import { Badge } from '@/components/ui/badge';
 /**
  * Modale de sélection de PRM lors de la détection de plusieurs compteurs
  * à une même adresse (ex: maison + hangar agricole / plusieurs ateliers).
- * Intègre les flux réels Enedis, le croisement Sirene et la saisie manuelle 14 chiffres.
+ * Intègre les flux réels Enedis, le cache consentements NELSON, le croisement Sirene,
+ * les mécanismes de repli (Data Connect FranceConnect, Import Facture PDF) et la saisie manuelle 14 chiffres.
  */
 export default function PrmSelectionModal({
   isOpen,
   onClose,
   candidates = [],
   onSelectPrm,
+  onLaunchDataConnect,
+  onImportBillPdf,
   address = '',
   companyName = '',
   clientName = '',
@@ -162,26 +168,81 @@ export default function PrmSelectionModal({
           </div>
         )}
 
-        {/* 3. ÉTAT AUCUN COMPTEUR TROUVÉ (EMPTY STATE) */}
+        {/* 3. ÉTAT AUCUN COMPTEUR TROUVÉ (EMPTY STATE & MÉCANISME DE REPLI) */}
         {!isLoading && candidates.length === 0 && (
           <div className="p-6 space-y-4 flex-1 overflow-y-auto">
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-amber-300">
               <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="text-sm font-bold text-white">
-                  Aucun compteur trouvé à cette adresse exacte. Veuillez saisir le PRM manuellement.
+                  Aucun compteur trouvé directement dans le référentiel à cette adresse.
                 </p>
                 <p className="text-xs text-amber-200/80 leading-relaxed">
-                  L'adresse indiquée n'a pas renvoyé de point de livraison automatique (absence dans le référentiel Enedis ou libellé de voie spécifique). Vous pouvez renseigner directement le numéro PRM à 14 chiffres ci-dessous.
+                  Lorsque la recherche directe SGE / Datahub n'est pas disponible sur l'adresse saisie, vous pouvez récupérer automatiquement le PRM à 14 chiffres via l'une des 3 méthodes ci-dessous :
                 </p>
               </div>
             </div>
 
-            {/* Saisie manuelle immédiate */}
+            {/* Option A & B : Parcours Enedis Data Connect (FranceConnect) ou Import Facture PDF */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-4 rounded-2xl bg-blue-950/40 border border-blue-500/40 flex flex-col justify-between gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-blue-300 font-bold text-xs">
+                    <KeyRound className="w-4 h-4 text-blue-400 shrink-0" />
+                    <span>1. Enedis Data Connect (FranceConnect)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Le client s'identifie via FranceConnect et sélectionne son compteur : Enedis renvoie automatiquement son numéro PRM au callback sans avoir à le saisir.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (onLaunchDataConnect) {
+                      onLaunchDataConnect();
+                    } else {
+                      window.open('/api/enedis/auth?projectId=admin_test', '_blank', 'noopener,noreferrer');
+                    }
+                    onClose();
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs h-9 rounded-xl shadow-md shadow-blue-600/20"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                  Lancer Data Connect
+                </Button>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 flex flex-col justify-between gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
+                    <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>2. Importer une facture PDF client</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Importez une facture d'électricité PDF ou photo : l'extracteur détecte automatiquement le PRM à 14 chiffres, le titulaire et la consommation annuelle.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onImportBillPdf) {
+                      onImportBillPdf();
+                    }
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-9 rounded-xl shadow-md shadow-emerald-600/20"
+                >
+                  <FileText className="w-3.5 h-3.5 mr-1.5" />
+                  Importer une facture PDF
+                </Button>
+              </div>
+            </div>
+
+            {/* Option C : Saisie manuelle immédiate */}
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
               <label className="text-xs font-bold text-slate-300 flex items-center gap-2">
                 <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-                Numéro de PRM (14 chiffres) :
+                3. Ou saisir directement le numéro PRM / PDL (14 chiffres) :
               </label>
               <form onSubmit={handleValidateManual} className="flex flex-col sm:flex-row gap-2">
                 <Input
@@ -192,7 +253,7 @@ export default function PrmSelectionModal({
                     setManualPrm(e.target.value.replace(/\D/g, ''));
                     setManualError('');
                   }}
-                  placeholder="Ex: 16138350177475"
+                  placeholder="Ex: 50009371514981"
                   className="bg-slate-900 border-slate-700 text-white font-mono text-sm tracking-widest flex-1 focus:border-amber-400"
                   autoFocus
                 />
@@ -289,6 +350,18 @@ export default function PrmSelectionModal({
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-medium">
                               {cand.segment}
                             </span>
+                          )}
+
+                          {/* Badge Statut de consentement (Consentement actif vs à demander) */}
+                          {(cand.hasActiveConsent || cand.consentStatus === 'ACTIVE') ? (
+                            <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-[10px] px-2.5 py-0.5 flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3 text-emerald-400 inline" />
+                              Consentement actif
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-blue-500/15 text-blue-300 border border-blue-500/30 font-semibold text-[10px] px-2.5 py-0.5">
+                              Consentement à demander
+                            </Badge>
                           )}
 
                           {/* Badge Recommandé */}

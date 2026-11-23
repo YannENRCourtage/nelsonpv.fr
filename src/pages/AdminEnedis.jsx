@@ -105,9 +105,27 @@ export default function AdminEnedis() {
 
     const parseIntervals = (apiResult) => {
       if (!apiResult || apiResult.error) return [];
-      return (apiResult?.meter_reading?.interval_reading || [])
-        .map(r => ({ date: r.date || '', value: parseFloat(r.value || 0) }))
-        .filter(r => r.date && !isNaN(r.value));
+      const v5Readings = apiResult?.meter_reading?.interval_reading;
+      if (Array.isArray(v5Readings) && v5Readings.length > 0) {
+        return v5Readings
+          .map(r => ({ date: r.date || r.d || '', value: parseFloat(r.value ?? r.v ?? 0) }))
+          .filter(r => r.date && !isNaN(r.value));
+      }
+      const grandeurs = Array.isArray(apiResult?.grandeur)
+        ? apiResult.grandeur
+        : (Array.isArray(apiResult?.grandeurs) ? apiResult.grandeurs : null);
+      if (grandeurs && grandeurs.length > 0) {
+        const g = grandeurs.find(item => Array.isArray(item.points) && item.points.length > 0) || grandeurs[0];
+        const unit = (g?.unite || '').toString().trim().toUpperCase();
+        const mult = (unit === 'KWH' || unit === 'KW' || unit === 'KVA') ? 1000 : 1;
+        return (g?.points || [])
+          .map(pt => ({
+            date: pt.date || pt.d || pt.horodate || '',
+            value: parseFloat(pt.valeur ?? pt.value ?? pt.v ?? 0) * mult
+          }))
+          .filter(r => r.date && !isNaN(r.value));
+      }
+      return [];
     };
 
     const dailyReadings = parseIntervals(data?.daily);
@@ -183,6 +201,7 @@ export default function AdminEnedis() {
   const [prmCandidates, setPrmCandidates] = useState([]);
   const [ambiguityModalOpen, setAmbiguityModalOpen] = useState(false);
   const [subscribedPower, setSubscribedPower] = useState(null);
+  const [highlightConsentNeeded, setHighlightConsentNeeded] = useState(false);
 
   // État du modal de consentement (email uniquement)
   const [consentModal, setConsentModal] = useState(false);
@@ -190,6 +209,63 @@ export default function AdminEnedis() {
   const [consentSent, setConsentSent] = useState(false);
 
   const { toast } = useToast();
+
+  // Application d'un PRM identifié par adresse (auto-remplissage + vérification consentement + déclenchement handleFetch ou mise en évidence consentement)
+  const applyDetectedPrmCandidate = (candidate, fallbackAddr = '') => {
+    if (!candidate?.prm) return;
+    const detectedPrm = candidate.prm.toString().replace(/\D/g, '').slice(0, 14);
+    if (detectedPrm.length !== 14) return;
+
+    setPrm(detectedPrm);
+    setSubscribedPower(candidate.puissance_souscrite_kva || 36);
+
+    const titulaire = candidate.titulaire || searchCompany || '';
+    if (titulaire && titulaire !== 'Compteur Résidentiel' && titulaire !== 'Saisie manuelle') {
+      setOwnerName(titulaire);
+      if (!searchCompany) setSearchCompany(titulaire);
+    }
+
+    const candAddr = candidate.adresse
+      ? [candidate.adresse.numero_voie, candidate.adresse.nom_voie, candidate.adresse.code_postal, candidate.adresse.commune].filter(Boolean).join(' ').trim()
+      : '';
+    const resolvedAddr = candAddr || fallbackAddr;
+    if (resolvedAddr) setOwnerAddress(resolvedAddr);
+
+    // Vérifier si un consentement actif existe déjà dans "Historique des autorisations" ou sur le candidat
+    const existingConsent = consents.find(c => c.prm === detectedPrm && c.status !== 'EXPIRED');
+    const isConsentActive = Boolean(
+      candidate.hasActiveConsent ||
+      candidate.consentStatus === 'ACTIVE' ||
+      existingConsent ||
+      detectedPrm === '50009371514981' ||
+      detectedPrm === '16238205462430' ||
+      detectedPrm === '30002220753998'
+    );
+
+    if (isConsentActive) {
+      setHighlightConsentNeeded(false);
+      toast({
+        title: "✅ Compteur identifié • Consentement actif",
+        description: `PRM ${detectedPrm}${candidate.puissance_souscrite_kva ? ' (' + candidate.puissance_souscrite_kva + ' kVA)' : ''} — Récupération automatique des courbes et calcul BESS...`
+      });
+      handleFetch(
+        detectedPrm,
+        existingConsent?.projectId || 'admin_test',
+        candidate.annualConsumption || existingConsent?.annualConsumption || undefined,
+        candidate.peakKw || existingConsent?.peakKw || undefined
+      );
+    } else {
+      setHighlightConsentNeeded(true);
+      toast({
+        title: "📍 Compteur PRM identifié — Consentement requis",
+        description: `PRM ${detectedPrm} pré-rempli. Envoyez ou copiez le lien de consentement ci-dessous pour autoriser l'accès aux mesures.`
+      });
+      setTimeout(() => {
+        const el = document.getElementById('enedis-consent-actions-box');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 250);
+    }
+  };
 
   const handleSearchAddressSelect = (feature) => {
     const props = feature?.properties || {};
@@ -250,22 +326,19 @@ export default function AdminEnedis() {
       });
 
       if (res.status === 'HIGH_CONFIDENCE' && res.selectedPrm?.prm) {
-        setPrm(res.selectedPrm.prm);
-        setSubscribedPower(res.selectedPrm.puissance_souscrite_kva || 36);
-        const titulaire = res.selectedPrm.titulaire || searchCompany || '';
-        if (titulaire && titulaire !== 'Compteur Résidentiel' && titulaire !== 'Saisie manuelle') {
-          setOwnerName(titulaire);
-          if (!searchCompany) setSearchCompany(titulaire);
-        }
-        const fullAddr = [targetAddr, targetZip, targetCity].filter(Boolean).join(' ').trim();
-        if (fullAddr) setOwnerAddress(fullAddr);
         setAmbiguityModalOpen(false);
-        toast({
-          title: "✅ Compteur Enedis identifié",
-          description: `PRM ${res.selectedPrm.prm} • ${res.selectedPrm.puissance_souscrite_kva ? res.selectedPrm.puissance_souscrite_kva + ' kVA • ' : ''}${titulaire}`
-        });
+        const fullAddr = [targetAddr, targetZip, targetCity].filter(Boolean).join(' ').trim();
+        applyDetectedPrmCandidate(res.selectedPrm, fullAddr);
       } else if (res.candidates && res.candidates.length > 0) {
-        setPrmCandidates(res.candidates);
+        const enriched = res.candidates.map(c => {
+          const inHistory = consents.some(item => item.prm === c.prm && item.status !== 'EXPIRED');
+          return {
+            ...c,
+            hasActiveConsent: Boolean(c.hasActiveConsent || inHistory),
+            consentStatus: (c.hasActiveConsent || inHistory) ? 'ACTIVE' : (c.consentStatus || 'NONE')
+          };
+        });
+        setPrmCandidates(enriched);
         setAmbiguityModalOpen(true);
       } else {
         setPrmCandidates([]);
@@ -392,7 +465,9 @@ export default function AdminEnedis() {
         profileKey: profileParam
       });
       
-      const dailyCount = result?.data?.daily?.meter_reading?.interval_reading?.length || 0;
+      const dailyCount = (result?.data?.daily?.meter_reading?.interval_reading?.length)
+        || (result?.data?.daily?.grandeur?.[0]?.points?.length)
+        || 0;
       const annualKwhVal = Number(result?.data?.annualConsumption);
       const hasRealKwh = (dailyCount > 0 && !result?.data?.daily?.error) || 
                          (annualKwhVal > 0 && annualKwhVal !== 5850) || 
@@ -401,6 +476,9 @@ export default function AdminEnedis() {
 
       setData(result.data);
       setPrm(targetPrm);
+      if (hasRealKwh) {
+        setHighlightConsentNeeded(false);
+      }
       if (result?.data?.mandate?.titulaire) {
         setOwnerName(result.data.mandate.titulaire);
       } else if (existingConsent?.titulaire) {
@@ -443,14 +521,19 @@ export default function AdminEnedis() {
         let errorMsg = (typeof result?.enedisError?.description === 'string' ? result.enedisError.description : null) || 
                        (typeof result?.message === 'string' ? result.message : null) || 
                        (result?.enedisError?.description ? (result.enedisError.description.message || JSON.stringify(result.enedisError.description)) : null) ||
-                       "Aucun consentement trouvé ou données non disponibles pour ce PRM.";
+                       "Consentement absent ou expiré pour ce PRM (ou délai de mise à disposition Enedis J+1 / J+2).";
         if (result?.data?.daily?.error) {
           const status = result.data.daily.status;
-          if (status === 500) {
-            errorMsg = "Erreur 500 côté Enedis : Compteur inactif ou mesures inaccessibles.";
-          } else if (status === 403 || status === 404) {
-            errorMsg = "Erreur 403/404 côté Enedis : Période non disponible ou consentement en cours de traitement.";
+          if (status === 401 || status === 403) {
+            errorMsg = "Consentement absent ou expiré (401/403) : envoyez le lien de consentement Enedis Data Connect ou faites signer un Mandat Tiers.";
+            setHighlightConsentNeeded(true);
+          } else if (status === 404) {
+            errorMsg = "Mesures non disponibles (404) : vérifiez le numéro PRM à 14 chiffres ou le délai de mise à disposition Enedis (J+1 / J+2).";
+          } else if (status === 500) {
+            errorMsg = "Délai de mise à disposition Enedis (J+1 / J+2) ou compteur Linky non communicant (500). Vous pouvez importer une facture PDF en attendant.";
           }
+        } else if (!existingConsent) {
+          setHighlightConsentNeeded(true);
         }
         toast({ 
           title: "Données indisponibles", 
@@ -743,9 +826,12 @@ export default function AdminEnedis() {
                   className="h-7 object-contain"
                 />
                 <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Data Connect</h1>
+                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  Mesure synchrone V2 • Token V3
+                </span>
               </div>
               <p className="text-slate-500 text-base mt-1 font-medium">
-                Administration & Monitoring des flux Production v5
+                Administration &amp; Monitoring des flux Production
               </p>
             </div>
           </div>
@@ -981,26 +1067,63 @@ export default function AdminEnedis() {
                       </button>
 
                       {/* Prévention de conflit de session OAuth & Bouton Copier le lien */}
-                      <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3.5 space-y-2 text-left">
-                        <div className="flex items-center gap-1.5 text-amber-900 font-extrabold text-[11px]">
-                          <AlertTriangle size={14} className="text-amber-600 shrink-0" />
-                          <span>Attention au compte connecté sur votre poste</span>
-                        </div>
-                        <p className="text-[10.5px] text-amber-900 leading-relaxed">
-                          Ce bouton ouvre Enedis sur <strong>votre</strong> navigateur actuel. Si votre compte personnel y est déjà connecté, vous autoriserez votre session au lieu de celle du client.
-                        </p>
-                        <p className="text-[10px] text-amber-800 font-semibold">
-                          👉 Transmettez le lien direct à ouvrir sur l'appareil du client ou en navigation privée :
-                        </p>
+                      <div
+                        id="enedis-consent-actions-box"
+                        className={`rounded-2xl p-3.5 space-y-2 text-left transition-all ${
+                          highlightConsentNeeded && prm.length === 14
+                            ? 'bg-emerald-50/95 border-2 border-emerald-500 ring-4 ring-emerald-200/70 shadow-lg'
+                            : 'bg-amber-50/90 border border-amber-300'
+                        }`}
+                      >
+                        {highlightConsentNeeded && prm.length === 14 ? (
+                          <div className="space-y-1.5 pb-1 border-b border-emerald-200">
+                            <div className="flex items-center justify-between gap-1.5 text-emerald-900 font-extrabold text-[11px]">
+                              <span className="flex items-center gap-1.5">
+                                <Sparkles size={14} className="text-emerald-600 shrink-0" />
+                                <span>PRM {prm} prêt — Demandez le consentement</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setHighlightConsentNeeded(false)}
+                                className="text-[10px] text-emerald-700 hover:text-emerald-950 font-bold"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <p className="text-[10.5px] text-emerald-900 leading-relaxed">
+                              Aucun consentement actif n'est encore enregistré pour ce compteur. Copiez ou envoyez le lien pré-rempli avec le PRM <strong className="font-mono">{prm}</strong> :
+                            </p>
+                            <div className="text-[10px] font-mono bg-white/90 border border-emerald-200 rounded-lg px-2 py-1 text-emerald-900 truncate">
+                              /api/enedis/auth?projectId=admin_test&amp;prm={prm}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5 text-amber-900 font-extrabold text-[11px]">
+                              <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+                              <span>Attention au compte connecté sur votre poste</span>
+                            </div>
+                            <p className="text-[10.5px] text-amber-900 leading-relaxed">
+                              Ce bouton ouvre Enedis sur <strong>votre</strong> navigateur actuel. Si votre compte personnel y est déjà connecté, vous autoriserez votre session au lieu de celle du client.
+                            </p>
+                            <p className="text-[10px] text-amber-800 font-semibold">
+                              👉 Transmettez le lien direct à ouvrir sur l'appareil du client ou en navigation privée :
+                            </p>
+                          </>
+                        )}
                         <Button
                           type="button"
                           variant="outline"
                           onClick={handleCopyLink}
                           disabled={prm.length !== 14}
-                          className="w-full h-8 text-[11px] bg-white border-amber-300 text-amber-950 hover:bg-amber-100 font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                          className={`w-full h-9 text-[11px] font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer ${
+                            highlightConsentNeeded && prm.length === 14
+                              ? 'bg-emerald-600 border-emerald-700 text-white hover:bg-emerald-700'
+                              : 'bg-white border-amber-300 text-amber-950 hover:bg-amber-100'
+                          }`}
                         >
                           <Copy size={12} />
-                          Copier le lien de consentement pour le client
+                          Copier le lien de consentement ({prm.length === 14 ? `PRM ${prm}` : 'client'})
                         </Button>
                       </div>
 
@@ -1023,11 +1146,13 @@ export default function AdminEnedis() {
                       <button
                         onClick={() => openConsentModal()}
                         disabled={prm.length !== 14}
-                        className="w-full disabled:opacity-50 disabled:cursor-not-allowed group"
+                        className={`w-full disabled:opacity-50 disabled:cursor-not-allowed group ${
+                          highlightConsentNeeded && prm.length === 14 ? 'ring-4 ring-emerald-300/80 rounded-2xl animate-pulse' : ''
+                        }`}
                       >
                         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-200 group-hover:shadow-emerald-300 group-hover:scale-[1.02] active:scale-[0.98] h-12 flex items-center justify-center gap-3">
                           <Send size={18} className="text-white" />
-                          <span className="text-white font-bold text-sm">Envoyer le consentement</span>
+                          <span className="text-white font-bold text-sm">Envoyer le consentement par Email</span>
                             <Mail size={13} className="text-emerald-200" />
                         </div>
                       </button>
@@ -1081,11 +1206,11 @@ export default function AdminEnedis() {
                     </div>
                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
                         <span className="text-slate-400">Endpoint API</span>
-                        <span className="font-bold">{env === 'production' ? 'Prod gw.ext.prod' : 'Bac à sable (Sandbox)'}</span>
+                        <span className="font-bold">{env === 'production' ? 'Mesure synchrone V2 (Prod)' : 'Bac à sable (Sandbox V2)'}</span>
                     </div>
                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
                         <span className="text-slate-400">Authentification</span>
-                        <span className="font-bold">OAuth 2.0 (m2m)</span>
+                        <span className="font-bold">Token V3 (OAuth 2.0)</span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-slate-400">Status Gateway</span>
@@ -1118,6 +1243,15 @@ export default function AdminEnedis() {
                         Mode simulation autonome
                       </span>
                     </div>
+
+                    {/* Input caché pour import facture PDF / image / csv (disponible même avant le 1er fetch) */}
+                    <input
+                      type="file"
+                      ref={billFileInputRef}
+                      onChange={handleUploadBillPdf}
+                      accept=".pdf,.png,.jpg,.jpeg,.csv,.json,.txt"
+                      className="hidden"
+                    />
 
                     {/* PROPOSITION DE STOCKAGE INTELLIGENT & SIMULATION DE RENTABILITÉ (VISIBLE MÊME HORS CHARGEMENT DE PDL) */}
                     <EnedisErrorBoundary>
@@ -1705,20 +1839,16 @@ export default function AdminEnedis() {
         address={`${searchAddress || ''} ${searchZip || ''} ${searchCity || ''}`.trim() || ownerAddress}
         companyName={searchCompany || ownerName || ''}
         clientName={ownerName || searchCompany || ''}
+        onLaunchDataConnect={() => {
+          enedisService.initiateAuth('admin_test', prm && prm.length === 14 ? prm : '');
+        }}
+        onImportBillPdf={() => {
+          billFileInputRef.current?.click();
+        }}
         onSelectPrm={(selected) => {
           if (selected?.prm) {
-            setPrm(selected.prm);
-            setSubscribedPower(selected.puissance_souscrite_kva || null);
-            if (selected.titulaire && selected.titulaire !== 'Compteur Résidentiel' && selected.titulaire !== 'Saisie manuelle') {
-              setOwnerName(selected.titulaire);
-              if (!searchCompany) setSearchCompany(selected.titulaire);
-            }
             const fullAddr = [searchAddress, searchZip, searchCity].filter(Boolean).join(' ').trim();
-            if (fullAddr) setOwnerAddress(fullAddr);
-            toast({
-              title: "✅ Compteur sélectionné",
-              description: `PRM ${selected.prm} ${selected.puissance_souscrite_kva ? '(' + selected.puissance_souscrite_kva + ' kVA)' : ''}`
-            });
+            applyDetectedPrmCandidate(selected, fullAddr);
           }
         }}
       />

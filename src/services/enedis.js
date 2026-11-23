@@ -1,29 +1,73 @@
 import axios from 'axios';
 
+/**
+ * Normalise une réponse de mesure Enedis (format Mesure synchrone V2 `grandeur[].points[]`
+ * ou ancien format Metering Data V5 `meter_reading.interval_reading[]`) en tableau `[{ date, value }]`
+ * exprimé dans l'unité canonique (Wh, W, VA).
+ */
+export function parseEnedisMeasureIntervals(apiResult) {
+  if (!apiResult || apiResult.error) return [];
+
+  // 1. Priorité au tableau normalisé interval_reading (présent en V2 adaptateur et V5)
+  const v5Readings = apiResult?.meter_reading?.interval_reading;
+  if (Array.isArray(v5Readings) && v5Readings.length > 0) {
+    return v5Readings
+      .map(r => ({
+        date: (r.date || r.d || '').toString(),
+        value: parseFloat(r.value ?? r.v ?? 0)
+      }))
+      .filter(r => r.date && !isNaN(r.value));
+  }
+
+  // 2. Lecture directe du format Mesure synchrone V2 : grandeur[].points[]
+  const grandeurs = Array.isArray(apiResult.grandeur)
+    ? apiResult.grandeur
+    : (Array.isArray(apiResult.grandeurs) ? apiResult.grandeurs : null);
+
+  if (grandeurs && grandeurs.length > 0) {
+    const g = grandeurs.find(item => Array.isArray(item.points) && item.points.length > 0) || grandeurs[0];
+    if (Array.isArray(g?.points) && g.points.length > 0) {
+      const unit = (g.unite || '').toString().trim().toUpperCase();
+      const multiplier = (unit === 'KWH' || unit === 'KW' || unit === 'KVA') ? 1000 : 1;
+      return g.points
+        .map(pt => ({
+          date: (pt.date || pt.d || pt.horodate || '').toString(),
+          value: parseFloat(pt.valeur ?? pt.value ?? pt.v ?? 0) * multiplier
+        }))
+        .filter(r => r.date && !isNaN(r.value));
+    }
+  }
+
+  return [];
+}
+
 const enedisService = {
+  parseEnedisMeasureIntervals,
+
   /**
-   * Démarre le flux OAuth2 de consentement Enedis
-   * IMPORTANT : le PRM doit être passé pour que la page de consentement
-   * Enedis affiche les informations du client (sinon page blanche).
+   * Démarre le flux OAuth2 de consentement Enedis Data Connect (3 ans max / FranceConnect)
+   * Si le PRM (14 chiffres) est connu, il est injecté dans l'URL.
+   * Si le PRM n'est pas connu (cas de repli après recherche par adresse), le client s'identifie
+   * via FranceConnect et Enedis renvoie automatiquement son usage_point_id au callback.
    * @param {string} projectId 
-   * @param {string} prm - Numéro PRM 14 chiffres
+   * @param {string} prm - Numéro PRM 14 chiffres (optionnel en mode découverte FranceConnect)
    */
-  initiateAuth(projectId, prm) {
-    if (!projectId) throw new Error('Project ID is required');
-    const params = new URLSearchParams({ projectId });
-    if (prm && prm.length === 14) params.append('prm', prm);
-    // Ouvre dans un nouvel onglet pour préserver le contexte du projet courant
+  initiateAuth(projectId = 'admin_test', prm = '') {
+    const params = new URLSearchParams({ projectId: projectId || 'admin_test' });
+    const cleanPrm = (prm || '').toString().trim();
+    if (cleanPrm && cleanPrm.length === 14) params.append('prm', cleanPrm);
     window.open(`/api/enedis/auth?${params.toString()}`, '_blank', 'noopener,noreferrer');
   },
 
   /**
-   * Retourne l'URL d'autorisation Enedis avec le PRM
+   * Retourne l'URL d'autorisation Enedis avec le PRM (si fourni)
    * @param {string} projectId 
    * @param {string} prm
    */
-  getAuthorizeUrl(projectId, prm) {
-    const params = new URLSearchParams({ projectId });
-    if (prm && prm.length === 14) params.append('prm', prm);
+  getAuthorizeUrl(projectId = 'admin_test', prm = '') {
+    const params = new URLSearchParams({ projectId: projectId || 'admin_test' });
+    const cleanPrm = (prm || '').toString().trim();
+    if (cleanPrm && cleanPrm.length === 14) params.append('prm', cleanPrm);
     return `/api/enedis/auth?${params.toString()}`;
   },
 
@@ -92,6 +136,8 @@ const enedisService = {
     streetName = '',
     zip = '',
     city = '',
+    citycode = '',
+    inseeCode = '',
     complement = '',
     companyName = '',
     clientName = '',
@@ -108,6 +154,8 @@ const enedisService = {
         streetName,
         zip,
         city,
+        citycode: citycode || inseeCode || '',
+        inseeCode: inseeCode || citycode || '',
         complement,
         companyName,
         clientName,

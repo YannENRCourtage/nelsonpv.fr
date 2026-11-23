@@ -38,6 +38,10 @@ import { isochroneService } from "@/services/IsochroneService";
 import { Zap, Sun, Users, Building as BuildingIcon } from 'lucide-react';
 import { squarePolygon } from '@/utils/squarePolygon';
 import { renderHtaTransformerPopupDOM } from '@/utils/htaTransformerAnalyzer.js';
+import { CAPARESEAU_SUBSTATIONS } from '@/data/capareseauSubstations.js';
+import { BESS_ODRE_MATRIX } from '@/data/bessOdreMatrix.js';
+import { getCreSubstationQualification } from '@/services/creZonesService.js';
+import { findFallbackAvailableSubstation } from '@/services/odreSubstationFallback.js';
 
 // --- Clé API IGN ---
 // 👇 COPIEZ VOTRE CLÉ API GÉOSERVICES IGN CI-DESSOUS 👇
@@ -1365,6 +1369,400 @@ function S3REnRLayerManager({ layersRef, activeLayers }) {
       marker.bindPopup(popupContent, { maxWidth: 300 });
       marker.addTo(layerGroupRef.current);
     });
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
+// ─── NOUVEAU CALQUE 3 : SATURATION RÉSEAU (ZONES EN CONTRAINTE / PÉRIMÈTRES CAPARÉSEAU / ODRE / CRE 2025-227) ────────
+function SaturationReseauLayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('saturationReseau');
+  const loadedIds = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
+  const voronoiCacheRef = useRef(null);
+  const mapPointsCacheRef = useRef(null);
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['saturationReseau'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const classifySaturation = (capDispoMw, queueMw, reservedMw, txStr) => {
+    const cap = isNaN(capDispoMw) ? 0 : Math.max(0, capDispoMw);
+    const queue = isNaN(queueMw) ? 0 : Math.max(0, queueMw);
+    const reserved = isNaN(reservedMw) ? 0 : Math.max(0, reservedMw);
+    const txNum = parseFloat(String(txStr || '').replace(/[^\d.]/g, ''));
+
+    // 1. Zone saturée / Sans capacité nouvelle production (Rouge)
+    if (cap <= 0.05 || txNum >= 100) {
+      return {
+        tier: 'saturated',
+        statusLabel: 'Zone Saturée (0 MW disponible)',
+        shortBadge: 'SATURÉ • 0 MW',
+        color: '#dc2626',       // Red-600
+        borderColor: '#991b1b', // Red-800
+        fillColor: '#ef4444',   // Red-500
+        fillOpacity: 0.30,
+        bgLight: '#fef2f2',
+        textDark: '#991b1b',
+        borderLight: '#fecaca',
+        description: 'Réseau saturé à court/moyen terme pour toute nouvelle injection (capacité résiduelle nulle).'
+      };
+    }
+
+    // 2. Zone sous tension / Capacité limitée ou file d'attente élevée (Orange)
+    if (cap < 3.0 || (queue > 0 && queue >= cap * 0.75) || (!isNaN(txNum) && txNum >= 75)) {
+      return {
+        tier: 'constrained',
+        statusLabel: 'Sous tension / Capacité limitée',
+        shortBadge: `SOUS TENSION • ${cap.toFixed(1)} MW`,
+        color: '#ea580c',       // Orange-600
+        borderColor: '#9a3412', // Orange-800
+        fillColor: '#f97316',   // Orange-500
+        fillOpacity: 0.24,
+        bgLight: '#fff7ed',
+        textDark: '#9a3412',
+        borderLight: '#fed7aa',
+        description: queue >= cap * 0.75
+          ? `Vigilance raccordement : file d'attente élevée (${queue.toFixed(1)} MW) face à la capacité restante.`
+          : `Capacité d'accueil résiduelle limitée (${cap.toFixed(2)} MW) sur ce périmètre.`
+      };
+    }
+
+    // 3. Zone ouverte / Capacité disponible confortable (Vert)
+    return {
+      tier: 'available',
+      statusLabel: 'Capacité d’accueil disponible',
+      shortBadge: `DISPONIBLE • ${cap.toFixed(1)} MW`,
+      color: '#16a34a',       // Green-600
+      borderColor: '#166534', // Green-800
+      fillColor: '#22c55e',   // Green-500
+      fillOpacity: 0.14,
+      bgLight: '#f0fdf4',
+      textDark: '#166534',
+      borderLight: '#bbf7d0',
+      description: `Périmètre ouvert au raccordement (${cap.toFixed(2)} MW disponibles).`
+    };
+  };
+
+  const buildPopupHtml = (item, classification, sourceLabel) => {
+    const creInfo = getCreSubstationQualification(item.name, item.code);
+    const matrixMatches = (BESS_ODRE_MATRIX || []).filter(
+      m => (m.posteSourceEnedis || '').trim().toUpperCase() === (item.name || '').trim().toUpperCase()
+    );
+    const fallbackSub = classification.tier === 'saturated' && item.lat && item.lng
+      ? findFallbackAvailableSubstation(item.lat, item.lng, item.name)
+      : null;
+
+    const qpFormatted = item.quotePart
+      ? (String(item.quotePart).includes('k€') ? item.quotePart : `${item.quotePart} k€/MW`)
+      : 'N/A';
+
+    return `
+      <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 280px; max-width: 335px; padding: 4px; color: #0f172a;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.02em;">
+            ⚡ Saturation Réseau
+          </span>
+          <span style="font-size: 10px; font-weight: 800; background: ${classification.bgLight}; color: ${classification.textDark}; border: 1px solid ${classification.borderLight}; padding: 2px 7px; border-radius: 9999px;">
+            ${classification.shortBadge}
+          </span>
+        </div>
+
+        <div style="margin-bottom: 8px;">
+          <div style="font-size: 15px; font-weight: 900; color: #0f172a; line-height: 1.2;">
+            ${escapeHtml(item.name || 'Poste Source')}
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+            Code : <strong style="color: #334155;">${escapeHtml(item.code || 'N/A')}</strong>
+            • Tension : <strong style="color: #334155;">${escapeHtml(item.voltage || 'HTA 20 kV')}</strong>
+            ${item.territory ? ` • ${escapeHtml(item.territory)}` : ''}
+          </div>
+        </div>
+
+        <div style="background: ${classification.bgLight}; border: 1px solid ${classification.borderLight}; border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; font-size: 11px; color: ${classification.textDark}; line-height: 1.35;">
+          <strong>${classification.statusLabel} :</strong> ${classification.description}
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 7px;">
+            <div style="font-size: 9.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">Capacité dispo</div>
+            <div style="font-size: 13.5px; font-weight: 900; color: ${classification.color};">
+              ${item.capDispoMw.toFixed(2)} MW
+            </div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 7px;">
+            <div style="font-size: 9.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">File d'attente</div>
+            <div style="font-size: 13.5px; font-weight: 900; color: ${item.queueMw > 0 ? '#d97706' : '#334155'};">
+              ${item.queueMw.toFixed(1)} MW
+            </div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 7px;">
+            <div style="font-size: 9.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">Cap. réservée</div>
+            <div style="font-size: 12.5px; font-weight: 800; color: #334155;">
+              ${item.reservedMw.toFixed(1)} MW
+            </div>
+          </div>
+          <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 5px 7px;">
+            <div style="font-size: 9.5px; color: #92400e; font-weight: 700; text-transform: uppercase;">Quote-part S3REnR</div>
+            <div style="font-size: 12.5px; font-weight: 900; color: #b45309;">
+              ${escapeHtml(qpFormatted)}
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size: 11px; color: #475569; space-y: 3px; border-top: 1px solid #f1f5f9; padding-top: 6px;">
+          ${item.txStr ? `<div style="margin-bottom: 3px;">Taux de saturation S3REnR : <strong style="color: #0f172a;">${escapeHtml(item.txStr)}</strong></div>` : ''}
+          ${item.rteCdr !== undefined && item.rteCdr !== '' ? `<div style="margin-bottom: 3px;">Capacité Transport RTE / GRD : <strong style="color: #0f172a;">RTE ${escapeHtml(String(item.rteCdr))} MW / GRD ${escapeHtml(String(item.grdCdr ?? item.capDispoMw))} MW</strong></div>` : ''}
+          <div style="margin-bottom: 3px;">
+            Zonage CRE 2025-227 (TURPE 7) :
+            <strong style="color: ${creInfo.isIndexed ? '#2563eb' : '#475569'};">
+              ${escapeHtml(creInfo.label)}
+            </strong>
+          </div>
+          ${matrixMatches.length > 0 ? `
+            <div style="margin-top: 4px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 5px; padding: 4px 6px; font-size: 10.5px; color: #1e40af;">
+              📌 <strong>Matrice NELSON ODRE :</strong> ${matrixMatches.length} site(s) rattaché(s) (${escapeHtml(matrixMatches.map(m => m.siteName).slice(0, 3).join(', '))})
+            </div>
+          ` : ''}
+          ${fallbackSub ? `
+            <div style="margin-top: 4px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 4px 6px; font-size: 10.5px; color: #166534;">
+              💡 <strong>Repli conseillé (&gt; 0 MW) :</strong> Poste <strong>${escapeHtml(fallbackSub.name)}</strong> (${fallbackSub.capMw} MW dispo à ~${fallbackSub.distanceKm} km)
+            </div>
+          ` : ''}
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9.5px; color: #94a3b8; margin-top: 8px; padding-top: 4px; border-top: 1px dashed #e2e8f0;">
+          <span>Source : ${escapeHtml(sourceLabel)}</span>
+          ${item.updated ? `<span>MAJ : ${escapeHtml(item.updated)}</span>` : ''}
+        </div>
+      </div>
+    `;
+  };
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+
+    // 1. Chargement prioritaire des polygones de zones de desserte (Voronoï Caparéseau)
+    if (!voronoiCacheRef.current) {
+      try {
+        const resVoronoi = await fetch('/datas/capareseau_voronoi.json');
+        if (resVoronoi.ok) {
+          const jsonVoronoi = await resVoronoi.json();
+          if (jsonVoronoi && Array.isArray(jsonVoronoi.features) && jsonVoronoi.features.length > 0) {
+            voronoiCacheRef.current = jsonVoronoi.features;
+            if (layersRef.current) layersRef.current._saturationDataSource = 'Polygones Caparéseau / S3REnR & CRE 2025-227';
+          }
+        }
+      } catch (err) {
+        console.warn('[SaturationReseau] Périmètres Voronoï indisponibles, bascule sur les postes sources:', err);
+      }
+    }
+
+    // 2. Mode de repli si les polygones Voronoï ne sont pas disponibles : capareseau_map.json puis CAPARESEAU_SUBSTATIONS
+    if (!voronoiCacheRef.current && !mapPointsCacheRef.current) {
+      try {
+        const resMap = await fetch('/datas/capareseau_map.json');
+        if (resMap.ok) {
+          const jsonMap = await resMap.json();
+          if (Array.isArray(jsonMap) && jsonMap.length > 0) {
+            mapPointsCacheRef.current = jsonMap;
+            if (layersRef.current) layersRef.current._saturationDataSource = 'Postes Sources Caparéseau (Rayon d’influence)';
+          }
+        }
+      } catch (err) {
+        console.warn('[SaturationReseau] capareseau_map.json indisponible, repli sur CAPARESEAU_SUBSTATIONS:', err);
+      }
+
+      if (!mapPointsCacheRef.current && Array.isArray(CAPARESEAU_SUBSTATIONS)) {
+        mapPointsCacheRef.current = CAPARESEAU_SUBSTATIONS;
+        if (layersRef.current) layersRef.current._saturationDataSource = 'Base locale NELSON (Caparéseau / ODRE)';
+      }
+    }
+
+    const bounds = map.getBounds().pad(0.25);
+    const sourceLabel = layersRef.current?._saturationDataSource || 'Caparéseau / Enedis / ODRE';
+
+    // Cas A : Rendu des polygones de saturation (Voronoï) + Marqueurs des postes sources
+    if (voronoiCacheRef.current) {
+      voronoiCacheRef.current.forEach(feature => {
+        const props = feature.properties || {};
+        const lat = parseFloat(props.Y);
+        const lng = parseFloat(props.X);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        if (!bounds.contains([lat, lng])) return;
+
+        const id = `voronoi-${props.code || props.name}-${lat.toFixed(4)}`;
+        if (loadedIds.current.has(id)) return;
+        loadedIds.current.add(id);
+
+        const vals = props.values || {};
+        const rawNa = parseFloat(vals.INFO_NA);
+        const rawGrd = parseFloat(vals.GRD1_CDR);
+        const capDispoMw = !isNaN(rawNa) ? rawNa : (!isNaN(rawGrd) ? rawGrd : 0);
+        const queueMw = parseFloat(vals.INFO_FAS3R) || 0;
+        const reservedMw = parseFloat(vals.INFO_ESS3R) || parseFloat(vals.INFO_CR) || 0;
+        const txStr = vals.INFO_TX || (capDispoMw <= 0 ? '100 %' : '');
+
+        const item = {
+          name: props.name || 'Poste Source',
+          code: props.code || '',
+          lat,
+          lng,
+          voltage: props.htb_type || 'HTA 20 kV',
+          territory: props.territory_name || '',
+          capDispoMw,
+          queueMw,
+          reservedMw,
+          quotePart: vals.INFO_QP || 'N/A',
+          txStr,
+          rteCdr: vals.RTE_CDR,
+          grdCdr: vals.GRD1_CDR,
+          updated: props.updated || null
+        };
+
+        const classification = classifySaturation(capDispoMw, queueMw, reservedMw, txStr);
+        const popupHtml = buildPopupHtml(item, classification, sourceLabel);
+        const tooltipText = `⚡ ${item.name} (${item.code || 'PS'}) — ${classification.shortBadge}${queueMw > 0 ? ` • File: ${queueMw.toFixed(1)} MW` : ''}`;
+
+        // 1. Polygone de la zone d'influence du poste source
+        if (feature.geometry) {
+          const polyLayer = L.geoJSON(feature.geometry, {
+            style: {
+              color: classification.borderColor,
+              weight: classification.tier === 'saturated' ? 2 : 1.5,
+              opacity: 0.85,
+              fillColor: classification.fillColor,
+              fillOpacity: classification.fillOpacity,
+              dashArray: classification.tier === 'available' ? '4, 4' : null
+            }
+          });
+
+          polyLayer.on('mouseover', (e) => {
+            e.target.setStyle({
+              fillOpacity: Math.min(0.50, classification.fillOpacity + 0.15),
+              weight: 2.5
+            });
+          });
+          polyLayer.on('mouseout', (e) => {
+            e.target.setStyle({
+              fillOpacity: classification.fillOpacity,
+              weight: classification.tier === 'saturated' ? 2 : 1.5
+            });
+          });
+
+          polyLayer.bindPopup(popupHtml, { maxWidth: 350 });
+          polyLayer.bindTooltip(tooltipText, { sticky: true, opacity: 0.95 });
+          polyLayer.addTo(layerGroupRef.current);
+        }
+
+        // 2. Point central du poste source avec badge de statut
+        const centerMarker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            className: 'saturation-substation-icon',
+            html: `
+              <div style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: ${classification.color}; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.45); color: #ffffff; font-size: 11px; font-weight: 900; cursor: pointer;">
+                ${classification.tier === 'saturated' ? '✕' : (classification.tier === 'constrained' ? '!' : '✓')}
+              </div>
+            `,
+            iconSize: [22, 22],
+            iconAnchor: [11, 11]
+          })
+        });
+
+        centerMarker.bindPopup(popupHtml, { maxWidth: 350 });
+        centerMarker.bindTooltip(tooltipText, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+        centerMarker.addTo(layerGroupRef.current);
+      });
+      return;
+    }
+
+    // Cas B : Mode de repli résilient (Cercles d'influence + Marqueurs depuis capareseau_map.json ou CAPARESEAU_SUBSTATIONS)
+    if (mapPointsCacheRef.current) {
+      mapPointsCacheRef.current.forEach(raw => {
+        const lat = parseFloat(raw.Y ?? raw.lat);
+        const lng = parseFloat(raw.X ?? raw.lng);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        if (!bounds.contains([lat, lng])) return;
+
+        const id = `fallback-sat-${raw.code || raw.name}-${lat.toFixed(4)}`;
+        if (loadedIds.current.has(id)) return;
+        loadedIds.current.add(id);
+
+        const vals = raw.values || {};
+        const rawNa = parseFloat(vals.INFO_NA ?? raw.capMw);
+        const capDispoMw = !isNaN(rawNa) ? rawNa : 0;
+        const queueMw = parseFloat(vals.INFO_FAS3R ?? raw.fileAttenteMw) || 0;
+        const reservedMw = parseFloat(vals.INFO_ESS3R ?? raw.capReserveeMw) || 0;
+        const txStr = vals.INFO_TX || (capDispoMw <= 0 ? '100 %' : '');
+
+        const item = {
+          name: raw.name || 'Poste Source',
+          code: raw.code || '',
+          lat,
+          lng,
+          voltage: raw.htb_type || raw.voltage || 'HTA 20 kV',
+          territory: raw.territory_name || '',
+          capDispoMw,
+          queueMw,
+          reservedMw,
+          quotePart: vals.INFO_QP ?? raw.quotePart ?? 'N/A',
+          txStr,
+          rteCdr: vals.RTE_CDR,
+          grdCdr: vals.GRD1_CDR,
+          updated: raw.updated || null
+        };
+
+        const classification = classifySaturation(capDispoMw, queueMw, reservedMw, txStr);
+        const popupHtml = buildPopupHtml(item, classification, sourceLabel);
+        const tooltipText = `⚡ ${item.name} (${item.code || 'PS'}) — ${classification.shortBadge}`;
+
+        const influenceCircle = L.circle([lat, lng], {
+          radius: 4500,
+          color: classification.borderColor,
+          weight: 1.5,
+          opacity: 0.85,
+          fillColor: classification.fillColor,
+          fillOpacity: classification.fillOpacity
+        });
+
+        influenceCircle.bindPopup(popupHtml, { maxWidth: 350 });
+        influenceCircle.bindTooltip(tooltipText, { sticky: true, opacity: 0.95 });
+        influenceCircle.addTo(layerGroupRef.current);
+
+        const centerMarker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            className: 'saturation-substation-icon',
+            html: `
+              <div style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: ${classification.color}; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.45); color: #ffffff; font-size: 11px; font-weight: 900; cursor: pointer;">
+                ${classification.tier === 'saturated' ? '✕' : (classification.tier === 'constrained' ? '!' : '✓')}
+              </div>
+            `,
+            iconSize: [22, 22],
+            iconAnchor: [11, 11]
+          })
+        });
+
+        centerMarker.bindPopup(popupHtml, { maxWidth: 350 });
+        centerMarker.bindTooltip(tooltipText, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+        centerMarker.addTo(layerGroupRef.current);
+      });
+    }
   };
 
   useEffect(() => {
@@ -3596,6 +3994,14 @@ const LAYERS = {
     maxZoom: 22,
     sld_body: ENEDIS_POSTES_SLD
   },
+  saturationReseau: {
+    name: "Saturation réseau",
+    type: 'custom',
+    isDynamic: true,
+    attribution: "Caparéseau / Enedis / ODRE / CRE 2025-227",
+    isOverlay: true,
+    zIndex: 53
+  },
   enedisLigneBT: {
     name: "Lignes BT",
     type: 'custom',
@@ -4416,6 +4822,74 @@ function BanPlusLegend({ layersRef }) {
         <p className="text-[10px] text-gray-500 italic mt-1 pt-1 border-t border-gray-100">
           Base Adresse Nationale et composantes
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// LÉGENDE SATURATION RÉSEAU (CAPARÉSEAU / ENEDIS / ODRE / CRE 2025-227)
+// ====================================================================
+function SaturationReseauLegend({ layersRef, activeLayers }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+  const [dataSource, setDataSource] = useState('Caparéseau / Enedis / ODRE');
+
+  useEffect(() => {
+    const checkLayer = () => {
+      const layer = layersRef.current?.['saturationReseau'];
+      const isVisible = Boolean(activeLayers?.has('saturationReseau') || (layer && map.hasLayer(layer)));
+      setShowLegend(isVisible);
+      if (layersRef.current?._saturationDataSource) {
+        setDataSource(layersRef.current._saturationDataSource);
+      }
+    };
+    checkLayer();
+    const interval = setInterval(checkLayer, 400);
+    return () => clearInterval(interval);
+  }, [map, layersRef, activeLayers]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[268px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[265px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900 flex items-center gap-1.5">
+          <span>⚡</span> Légende Saturation réseau
+        </h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded" title="Masquer la légende">
+          <XIcon className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="space-y-2 text-[10px]">
+        <div className="flex items-start gap-2">
+          <div className="w-4 h-4 rounded bg-[#EF4444]/80 border-2 border-[#991B1B] shrink-0 mt-0.5 flex items-center justify-center text-white font-bold text-[9px]">✕</div>
+          <div>
+            <span className="text-red-900 font-bold">Zone saturée (0 MW disponible)</span>
+            <p className="text-gray-600 text-[9px] leading-tight">Sans capacité d'accueil nouvelle production à court/moyen terme (S3REnR saturé).</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <div className="w-4 h-4 rounded bg-[#F97316]/80 border-2 border-[#9A3412] shrink-0 mt-0.5 flex items-center justify-center text-white font-bold text-[9px]">!</div>
+          <div>
+            <span className="text-amber-900 font-bold">Sous tension / Capacité limitée</span>
+            <p className="text-gray-600 text-[9px] leading-tight">Capacité résiduelle &lt; 3 MW ou file d'attente élevée (vigilance raccordement).</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <div className="w-4 h-4 rounded bg-[#22C55E]/70 border-2 border-[#166534] shrink-0 mt-0.5 flex items-center justify-center text-white font-bold text-[9px]">✓</div>
+          <div>
+            <span className="text-emerald-900 font-bold">Capacité d'accueil disponible</span>
+            <p className="text-gray-600 text-[9px] leading-tight">Périmètre ouvert au raccordement (capacité résiduelle ≥ 3 MW).</p>
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 pt-1.5 border-t border-gray-200 text-[9px] text-gray-500 leading-tight">
+        <div className="font-semibold text-gray-700">Source : {dataSource}</div>
+        <div className="text-[8.5px] text-gray-400 mt-0.5">Cliquez sur une zone ou un poste pour voir la quote-part S3REnR, la file d'attente et le zonage CRE.</div>
       </div>
     </div>
   );
@@ -7111,6 +7585,7 @@ export default function MapElements({
           <HTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <BTLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} project={project} features={features} targetPos={targetPos} />
+          <SaturationReseauLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesSourcesRTELayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <InstallationsProdLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <S3REnRLayerManager layersRef={layersRef} activeLayers={activeLayers} />
@@ -7131,6 +7606,7 @@ export default function MapElements({
           <LoiLittoralLegend layersRef={layersRef} />
           <BanPlusLegend layersRef={layersRef} />
           <ZAERLegend layersRef={layersRef} />
+          <SaturationReseauLegend layersRef={layersRef} activeLayers={activeLayers} />
 
           {window.innerWidth > 1024 && (
             <div className="hidden lg:block">

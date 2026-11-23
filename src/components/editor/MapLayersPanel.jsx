@@ -219,6 +219,10 @@ const overlayCategories = {
                 style: { color: '#FFA500', weight: 1 },
                 minZoom: 9,
             },
+            'Saturation réseau': {
+                type: 'saturation-reseau-custom',
+                attribution: 'Caparéseau / Enedis / ODRE',
+            },
             'Postes Sources': {
                 url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/positions-geographiques-des-postes-sources-et-postes-de-repartition-hta-hta/exports/geojson?limit=-1',
                 attribution: 'ENEDIS',
@@ -714,6 +718,10 @@ const MapLayersPanel = ({ map }) => {
                     }
                     if (layerConfig.type === 's3renr-custom' || layerName === 'Capacités d\'accueil S3REnR') {
                         window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 's3renr' } }));
+                        return newActive;
+                    }
+                    if (layerConfig.type === 'saturation-reseau-custom' || layerName === 'Saturation réseau') {
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'saturationReseau' } }));
                         return newActive;
                     }
                     // Check zoom level for layers with minZoom

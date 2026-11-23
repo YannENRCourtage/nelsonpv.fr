@@ -269,28 +269,15 @@ export function matchAndDisambiguatePrms(candidates = [], criteria = {}) {
     };
   }
 
-  // Cas B : Plusieurs compteurs trouvés
+  // Cas B : Plusieurs compteurs trouvés à l'adresse (immeuble, zone d'activité, multi-PDL)
+  // On ouvre systématiquement la modale de sélection en pré-sélectionnant le meilleur candidat
   const best = scoredCandidates[0];
-  const second = scoredCandidates[1];
-  const margin = best.confidenceScore - second.confidenceScore;
 
-  // Si le premier a un score solide (>= 75) et bat nettement le second (marge >= 25)
-  if (best.confidenceScore >= 75 && margin >= 25) {
-    return {
-      status: 'HIGH_CONFIDENCE',
-      selectedPrm: best,
-      candidates: scoredCandidates,
-      isAmbiguous: false,
-      message: `Compteur professionnel sélectionné automatiquement (${best.recommendationReason}).`
-    };
-  }
-
-  // Sinon, c'est ambigu : modale requise
   return {
     status: 'AMBIGUOUS',
-    selectedPrm: best.confidenceScore >= 50 ? best : null,
+    selectedPrm: best.confidenceScore >= 40 ? best : null,
     candidates: scoredCandidates,
     isAmbiguous: true,
-    message: `${scoredCandidates.length} compteurs détectés à cette adresse. Validation nécessaire.`
+    message: `${scoredCandidates.length} compteurs détectés à cette adresse. Sélectionnez le compteur souhaité.`
   };
 }

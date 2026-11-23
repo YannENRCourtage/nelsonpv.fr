@@ -52,44 +52,69 @@ export async function declareAndFetchEnedis({
   lastWeek.setDate(today.getDate() - 7);
   const loadCurveStart = lastWeek.toISOString().split('T')[0];
 
+  const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' };
+
+  const callMeasureV2OrV5 = async (v2Path, v5Path, s, e) => {
+    try {
+      return await axios.get(`${baseUrl}/${v2Path}`, {
+        params: { pointId: prm, dateDebut: s, dateFin: e },
+        headers,
+        timeout: 15000
+      });
+    } catch (v2Err) {
+      if (v2Err.response?.status === 403 || !v5Path) throw v2Err;
+      return await axios.get(`${baseUrl}/${v5Path}`, {
+        params: { usage_point_id: prm, start: s, end: e },
+        headers,
+        timeout: 15000
+      });
+    }
+  };
+
+  const extractIntervals = (payload) => {
+    if (!payload) return [];
+    const grandeurs = Array.isArray(payload.grandeur)
+      ? payload.grandeur
+      : (Array.isArray(payload.grandeurs) ? payload.grandeurs : null);
+    if (grandeurs && grandeurs.length > 0 && Array.isArray(grandeurs[0]?.points)) {
+      const unit = (grandeurs[0].unite || '').toString().trim().toUpperCase();
+      const mult = (unit === 'KWH' || unit === 'KW' || unit === 'KVA') ? 1000 : 1;
+      return grandeurs[0].points.map(pt => ({
+        date: pt.date || pt.d || pt.horodate || '',
+        value: String(Math.round((parseFloat(pt.valeur ?? pt.value ?? pt.v) || 0) * mult))
+      })).filter(r => r.date);
+    }
+    return payload?.meter_reading?.interval_reading || [];
+  };
+
   const [dailyRes, loadRes, maxRes] = await Promise.allSettled([
-    axios.get(`${baseUrl}/metering_data_dc/v5/daily_consumption`, {
-      params: { usage_point_id: prm, start: startDate, end: endDate },
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-      timeout: 15000
-    }),
-    axios.get(`${baseUrl}/metering_data_dc/v5/load_curve`, {
-      params: { usage_point_id: prm, start: loadCurveStart, end: endDate },
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-      timeout: 15000
-    }),
-    axios.get(`${baseUrl}/metering_data_dcmp/v5/daily_consumption_max_power`, {
-      params: { usage_point_id: prm, start: startDate, end: endDate },
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-      timeout: 15000
-    })
+    callMeasureV2OrV5('mesures/v2/consommations_quotidiennes', 'metering_data_dc/v5/daily_consumption', startDate, endDate),
+    callMeasureV2OrV5('mesures/v2/courbe_charge', 'metering_data_dc/v5/load_curve', loadCurveStart, endDate),
+    callMeasureV2OrV5('mesures/v2/puissances_maximales', 'metering_data_dcmp/v5/daily_consumption_max_power', startDate, endDate)
   ]);
 
   let annualKwh = null;
   let avgDailyKwh = null;
+  let dailyIntervals = [];
   if (dailyRes.status === 'fulfilled') {
-    const intervals = dailyRes.value.data?.meter_reading?.interval_reading || [];
-    const totalWh = intervals.reduce((s, r) => s + (parseInt(r.value) || 0), 0);
+    dailyIntervals = extractIntervals(dailyRes.value.data);
+    const totalWh = dailyIntervals.reduce((s, r) => s + (parseInt(r.value) || 0), 0);
     annualKwh = Math.round(totalWh / 1000);
-    avgDailyKwh = intervals.length > 0 ? Number((annualKwh / intervals.length).toFixed(1)) : null;
+    avgDailyKwh = dailyIntervals.length > 0 ? Number((annualKwh / dailyIntervals.length).toFixed(1)) : null;
     console.log(`[Enedis Automation] ✅ Consommation annuelle réelle : ${annualKwh.toLocaleString('fr-FR')} kWh (${avgDailyKwh} kWh/j)`);
   }
 
   let peakKw = null;
+  let maxReadings = [];
   if (maxRes.status === 'fulfilled') {
-    const maxReadings = maxRes.value.data?.meter_reading?.interval_reading || [];
+    maxReadings = extractIntervals(maxRes.value.data);
     const maxVa = maxReadings.reduce((m, r) => Math.max(m, parseFloat(r.value || 0)), 0);
     peakKw = maxVa > 0 ? Number((maxVa / 1000).toFixed(2)) : null;
   }
 
   let loadCurvePoints = [];
   if (loadRes.status === 'fulfilled') {
-    loadCurvePoints = loadRes.value.data?.meter_reading?.interval_reading || [];
+    loadCurvePoints = extractIntervals(loadRes.value.data);
     console.log(`[Enedis Automation] ✅ Courbe de charge récupérée : ${loadCurvePoints.length} points`);
   } else {
     console.log(`[Enedis Automation] ℹ️ Courbe de charge non disponible (status ${loadRes.reason?.response?.status}) - Attente synchronisation.`);
@@ -103,7 +128,7 @@ export async function declareAndFetchEnedis({
     avgDailyKwh,
     peakKw,
     loadCurvePointsCount: loadCurvePoints.length,
-    dailyReadings: dailyRes.status === 'fulfilled' ? dailyRes.value.data?.meter_reading?.interval_reading || [] : [],
-    maxPowerReadings: maxRes.status === 'fulfilled' ? maxRes.value.data?.meter_reading?.interval_reading || [] : []
+    dailyReadings: dailyIntervals,
+    maxPowerReadings: maxReadings
   };
 }

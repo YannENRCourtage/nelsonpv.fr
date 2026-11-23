@@ -132,6 +132,7 @@ const formatActiveLayers = (rawLayers) => {
     enedisHTA: 'Réseau HTA Enedis (20 kV)',
     enedisLigneBT: 'Lignes BT Enedis',
     enedisPostes: 'Postes HTA/BT Enedis',
+    saturationReseau: 'Saturation réseau (Caparéseau / S3REnR)',
     gaz: 'Réseau Gaz',
     abf: 'Périmètre ABF',
     sdis: 'Points d’eau SDIS',
