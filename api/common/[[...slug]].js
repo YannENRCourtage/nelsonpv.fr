@@ -5,6 +5,7 @@ import { withAuth, setSecureCors } from './_authMiddleware.js'
 import handleCatalog from './_catalogHandler.js'
 import handleQuotes from './_quotesHandler.js'
 import handleTarifsEnergie from './_tarifsEnergieHandler.js'
+import handleSms from './_smsHandler.js'
 
 async function handler(req, res) {
     setSecureCors(req, res, 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
@@ -31,6 +32,11 @@ async function handler(req, res) {
         // Module Tarifs Énergie Dynamiques (CRE / EDF OA)
         if (module === 'tarifs-energie') {
             return handleTarifsEnergie(req, res, slug.slice(1))
+        }
+
+        // Module Passerelle SMS TextBee (/api/sms/send -> /api/common/sms/send)
+        if (module === 'sms') {
+            return handleSms(req, res, slug.slice(1))
         }
         // SDIS Integration
         if (module === 'sdis') {
@@ -156,7 +162,7 @@ export default async function(req, res) {
     const module = slug && slug.length > 0 ? slug[0] : null
     
     // Modules publics ou gérant leur propre sécurité
-    const PUBLIC_MODULES = ['auth', 'sdis', 'catalog', 'quotes', 'tarifs-energie']
+    const PUBLIC_MODULES = ['auth', 'sdis', 'catalog', 'quotes', 'tarifs-energie', 'sms']
     if (PUBLIC_MODULES.includes(module)) {
         return handler(req, res)
     }

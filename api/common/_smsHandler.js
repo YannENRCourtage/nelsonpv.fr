@@ -1,10 +1,9 @@
-// api/sms/send.js
-// Endpoint backend sécurisé pour l'envoi de SMS via la passerelle Android TextBee (https://api.textbee.dev)
-// Route : POST /api/sms/send
-// Body  : { to: string, message: string, deviceId?: string }
+// api/common/_smsHandler.js
+// Gestionnaire backend pour l'envoi de SMS via la passerelle Android TextBee (https://api.textbee.dev)
+// Monté dans api/common/[[...slug]].js (avec préfixe "_" pour ne pas compter comme fonction Serverless Vercel supplémentaire)
+// Accessible via /api/sms/send et /api/common/sms/send
 
 import axios from 'axios';
-import { setSecureCors } from '../common/_authMiddleware.js';
 
 const TEXTBEE_BASE_URL = 'https://api.textbee.dev/api/v1';
 
@@ -88,7 +87,6 @@ async function resolveTextBeeDeviceId(apiKey, overrideDeviceId = '') {
     timeout: 8000
   });
 
-  // TextBee peut retourner { data: [...] } ou directement [...]
   const devices = Array.isArray(res.data?.data)
     ? res.data.data
     : (Array.isArray(res.data?.devices)
@@ -104,7 +102,6 @@ async function resolveTextBeeDeviceId(apiKey, overrideDeviceId = '') {
     };
   }
 
-  // Privilégier un appareil actif / enabled si le champ est présent
   const activeDevice = devices.find(d => d && (d.enabled === true || d.isOnline === true || d.status === 'ONLINE')) || devices[0];
   const detectedId = (activeDevice?._id || activeDevice?.id || activeDevice?.deviceId || '').toString().trim();
 
@@ -123,14 +120,12 @@ async function resolveTextBeeDeviceId(apiKey, overrideDeviceId = '') {
   return {
     deviceId: detectedId,
     deviceName: activeDevice?.brand ? `${activeDevice.brand} ${activeDevice.model || ''}`.trim() : (activeDevice?.name || 'Android Gateway'),
+    devices,
     source: 'auto_discovered'
   };
 }
 
-export default async function handler(req, res) {
-  setSecureCors(req, res, 'GET,POST,OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
+export default async function handleSms(req, res) {
   const apiKey = (process.env.TEXTBEE_API_KEY || '').toString().trim();
 
   // Route GET /api/sms/send : permet de vérifier l'état de la passerelle TextBee et les appareils connectés
@@ -138,6 +133,7 @@ export default async function handler(req, res) {
     if (!apiKey) {
       return res.status(200).json({
         configured: false,
+        hasDevice: false,
         code: 'MISSING_API_KEY',
         message: 'Variable serveur TEXTBEE_API_KEY non configurée.'
       });
@@ -149,9 +145,10 @@ export default async function handler(req, res) {
         hasDevice: Boolean(resolved.deviceId),
         deviceId: resolved.deviceId,
         deviceName: resolved.deviceName || null,
+        devices: resolved.devices || [],
         source: resolved.source || null,
         message: resolved.deviceId
-          ? `Passerelle TextBee opérationnelle (Device: ${resolved.deviceId})`
+          ? `Passerelle TextBee opérationnelle (${resolved.deviceName || resolved.deviceId})`
           : resolved.errorMessage
       });
     } catch (err) {
@@ -167,16 +164,26 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method not allowed. Use POST.' });
   }
 
-  const { to, phone, recipient, message, deviceId } = req.body || {};
-  const rawRecipient = to || phone || recipient || '';
+  const { to, phone, recipient, recipients, message, deviceId } = req.body || {};
 
-  // 1. Validation et normalisation E.164 du numéro de téléphone
-  const normalized = normalizeToE164(rawRecipient);
-  if (!normalized.valid) {
+  // Support d'envoi unitaire ({ to }) ou multiple ({ recipients: [...] }) pour les campagnes SMS
+  const rawTargets = Array.isArray(recipients) && recipients.length > 0
+    ? recipients
+    : [to || phone || recipient || ''];
+
+  const validE164List = [];
+  for (const r of rawTargets) {
+    const norm = normalizeToE164(String(r || ''));
+    if (norm.valid && !validE164List.includes(norm.e164)) {
+      validE164List.push(norm.e164);
+    }
+  }
+
+  if (validE164List.length === 0) {
     return res.status(400).json({
       success: false,
       code: 'INVALID_PHONE_NUMBER',
-      error: normalized.error || 'Numéro de téléphone invalide.'
+      error: 'Aucun numéro de téléphone mobile valide (10 chiffres attendus).'
     });
   }
 
@@ -217,7 +224,7 @@ export default async function handler(req, res) {
     const textBeeRes = await axios.post(
       sendUrl,
       {
-        recipients: [normalized.e164],
+        recipients: validE164List,
         message: cleanMessage
       },
       {
@@ -226,7 +233,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        timeout: 12000
+        timeout: 15000
       }
     );
 
@@ -234,7 +241,9 @@ export default async function handler(req, res) {
       success: true,
       mode: 'api',
       provider: 'textbee',
-      recipient: normalized.e164,
+      recipient: validE164List[0],
+      recipients: validE164List,
+      count: validE164List.length,
       deviceId: resolved.deviceId,
       deviceName: resolved.deviceName || null,
       deviceSource: resolved.source,

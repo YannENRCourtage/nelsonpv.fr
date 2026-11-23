@@ -29,6 +29,8 @@ import SubItemsTable from '@/components/monday/SubItemsTable.jsx';
 import GroupSelectionModal from '@/components/monday/GroupSelectionModal.jsx';
 import AutoGroupModal from '@/components/monday/AutoGroupModal.jsx';
 import MeetinglyCopilotView from '@/components/monday/MeetinglyCopilotView.jsx';
+import SmsCampaignView from '@/components/monday/SmsCampaignView.jsx';
+import { MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 
 // Helper for Tab Icons
@@ -2575,8 +2577,27 @@ export default function Monday() {
                             );
                         })}
 
-                        {/* Onglet dédié : Meetingly IA (Enregistreur & Copilote) */}
-                        <div className="pt-2 mt-2 border-t border-slate-700/80">
+                        {/* Onglet dédié : Campagne SMS (au-dessus de Meetingly IA) */}
+                        <div className="pt-2 mt-2 border-t border-slate-700/80 space-y-2">
+                            <button
+                                onClick={() => {
+                                    setActiveTabId('__sms_campaign__');
+                                    setIsSidebarOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
+                                    activeTabId === '__sms_campaign__'
+                                        ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 shadow-lg shadow-emerald-500/50 text-white'
+                                        : 'bg-slate-800/80 hover:bg-slate-700/70 text-emerald-200 border border-emerald-500/30'
+                                }`}
+                            >
+                                <div className="text-left">
+                                    <span className="font-bold text-sm block">📱 Campagne SMS</span>
+                                    <span className="text-[10px] text-emerald-200/80 block">TextBee &amp; Liens Enedis</span>
+                                </div>
+                                <MessageSquare className="w-5 h-5 text-emerald-300 shrink-0" />
+                            </button>
+
+                            {/* Onglet dédié : Meetingly IA (Enregistreur & Copilote) */}
                             <button
                                 onClick={() => {
                                     setActiveTabId('__meetingly_ia__');
@@ -2642,6 +2663,18 @@ export default function Monday() {
                     {/* Mobile/Tablet Tab Navigation Bar */}
                     <div className="lg:hidden mb-6 flex overflow-x-auto pb-2 gap-2 no-scrollbar">
                         <button
+                            onClick={() => setActiveTabId('__sms_campaign__')}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all text-sm font-bold border",
+                                activeTabId === '__sms_campaign__'
+                                    ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
+                                    : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-300"
+                            )}
+                        >
+                            <MessageSquare className="w-4 h-4" />
+                            <span>📱 Campagne SMS</span>
+                        </button>
+                        <button
                             onClick={() => setActiveTabId('__meetingly_ia__')}
                             className={cn(
                                 "flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all text-sm font-bold border",
@@ -2674,7 +2707,9 @@ export default function Monday() {
                         })}
                     </div>
 
-                    {activeTabId === '__meetingly_ia__' ? (
+                    {activeTabId === '__sms_campaign__' ? (
+                        <SmsCampaignView tabs={tabs} />
+                    ) : activeTabId === '__meetingly_ia__' ? (
                         <MeetinglyCopilotView tabs={tabs} />
                     ) : activeTab ? (
                         <>

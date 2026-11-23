@@ -45,6 +45,14 @@
             "destination": "/api/common/tarifs-energie"
         },
         {
+            "source": "/api/sms/(.*)",
+            "destination": "/api/common/sms/$1"
+        },
+        {
+            "source": "/api/sms",
+            "destination": "/api/common/sms"
+        },
+        {
             "source": "/((?!api/).*)",
             "destination": "/index.html"
         }
