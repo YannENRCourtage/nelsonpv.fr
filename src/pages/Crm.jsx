@@ -11,7 +11,8 @@ import {
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
   Mail, Building, MapPin, Tag, Clock, CheckCircle2, AlertCircle,
   ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon, FileDown, ExternalLink,
-  List, LayoutGrid, UserCircle, User, Briefcase, Calendar as CalendarIcon, Filter, MoreVertical, Shuffle, Menu, Copy
+  List, LayoutGrid, UserCircle, User, Briefcase, Calendar as CalendarIcon, Filter, MoreVertical, Shuffle, Menu, Copy,
+  MessageSquare, Smartphone, QrCode, Send
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button.jsx';
@@ -26,6 +27,8 @@ import { formatGps } from '@/utils/formatGps.js';
 import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
 import { getProjectPvPortfolio } from '@/data/pvPortfolioData.js';
 import { getProjectBessPortfolio } from '@/data/bessPortfolioData.js';
+import { sendSms } from '@/services/smsService.js';
+import { getCrmSmsTemplates, getSmsQrCodeImageUrl, normalizePhoneNumber } from '@/utils/smsLauncher.js';
 
 // UserAvatar replaced by import
 
@@ -190,6 +193,12 @@ export default function Crm() {
   const [duplicateProjectData, setDuplicateProjectData] = useState(null);
   const [editingContact, setEditingContact] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
+  const [smsModalTarget, setSmsModalTarget] = useState(null);
+  const [smsTemplateId, setSmsTemplateId] = useState('enedis_consent');
+  const [smsCustomPhone, setSmsCustomPhone] = useState('');
+  const [smsCustomMessage, setSmsCustomMessage] = useState('');
+  const [showSmsQrInCrm, setShowSmsQrInCrm] = useState(false);
+  const [sendingCrmSms, setSendingCrmSms] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [taskViewMode, setTaskViewMode] = useState('list');
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -342,6 +351,115 @@ export default function Crm() {
     avatar: user?.photoURL ? user.photoURL : (user?.firstName?.[0] || user?.displayName?.[0] || 'U').toUpperCase(),
     photoURL: user?.photoURL,
     color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'
+  };
+
+  // Helper d'ouverture de la modale d'envoi rapide de SMS (depuis une fiche Contact ou Projet)
+  const handleOpenQuickSmsModal = useCallback((entity, entityType = 'contact') => {
+    let phone = entity?.phone || '';
+    let clientName = '';
+    let prm = entity?.enedisPrm || entity?.prm || entity?.pdl || '';
+    let projectId = '';
+    let city = entity?.city || '';
+    let commercialName = entity?.commercial || currentUser.name || '';
+
+    if (entityType === 'project') {
+      clientName = `${entity?.name || ''} ${entity?.firstName || ''}`.trim() || entity?.client || 'Client';
+      projectId = entity?.id || '';
+      if (!phone) {
+        const linkedContact = contacts.find(c =>
+          (c.projectId && c.projectId === entity.id) ||
+          (c.email && entity.email && c.email.toLowerCase() === entity.email.toLowerCase()) ||
+          (c.name && entity.name && c.name.toLowerCase().includes(entity.name.toLowerCase()))
+        );
+        if (linkedContact?.phone) phone = linkedContact.phone;
+      }
+    } else {
+      clientName = entity?.name || entity?.company || 'Client';
+      const linkedProj = projects.find(p =>
+        (p.id && p.id === entity?.projectId) ||
+        (p.email && entity?.email && p.email.toLowerCase() === entity.email.toLowerCase()) ||
+        (p.name && entity?.name && entity.name.toLowerCase().includes(p.name.toLowerCase()))
+      );
+      if (linkedProj) {
+        projectId = linkedProj.id || '';
+        prm = prm || linkedProj.enedisPrm || linkedProj.prm || '';
+        city = city || linkedProj.city || '';
+        commercialName = linkedProj.commercial || commercialName;
+      }
+    }
+
+    const templates = getCrmSmsTemplates({
+      clientName,
+      prm,
+      projectId,
+      city,
+      commercialName
+    });
+    const defaultTpl = templates[0];
+
+    setSmsModalTarget({
+      entityType,
+      clientName,
+      phone,
+      prm,
+      projectId,
+      city,
+      commercialName,
+      templates
+    });
+    setSmsCustomPhone(phone);
+    setSmsTemplateId(defaultTpl.id);
+    setSmsCustomMessage(defaultTpl.message);
+    setShowSmsQrInCrm(false);
+  }, [contacts, projects, currentUser.name]);
+
+  const handleSelectSmsTemplate = (tplId) => {
+    setSmsTemplateId(tplId);
+    const tpl = smsModalTarget?.templates?.find(t => t.id === tplId);
+    if (tpl) {
+      setSmsCustomMessage(tpl.message);
+    }
+  };
+
+  const handleConfirmSendCrmSms = async () => {
+    const norm = normalizePhoneNumber(smsCustomPhone);
+    if (!norm.valid) {
+      toast({
+        title: "Numéro mobile invalide",
+        description: norm.error || "Veuillez saisir un numéro de téléphone valide.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setSendingCrmSms(true);
+    try {
+      const res = await sendSms({
+        to: smsCustomPhone,
+        message: smsCustomMessage,
+        allowNativeFallback: true
+      });
+      if (res.success && res.mode === 'api') {
+        toast({
+          title: "SMS envoyé via passerelle TextBee ✓",
+          description: `Envoyé directement à ${smsModalTarget?.clientName || norm.formatted} (${norm.formatted})`
+        });
+        setSmsModalTarget(null);
+      } else if (res.success) {
+        toast({
+          title: "Application SMS ouverte et message copié ✓",
+          description: `SMS prêt pour ${smsModalTarget?.clientName || norm.formatted} (${norm.formatted})`
+        });
+        setSmsModalTarget(null);
+      } else {
+        toast({
+          title: "Erreur SMS",
+          description: res.error || "Impossible d'envoyer le SMS.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setSendingCrmSms(false);
+    }
   };
 
   // Calculate weekly percentage changes
@@ -1190,6 +1308,16 @@ export default function Crm() {
                   </div>
                 </div>
                 <div className="flex gap-1">
+                  {contact.phone && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenQuickSmsModal(contact, 'contact')}
+                      className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors"
+                      title={`Envoyer un SMS à ${contact.phone}`}
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleEditContact(contact)}
                     className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -1412,6 +1540,17 @@ export default function Crm() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
+                        {contact.phone && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenQuickSmsModal(contact, 'contact')}
+                            title={`Envoyer un SMS (${contact.phone})`}
+                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => handleEditContact(contact)}>
                           <Edit className="w-4 h-4 text-slate-500" />
                         </Button>
@@ -2067,6 +2206,15 @@ export default function Crm() {
                     </td>
                     <td className="pl-2 pr-3 py-3 text-right w-min whitespace-nowrap">
                       <div className="flex justify-end items-center gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenQuickSmsModal(project, 'project')}
+                          className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          title={project.phone ? `Envoyer un SMS (${project.phone})` : "Envoyer un SMS au client"}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </Button>
                         {isTransferAuthorized() && (
                           <>
                             <Button
@@ -2154,6 +2302,15 @@ export default function Crm() {
                 </div>
                 <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
                   <Button size="sm" className="flex-1 bg-blue-600" onClick={() => navigate(`/project/${project.id}/edit`)}>Ouvrir</Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-emerald-600 hover:bg-emerald-50"
+                    onClick={() => handleOpenQuickSmsModal(project, 'project')}
+                    title={project.phone ? `Envoyer un SMS (${project.phone})` : "Envoyer un SMS au client"}
+                  >
+                    <MessageSquare size={16} />
+                  </Button>
                   {isTransferAuthorized() && (
                     <div className="flex gap-2">
                        <Button
@@ -2570,6 +2727,161 @@ export default function Crm() {
         currentUser={currentUser}
         onUpdate={handleUserUpdate}
       />
+
+      {/* Modale d'envoi rapide de SMS (Contacts & Projets CRM) */}
+      {smsModalTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setSmsModalTarget(null)}
+          />
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto max-h-[92vh] flex flex-col">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <Smartphone className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-widest">
+                    Action rapide CRM • SMS
+                  </p>
+                  <h3 className="text-base font-extrabold text-white">
+                    Envoyer un SMS à {smsModalTarget.clientName}
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSmsModalTarget(null)}
+                className="p-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto">
+              {/* Numéro mobile & bouton QR Code Mobile */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                    Numéro mobile du destinataire
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowSmsQrInCrm(v => !v)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>{showSmsQrInCrm ? 'Masquer QR Mobile' : 'QR Code Mobile'}</span>
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type="tel"
+                    value={smsCustomPhone}
+                    onChange={e => setSmsCustomPhone(e.target.value)}
+                    placeholder="Ex: 06 12 34 56 78"
+                    className="pl-9 rounded-xl h-10 border-slate-200 font-medium"
+                  />
+                  <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600" />
+                </div>
+              </div>
+
+              {/* Modèle rapide */}
+              <div>
+                <label className="text-xs font-bold uppercase text-slate-500 tracking-wider block mb-1.5">
+                  Modèle rapide
+                </label>
+                <div className="grid grid-cols-1 gap-2">
+                  {(smsModalTarget.templates || []).map(tpl => {
+                    const isSelected = smsTemplateId === tpl.id;
+                    return (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => handleSelectSmsTemplate(tpl.id)}
+                        className={`text-left p-2.5 rounded-xl border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-400'
+                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="text-xs font-bold text-slate-900">{tpl.label}</div>
+                        <div className="text-[11px] text-slate-500">{tpl.description}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Message éditable */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                    Contenu du SMS (modifiable)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(smsCustomMessage);
+                        toast({ title: "Message copié ✓", description: "Le texte du SMS a été copié dans le presse-papiers." });
+                      } catch (_) {}
+                    }}
+                    className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3" />
+                    Copier le texte
+                  </button>
+                </div>
+                <textarea
+                  rows={4}
+                  value={smsCustomMessage}
+                  onChange={e => setSmsCustomMessage(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 p-3 text-xs text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* QR Code Mobile pour flasher depuis son smartphone */}
+              {showSmsQrInCrm && (
+                <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex flex-col items-center text-center space-y-2">
+                  <p className="text-[11px] text-emerald-900 font-semibold">
+                    📱 Scannez ce QR Code avec votre smartphone pour ouvrir directement l'application Messages avec ce SMS pré-rempli :
+                  </p>
+                  <div className="p-2 bg-white rounded-xl border border-emerald-200 shadow-xs">
+                    <img
+                      src={getSmsQrCodeImageUrl(smsCustomPhone || '0600000000', smsCustomMessage, 170)}
+                      alt="QR Code SMS CRM"
+                      className="w-[150px] h-[150px] object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Boutons d'action */}
+              <div className="flex gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSmsModalTarget(null)}
+                  className="rounded-xl h-11 px-4 font-bold border-slate-200"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmSendCrmSms}
+                  disabled={sendingCrmSms || !smsCustomPhone || smsCustomPhone.replace(/\D/g, '').length < 8}
+                  className="flex-1 h-11 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-200"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {sendingCrmSms ? 'Envoi TextBee en cours...' : 'Envoyer le SMS (TextBee / Mobile)'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 }

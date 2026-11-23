@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, X, Send, User, Link2, Check, ShieldCheck, Sparkles, UploadCloud, AlertTriangle } from 'lucide-react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, X, Send, User, Link2, Check, ShieldCheck, Sparkles, UploadCloud, AlertTriangle, Smartphone, MessageSquare, QrCode, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -16,6 +16,8 @@ import ManualDataModal from '@/components/enedis/ManualDataModal';
 import { useNavigate } from 'react-router-dom';
 import { savePrmToCache, PRM_HANDOFF_KEY } from '@/services/storageBatteryEngine';
 import { extractClientBillData } from '@/services/clientBillExtractor';
+import { sendSms } from '@/services/smsService';
+import { buildEnedisConsentSmsText, getSmsQrCodeImageUrl, normalizePhoneNumber } from '@/utils/smsLauncher';
 
 class EnedisErrorBoundary extends React.Component {
   constructor(props) {
@@ -63,6 +65,7 @@ export default function AdminEnedis() {
   // Coordonnées du titulaire du PRM pour l'export PDF et affichage
   const [ownerName, setOwnerName] = useState('');
   const [ownerAddress, setOwnerAddress] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
   const [customKwh, setCustomKwh] = useState('');
   const [customPeakKw, setCustomPeakKw] = useState('');
   const [customProfileKey, setCustomProfileKey] = useState('agricole');
@@ -77,6 +80,7 @@ export default function AdminEnedis() {
       if (raw) {
         const p = JSON.parse(raw);
         if (p?.name) setOwnerName(p.name);
+        if (p?.phone) setOwnerPhone(p.phone);
         if (p?.address || p?.codePostal || p?.commune) {
           setOwnerAddress(`${p.address || ''} ${p.codePostal || ''} ${p.commune || ''}`.trim());
         }
@@ -203,10 +207,13 @@ export default function AdminEnedis() {
   const [subscribedPower, setSubscribedPower] = useState(null);
   const [highlightConsentNeeded, setHighlightConsentNeeded] = useState(false);
 
-  // État du modal de consentement (email uniquement)
+  // État du modal de consentement (Email, SMS TextBee & QR Code Mobile)
   const [consentModal, setConsentModal] = useState(false);
-  const [consentForm, setConsentForm] = useState({ name: '', email: '' });
+  const [consentForm, setConsentForm] = useState({ name: '', email: '', phone: '' });
   const [consentSent, setConsentSent] = useState(false);
+  const [consentSentChannel, setConsentSentChannel] = useState('email'); // 'email' | 'sms_api' | 'sms_fallback'
+  const [sendingSms, setSendingSms] = useState(false);
+  const [showSmsQrCode, setShowSmsQrCode] = useState(false);
 
   const { toast } = useToast();
 
@@ -594,8 +601,14 @@ export default function AdminEnedis() {
       return;
     }
     if (prmOverride) setPrm(prmOverride);
+    const existing = consents.find(c => c.prm === targetPrm);
     setConsentSent(false);
-    setConsentForm({ name: '', email: '' });
+    setShowSmsQrCode(false);
+    setConsentForm({
+      name: ownerName || existing?.titulaire || existing?.clientName || '',
+      email: existing?.clientEmail || '',
+      phone: ownerPhone || existing?.clientPhone || ''
+    });
     setConsentModal(true);
   };
 
@@ -625,7 +638,7 @@ export default function AdminEnedis() {
       return;
     }
     const url = getConsentUrl(targetPrm);
-    const clientName = consentForm.name || 'Client';
+    const clientName = consentForm.name || ownerName || 'Client';
     const subject = encodeURIComponent(`Autorisation Enedis Data Connect — PRM ${targetPrm}`);
     const body = encodeURIComponent(
       `Bonjour ${clientName},\r\n\r\n` +
@@ -637,8 +650,67 @@ export default function AdminEnedis() {
     );
     const mailto = `mailto:${encodeURIComponent(consentForm.email)}?subject=${subject}&body=${body}`;
     window.location.href = mailto;
+    setConsentSentChannel('email');
     setConsentSent(true);
     toast({ title: "Client mail ouvert ✓", description: `L'email est pré-rempli pour ${consentForm.email}` });
+  };
+
+  // Envoyer le lien de consentement par SMS via passerelle serveur TextBee (/api/sms/send) avec repli natif sms:
+  const handleSendSms = async () => {
+    const targetPrm = prm.trim();
+    const norm = normalizePhoneNumber(consentForm.phone);
+    if (!norm.valid) {
+      toast({
+        title: "Numéro mobile invalide",
+        description: norm.error || "Veuillez saisir un numéro de téléphone mobile valide (ex: 06 12 34 56 78).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const url = getConsentUrl(targetPrm);
+    const clientName = consentForm.name || ownerName || 'Client';
+    const smsText = buildEnedisConsentSmsText({
+      clientName,
+      prm: targetPrm,
+      consentUrl: url
+    });
+
+    setOwnerPhone(consentForm.phone);
+    setSendingSms(true);
+    try {
+      const res = await sendSms({
+        to: consentForm.phone,
+        message: smsText,
+        allowNativeFallback: true
+      });
+
+      if (res.success && res.mode === 'api') {
+        setConsentSentChannel('sms_api');
+        setConsentSent(true);
+        toast({
+          title: "SMS envoyé via passerelle TextBee ✓",
+          description: `Envoyé directement au ${norm.formatted} • PRM ${targetPrm}`
+        });
+      } else if (res.success) {
+        setConsentSentChannel('sms_fallback');
+        setConsentSent(true);
+        toast({
+          title: "Application SMS ouverte et message copié ✓",
+          description: res.fallbackReason
+            ? `${res.fallbackReason} — Ouverture directe sur votre appareil (${norm.formatted}).`
+            : `Destinataire : ${norm.formatted} • PRM ${targetPrm}`
+        });
+      } else {
+        toast({
+          title: "Erreur d'envoi SMS",
+          description: res.error || "Impossible d'envoyer le SMS.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setSendingSms(false);
+    }
   };
 
   const handleSavePrmMetadata = async () => {
@@ -1142,7 +1214,7 @@ export default function AdminEnedis() {
                         </div>
                       </button>
 
-                      {/* ===== NOUVEAU BOUTON : Envoyer le consentement ===== */}
+                      {/* ===== NOUVEAU BOUTON : Envoyer le consentement (Email / SMS / QR Code) ===== */}
                       <button
                         onClick={() => openConsentModal()}
                         disabled={prm.length !== 14}
@@ -1150,10 +1222,10 @@ export default function AdminEnedis() {
                           highlightConsentNeeded && prm.length === 14 ? 'ring-4 ring-emerald-300/80 rounded-2xl animate-pulse' : ''
                         }`}
                       >
-                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-200 group-hover:shadow-emerald-300 group-hover:scale-[1.02] active:scale-[0.98] h-12 flex items-center justify-center gap-3">
-                          <Send size={18} className="text-white" />
-                          <span className="text-white font-bold text-sm">Envoyer le consentement par Email</span>
-                            <Mail size={13} className="text-emerald-200" />
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-200 group-hover:shadow-emerald-300 group-hover:scale-[1.02] active:scale-[0.98] h-12 flex items-center justify-center gap-2.5">
+                          <Send size={17} className="text-white" />
+                          <span className="text-white font-bold text-sm">Envoyer le consentement (Email / SMS)</span>
+                          <Smartphone size={14} className="text-emerald-100" />
                         </div>
                       </button>
 
@@ -1716,21 +1788,21 @@ export default function AdminEnedis() {
         </EnedisErrorBoundary>
       )}
 
-      {/* ===== MODAL DE CONSENTEMENT PAR EMAIL ===== */}
+      {/* ===== MODAL DE CONSENTEMENT PAR EMAIL / SMS / QR CODE MOBILE ===== */}
       {consentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
           {/* Backdrop */}
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeConsentModal} />
 
           {/* Modal */}
-          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-slate-900/20 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl shadow-slate-900/20 overflow-hidden animate-in fade-in zoom-in-95 duration-300 my-auto max-h-[92vh] flex flex-col">
             
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-7 py-5">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-7 py-5 shrink-0">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-0.5">Enedis Data Connect</p>
-                  <h2 className="text-white text-lg font-extrabold">Envoyer le consentement</h2>
+                  <h2 className="text-white text-lg font-extrabold">Envoyer le consentement (Email &amp; SMS)</h2>
                 </div>
                 <button onClick={closeConsentModal} className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors">
                   <X size={18} />
@@ -1744,13 +1816,31 @@ export default function AdminEnedis() {
 
             {/* Corps */}
             {consentSent ? (
-              <div className="p-7 flex flex-col items-center text-center">
+              <div className="p-7 flex flex-col items-center text-center overflow-y-auto">
                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
                   <Check size={30} className="text-emerald-600" />
                 </div>
-                <h3 className="text-lg font-extrabold text-slate-900 mb-1">Client mail ouvert !</h3>
+                <h3 className="text-lg font-extrabold text-slate-900 mb-1">
+                  {consentSentChannel === 'sms_api'
+                    ? 'SMS envoyé via passerelle TextBee ✓'
+                    : consentSentChannel === 'sms_fallback'
+                    ? 'Application SMS ouverte & message copié !'
+                    : 'Client mail ouvert !'}
+                </h3>
                 <p className="text-slate-500 text-sm leading-relaxed mb-5">
-                  L'email est pré-rempli avec le lien de consentement pour <strong>{consentForm.email}</strong>. Vérifiez et envoyez depuis votre messagerie.
+                  {consentSentChannel === 'sms_api' ? (
+                    <>
+                      Le SMS contenant le lien d'autorisation Enedis Data Connect a été expédié directement par votre passerelle Android TextBee au <strong>{consentForm.phone}</strong>.
+                    </>
+                  ) : consentSentChannel === 'sms_fallback' ? (
+                    <>
+                      Le SMS est pré-rempli avec le lien d'autorisation Enedis Data Connect pour <strong>{consentForm.phone}</strong> (et copié dans votre presse-papiers). Vérifiez et appuyez sur Envoyer.
+                    </>
+                  ) : (
+                    <>
+                      L'email est pré-rempli avec le lien de consentement pour <strong>{consentForm.email}</strong>. Vérifiez et envoyez depuis votre messagerie.
+                    </>
+                  )}
                 </p>
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 w-full text-left mb-5">
                   <p className="text-amber-900 text-xs leading-relaxed">
@@ -1763,7 +1853,7 @@ export default function AdminEnedis() {
                 </div>
               </div>
             ) : (
-              <div className="p-7 space-y-5">
+              <div className="p-6 space-y-4 overflow-y-auto">
                 {/* Nom (optionnel) */}
                 <div>
                   <label className="text-xs font-bold uppercase text-slate-500 tracking-widest mb-1.5 block">
@@ -1773,17 +1863,87 @@ export default function AdminEnedis() {
                     <Input
                       value={consentForm.name}
                       onChange={e => setConsentForm(f => ({ ...f, name: e.target.value }))}
-                      placeholder="Ex: Jean Dupont"
-                      className="pl-9 rounded-xl h-11 border-slate-200"
+                      placeholder="Ex: Jean Dupont / EARL..."
+                      className="pl-9 rounded-xl h-10 border-slate-200"
                     />
                     <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   </div>
                 </div>
 
-                {/* Email (obligatoire) */}
+                {/* Numéro de téléphone mobile (SMS TextBee) */}
+                <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-extrabold uppercase text-emerald-800 tracking-wider flex items-center gap-1.5">
+                      <Smartphone size={14} className="text-emerald-600" />
+                      <span>Téléphone mobile du client (SMS)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowSmsQrCode(v => !v)}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-200 px-2.5 py-1 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                      title="Afficher un QR Code à scanner avec votre téléphone pour envoyer le SMS depuis votre carte SIM"
+                    >
+                      <QrCode size={12} />
+                      <span>{showSmsQrCode ? 'Masquer QR Mobile' : 'QR Code Mobile'}</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type="tel"
+                      value={consentForm.phone}
+                      onChange={e => setConsentForm(f => ({ ...f, phone: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && consentForm.phone && !sendingSms && handleSendSms()}
+                      placeholder="Ex: 06 12 34 56 78"
+                      className="pl-9 rounded-xl h-10 bg-white border-emerald-200 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 font-medium"
+                    />
+                    <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600" />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleSendSms}
+                    disabled={sendingSms || !consentForm.phone || consentForm.phone.replace(/\D/g, '').length < 8}
+                    className="w-full h-11 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-200 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
+                  >
+                    {sendingSms ? (
+                      <RotateCw className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                    )}
+                    <span>{sendingSms ? 'Envoi via TextBee en cours...' : 'Envoyer le lien par SMS (TextBee)'}</span>
+                  </Button>
+
+                  {/* Encart QR Code Mobile pour expédier le SMS depuis son smartphone quand on est sur PC */}
+                  {showSmsQrCode && (
+                    <div className="mt-2 pt-3 border-t border-emerald-200/80 flex flex-col items-center text-center space-y-2 animate-in fade-in duration-200">
+                      <p className="text-[11px] text-emerald-900 font-semibold leading-snug">
+                        📱 Scannez ce QR Code avec l'appareil photo de votre smartphone pour ouvrir directement le SMS pré-rempli :
+                      </p>
+                      <div className="p-2.5 bg-white rounded-2xl border border-emerald-200 shadow-sm">
+                        <img
+                          src={getSmsQrCodeImageUrl(
+                            consentForm.phone || '0600000000',
+                            buildEnedisConsentSmsText({
+                              clientName: consentForm.name || ownerName || 'Client',
+                              prm: prm.trim(),
+                              consentUrl: getConsentUrl(prm.trim())
+                            }),
+                            170
+                          )}
+                          alt="QR Code SMS Enedis"
+                          className="w-[150px] h-[150px] object-contain mx-auto"
+                        />
+                      </div>
+                      <p className="text-[10px] text-emerald-700">
+                        {consentForm.phone ? `Destinataire encodé : ${consentForm.phone}` : 'Saisissez le numéro mobile ci-dessus pour l’encoder dans le QR Code.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Email */}
                 <div>
                   <label className="text-xs font-bold uppercase text-slate-500 tracking-widest mb-1.5 block">
-                    Email du client <span className="text-red-400">*</span>
+                    Ou par Email
                   </label>
                   <div className="relative">
                     <Input
@@ -1792,33 +1952,32 @@ export default function AdminEnedis() {
                       onChange={e => setConsentForm(f => ({ ...f, email: e.target.value }))}
                       onKeyDown={e => e.key === 'Enter' && consentForm.email && handleSendEmail()}
                       placeholder="client@exemple.fr"
-                      className="pl-9 rounded-xl h-11 border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-                      autoFocus
+                      className="pl-9 rounded-xl h-10 border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
                     />
                     <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   </div>
                 </div>
 
                 {/* Info */}
-                <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
                   <p className="text-xs text-blue-700 leading-relaxed">
                     ✅ Le client s'identifie via <strong>FranceConnect</strong> (Impôts, Ameli…) — <strong>aucun compte Enedis nécessaire</strong>.
                   </p>
                 </div>
 
-                {/* Actions */}
+                {/* Actions Email & Copie */}
                 <div className="flex flex-col gap-2 pt-1">
                   <Button
                     onClick={handleSendEmail}
                     disabled={!consentForm.email || !consentForm.email.includes('@')}
-                    className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95"
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-200 transition-all hover:scale-[1.01] active:scale-95"
                   >
                     <Mail className="mr-2 h-4 w-4" />
                     Ouvrir mon client mail
                   </Button>
                   <button
                     onClick={handleCopyLink}
-                    className="w-full h-9 flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700 text-xs font-semibold transition-colors rounded-xl hover:bg-slate-50"
+                    className="w-full h-9 flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700 text-xs font-semibold transition-colors rounded-xl hover:bg-slate-50 cursor-pointer"
                   >
                     <Link2 size={12} />
                     Copier le lien uniquement
