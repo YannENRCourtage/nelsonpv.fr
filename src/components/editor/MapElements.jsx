@@ -6134,33 +6134,21 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
     const handlePlaceBattery = (e) => {
       const { model, quantity } = e.detail;
       
-      // Dimensions dynamiques selon la quantité (2 batteries -> 2x5m, 4 batteries -> 2x8m)
-      let batteryLength = 5; 
-      let batteryWidth = 2; 
-      
-      if (quantity >= 4) {
-        batteryLength = 8;
-        batteryWidth = 2;
-      } else if (quantity <= 2) {
-        batteryLength = 5;
-        batteryWidth = 2;
-      } else {
-        batteryLength = 5 + (quantity - 2) * 1.5;
-        batteryWidth = 2;
-      }
-      
-      const metersPerPixel = 40075016.686 * Math.abs(Math.cos(map.getCenter().lat * Math.PI / 180)) / Math.pow(2, map.getZoom() + 8);
-      const widthInPixels = batteryLength / metersPerPixel;
-      const heightInPixels = batteryWidth / metersPerPixel;
-      
-      const centerPoint = map.getSize().divideBy(2);
-      const southWestPoint = L.point(centerPoint.x - widthInPixels / 2, centerPoint.y + heightInPixels / 2);
-      const northEastPoint = L.point(centerPoint.x + widthInPixels / 2, centerPoint.y - heightInPixels / 2);
-      
-      const sw = map.containerPointToLatLng(southWestPoint);
-      const ne = map.containerPointToLatLng(northEastPoint);
-      const nw = L.latLng(ne.lat, sw.lng);
-      const se = L.latLng(sw.lat, ne.lng);
+      // Dimensions fixes de la dalle batterie au sol : 3m x 4m (12 m²) quelle que soit la quantité
+      const batteryLength = 4;
+      const batteryWidth = 3;
+
+      const center = map.getCenter();
+      const halfL = batteryLength / 2;
+      const halfW = batteryWidth / 2;
+
+      const dLat = halfW / 111111;
+      const dLng = halfL / (111111 * Math.cos(toRad(center.lat)));
+
+      const nw = L.latLng(center.lat + dLat, center.lng - dLng);
+      const ne = L.latLng(center.lat + dLat, center.lng + dLng);
+      const se = L.latLng(center.lat - dLat, center.lng + dLng);
+      const sw = L.latLng(center.lat - dLat, center.lng - dLng);
       
       const id = crypto.randomUUID();
       const initialAngle = 0;
@@ -6179,7 +6167,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         label: `Batterie ${model.brand} (x${quantity})`
       }]);
       
-      toast({ ...toastStyle, title: "Batterie ajoutée", description: `${model.brand} (x${quantity}) - Rectangle ${batteryLength}x${batteryWidth}m` });
+      toast({ ...toastStyle, title: "Batterie ajoutée", description: `${model.brand} (x${quantity}) - Dalle ${batteryWidth}x${batteryLength}m` });
     };
 
     const handlePlaceBuilding = (e) => {
