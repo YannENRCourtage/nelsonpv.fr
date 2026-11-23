@@ -72,11 +72,20 @@ export default function DpInstructionCard({
   const [loadingMairie, setLoadingMairie] = useState(false);
   const [mairieResolvedCode, setMairieResolvedCode] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const isEditingDpRef = useRef(false);
+  const lastProjectIdRef = useRef(project?.id);
 
   // Synchronisation avec les props quand le projet change
   useEffect(() => {
+    const projectChanged = lastProjectIdRef.current !== project?.id;
+    if (projectChanged) {
+      lastProjectIdRef.current = project?.id;
+    }
+
     const curDp = stepState?.registrationNumber || project?.dp_registration_number || project?.numero_dp || project?.num_dp || '';
-    setDpNumber(curDp);
+    if (projectChanged || !isEditingDpRef.current) {
+      setDpNumber(curDp);
+    }
     
     // Résolution robuste de la date de dépôt : toujours conserver la date saisie par l'utilisateur
     const resolved = resolveProjectDepositDate(project, stepState);
@@ -128,11 +137,13 @@ export default function DpInstructionCard({
     }
   };
 
-  // Trigger détection mairie lors de la modification du numéro DP
+  // Trigger détection mairie lors de la modification du numéro DP (debounced pour ne pas perturber la saisie libre)
   useEffect(() => {
-    if (dpNumber && dpNumber.length >= 7) {
+    if (!dpNumber || dpNumber.length < 7) return;
+    const timer = setTimeout(() => {
       detectAndFetchMairie(dpNumber);
-    }
+    }, 500);
+    return () => clearTimeout(timer);
   }, [dpNumber]);
 
   // Recherche & synchronisation multi-sources (SITADEL, Web affichage, documents & jalons)
@@ -476,9 +487,16 @@ export default function DpInstructionCard({
               <input
                 type="text"
                 value={dpNumber}
+                onFocus={() => { isEditingDpRef.current = true; }}
+                onBlur={() => {
+                  isEditingDpRef.current = false;
+                  handleDpNumberChange(dpNumber);
+                }}
                 onChange={(e) => handleDpNumberChange(e.target.value)}
+                spellCheck={false}
+                autoComplete="off"
                 placeholder="ex : DP 024 253 26 00012 ou DP0871262600074"
-                className="flex-1 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-sans outline-none transition-colors"
+                className="flex-1 min-w-0 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-sans outline-none transition-colors"
               />
               <button
                 type="button"

@@ -157,6 +157,8 @@ export default function EtudeDossierView({
 
   // État local des étapes pour le projet
   const [stepsState, setStepsState] = useState({});
+  const stepsStateRef = React.useRef({});
+  stepsStateRef.current = stepsState;
   const [projectComments, setProjectComments] = useState('');
   const [isCommentSaved, setIsCommentSaved] = useState(false);
   const [isSavingComment, setIsSavingComment] = useState(false);
@@ -252,15 +254,17 @@ export default function EtudeDossierView({
 
   // Sauvegarde d'une étape avec synchronisation mutuelle DP / PC et mise à jour Firestore temps réel
   const updateStep = (stepId, updates) => {
+    const currentSteps = stepsStateRef.current || stepsState;
     const todayStr = updates.lastIntervention || new Date().toLocaleDateString('fr-FR');
     let newStepsState = {
-      ...stepsState,
+      ...currentSteps,
       [stepId]: {
-        ...(stepsState[stepId] || {}),
+        ...(currentSteps[stepId] || {}),
         ...updates,
-        lastIntervention: updates.lastIntervention || stepsState[stepId]?.lastIntervention || todayStr,
+        lastIntervention: updates.lastIntervention || currentSteps[stepId]?.lastIntervention || todayStr,
       }
     };
+    stepsStateRef.current = newStepsState;
 
     // Si DP validé -> PC passe automatiquement à 'ns' s'il était en attente (et vice-versa)
     if (stepId === 'dp' && updates.status === 'validated') {
