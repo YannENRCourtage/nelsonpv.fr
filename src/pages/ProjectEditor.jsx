@@ -141,6 +141,16 @@ export default function ProjectEditor() {
     };
   };
 
+  const activateDefaultSearchLayers = () => {
+    setActiveLayers(prev => {
+      const next = new Set(prev);
+      next.add('cadastre');
+      next.add('enedisHTA');
+      next.add('enedisPostes');
+      return next;
+    });
+  };
+
   const handleAddressSelect = (feature) => {
     const props = feature?.properties || {};
     const { address, zip, city, citycode } = extractCleanAddressParts(props, props.label);
@@ -158,6 +168,7 @@ export default function ProjectEditor() {
       inseeCode: citycode || props.citycode || '',
       ...(latFmt && lngFmt ? { gps: `${latFmt}, ${lngFmt}` } : {})
     });
+    activateDefaultSearchLayers();
     if (lat && lng) {
       window.dispatchEvent(new CustomEvent('map:goto-location', {
         detail: { lat, lng, zoom: 18 }
@@ -663,6 +674,7 @@ export default function ProjectEditor() {
     }
 
     updateProject(updates);
+    activateDefaultSearchLayers();
     if (hasValidCoords) {
       window.dispatchEvent(new CustomEvent("map:goto-address", { detail: { lat: latNum, lng: lngNum } }));
     }
@@ -675,6 +687,7 @@ export default function ProjectEditor() {
     if (!isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0) {
       updateProject({ gps: `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}` });
     }
+    activateDefaultSearchLayers();
   };
 
   const handleReset = () => {
@@ -2619,6 +2632,7 @@ export default function ProjectEditor() {
                                 quantity: batteryQuantity
                               } 
                             }));
+                            updateProject({ type: 'Batterie SA' });
                           }}
                           size="sm"
                           className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -2867,6 +2881,7 @@ export default function ProjectEditor() {
                             quantity: batteryQuantity
                           } 
                         }));
+                        updateProject({ type: 'Batterie SA' });
                         setIsBuildingsOpen(false);
                       }}
                       className="w-full h-9 text-xs bg-blue-600 hover:bg-blue-700 text-white"
