@@ -79,157 +79,249 @@ export default function SmsCampaignView({ tabs = [] }) {
 
   // ── 2. Sources de destinataires (Monday LEADS/Tableaux, CRM Contacts, CRM Projets) ──
   const [crmContacts, setCrmContacts] = useState([]);
+  const [fetchedProjects, setFetchedProjects] = useState([]);
   const [mondayLeads, setMondayLeads] = useState([]);
   const [sourceTab, setSourceTab] = useState('all'); // 'all' | 'monday' | 'crm_contacts' | 'crm_projects'
+  const [onlyWithPhone, setOnlyWithPhone] = useState(false); // Par défaut false : afficher TOUS les contacts pour pouvoir tous les retrouver
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     let mounted = true;
-    apiService.getContacts(activeTenantId)
-      .then(list => {
-        if (mounted && Array.isArray(list)) setCrmContacts(list);
-      })
-      .catch(() => {});
+    Promise.allSettled([
+      apiService.getContacts(activeTenantId),
+      apiService.getProjects(activeTenantId)
+    ]).then(([contactsRes, projectsRes]) => {
+      if (!mounted) return;
+      if (contactsRes.status === 'fulfilled' && Array.isArray(contactsRes.value)) {
+        setCrmContacts(contactsRes.value);
+      }
+      if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
+        setFetchedProjects(projectsRes.value);
+      }
+    });
     return () => { mounted = false; };
   }, [activeTenantId]);
 
-  // Extraire automatiquement les lignes contenant un numéro de téléphone depuis les tableaux Monday (notamment LEADS / Projets)
+  // Fusionner les projets du contexte et ceux fraîchement récupérés depuis Firestore
+  const allProjects = useMemo(() => {
+    const byId = new Map();
+    (projects || []).forEach(p => { if (p?.id) byId.set(p.id, p); });
+    (fetchedProjects || []).forEach(p => { if (p?.id) byId.set(p.id, { ...byId.get(p.id), ...p }); });
+    return Array.from(byId.values());
+  }, [projects, fetchedProjects]);
+
+  // Extraire automatiquement les lignes depuis les sous-collections Firestore `monday_tables/{tabId}/rows`
   useEffect(() => {
-    let mounted = true;
-    const loadMondayPhoneRows = async () => {
-      try {
-        const extracted = [];
-        for (const tab of tabs) {
-          const rows = Array.isArray(tab.rows) ? tab.rows : [];
-          rows.forEach(r => {
-            const values = r.values || r || {};
-            let foundPhone = '';
-            let foundName = '';
-            let foundCity = '';
-            let foundPrm = '';
+    if (!Array.isArray(tabs) || tabs.length === 0) {
+      setMondayLeads([]);
+      return;
+    }
 
-            Object.entries(values).forEach(([k, val]) => {
-              const strVal = String(val || '').trim();
-              if (!strVal) return;
-              const keyLow = k.toLowerCase();
-              if (
-                keyLow.includes('tel') ||
-                keyLow.includes('tél') ||
-                keyLow.includes('phone') ||
-                keyLow.includes('mobile') ||
-                keyLow.includes('portable')
-              ) {
-                const norm = normalizePhoneNumber(strVal);
-                if (norm.valid) foundPhone = norm.formatted;
-              } else if (!foundPhone && /^(?:(?:\+|00)33|0)\s*[67](?:[\s.-]*\d{2}){4}$/.test(strVal)) {
-                const norm = normalizePhoneNumber(strVal);
-                if (norm.valid) foundPhone = norm.formatted;
-              }
+    const rowsByTab = new Map();
+    const unsubscribes = [];
 
-              if (keyLow === 'name' || keyLow.includes('nom') || keyLow.includes('client') || keyLow.includes('société')) {
-                if (!foundName) foundName = strVal;
-              }
-              if (keyLow.includes('ville') || keyLow.includes('commune') || keyLow.includes('adresse')) {
-                if (!foundCity) foundCity = strVal;
-              }
-              if (keyLow.includes('prm') || keyLow.includes('pdl')) {
-                if (/^\d{14}$/.test(strVal.replace(/\D/g, ''))) {
-                  foundPrm = strVal.replace(/\D/g, '');
-                }
-              }
-            });
+    const rebuildMondayLeads = () => {
+      const extracted = [];
+      tabs.forEach(tab => {
+        const rows = rowsByTab.get(tab.id) || (Array.isArray(tab.rows) ? tab.rows : []);
+        rows.forEach(r => {
+          const values = r.values || r || {};
+          let rawPhone = '';
+          let foundName = '';
+          let foundCity = '';
+          let foundPrm = '';
+          let foundEmail = '';
 
-            if (foundPhone) {
-              const norm = normalizePhoneNumber(foundPhone);
-              if (norm.valid) {
-                extracted.push({
-                  id: `monday-${tab.id}-${r.id}`,
-                  name: foundName || 'Prospect Monday',
-                  phone: norm.formatted,
-                  e164: norm.e164,
-                  city: foundCity,
-                  prm: foundPrm,
-                  source: `Monday • ${tab.name}`,
-                  sourceType: 'monday'
-                });
-              }
+          Object.entries(values).forEach(([k, val]) => {
+            if (k === 'id' || k === 'subItems' || k === 'updates' || k === 'createdAt' || k === 'updatedAt') return;
+            const strVal = String(val || '').trim();
+            if (!strVal) return;
+            const keyLow = k.toLowerCase();
+
+            if (
+              keyLow.includes('tel') ||
+              keyLow.includes('tél') ||
+              keyLow.includes('phone') ||
+              keyLow.includes('mobile') ||
+              keyLow.includes('portable')
+            ) {
+              if (!rawPhone) rawPhone = strVal;
+            } else if (!rawPhone && /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test(strVal)) {
+              rawPhone = strVal;
+            }
+
+            if (keyLow === 'name' || keyLow === 'nom' || keyLow.includes('client') || keyLow.includes('société') || keyLow.includes('societe') || keyLow.includes('raison')) {
+              if (!foundName) foundName = strVal;
+            }
+            if (keyLow.includes('ville') || keyLow.includes('commune') || keyLow.includes('adresse') || keyLow.includes('cp')) {
+              if (!foundCity) foundCity = strVal;
+            }
+            if (keyLow.includes('mail') || strVal.includes('@')) {
+              if (!foundEmail && strVal.includes('@')) foundEmail = strVal;
+            }
+            if (keyLow.includes('prm') || keyLow.includes('pdl')) {
+              const digits = strVal.replace(/\D/g, '');
+              if (digits.length === 14) foundPrm = digits;
             }
           });
-        }
-        if (mounted) setMondayLeads(extracted);
-      } catch (_) {}
+
+          // Exclure uniquement les tableaux purement techniques sans nom ni téléphone (ex: MDP sans téléphone)
+          const tabLow = (tab.name || '').toLowerCase();
+          if ((tabLow.includes('mdp') || tabLow.includes('dette') || tabLow.includes('charge')) && !rawPhone) {
+            return;
+          }
+
+          if (!foundName && !rawPhone && !foundEmail) return;
+
+          const norm = rawPhone ? normalizePhoneNumber(rawPhone) : { valid: false, e164: '', formatted: '' };
+          extracted.push({
+            id: `monday-${tab.id}-${r.id}`,
+            name: foundName || foundEmail || 'Contact Monday',
+            phone: norm.valid ? norm.formatted : rawPhone,
+            e164: norm.valid ? norm.e164 : '',
+            hasValidPhone: norm.valid,
+            rawPhone,
+            city: foundCity,
+            email: foundEmail,
+            prm: foundPrm,
+            source: `Monday • ${tab.name}`,
+            sourceType: 'monday'
+          });
+        });
+      });
+      setMondayLeads(extracted);
     };
-    loadMondayPhoneRows();
-    return () => { mounted = false; };
+
+    tabs.forEach(tab => {
+      // Ne souscrire en priorité qu'aux tableaux pertinents (LEADS, Projets, Contacts, etc.) ou tous sauf MDP/Dettes/Charges
+      const unsub = apiService.subscribeToMondayRows(tab.id, (fetchedRows) => {
+        rowsByTab.set(tab.id, fetchedRows || []);
+        rebuildMondayLeads();
+      });
+      if (typeof unsub === 'function') unsubscribes.push(unsub);
+    });
+
+    return () => {
+      unsubscribes.forEach(fn => {
+        try { fn(); } catch (_) {}
+      });
+    };
   }, [tabs]);
 
-  // Liste consolidée et dédoublonnée de tous les contacts/projets/leads avec téléphone valide
+  // Liste consolidée de TOUS les contacts/projets/leads (avec ou sans téléphone valide)
   const allRecipientsDirectory = useMemo(() => {
     const map = new Map();
 
-    // 1. Monday Leads
-    mondayLeads.forEach(item => {
-      if (!map.has(item.e164)) map.set(item.e164, item);
+    const makeKey = (item) => {
+      if (item.e164) return `tel:${item.e164}`;
+      const cleanName = (item.name || '').toLowerCase().trim();
+      const cleanEmail = (item.email || '').toLowerCase().trim();
+      return `id:${cleanName}|${cleanEmail}|${item.sourceType}`;
+    };
+
+    const addOrMerge = (item) => {
+      const key = makeKey(item);
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, item);
+      } else {
+        // Enrichir l'entrée existante si de nouvelles infos sont disponibles (ex: PRM, ville, téléphone)
+        map.set(key, {
+          ...existing,
+          phone: existing.phone || item.phone,
+          e164: existing.e164 || item.e164,
+          hasValidPhone: existing.hasValidPhone || item.hasValidPhone,
+          rawPhone: existing.rawPhone || item.rawPhone,
+          city: existing.city || item.city,
+          email: existing.email || item.email,
+          prm: existing.prm || item.prm,
+          projectId: existing.projectId || item.projectId
+        });
+      }
+    };
+
+    // 1. CRM Projets (prioritaire car contient nom, prénom, téléphone, ville, PRM)
+    allProjects.forEach(p => {
+      const rawPhone = String(p?.phone || p?.telephone || p?.tel || p?.mobile || p?.clientPhone || '').trim();
+      const norm = rawPhone ? normalizePhoneNumber(rawPhone) : { valid: false, e164: '', formatted: '' };
+      const clientLabel = [p.name, p.firstName].filter(Boolean).join(' ').trim() || p.client || p.client_name || p.company || '';
+      if (!clientLabel && !rawPhone && !p.email) return;
+
+      addOrMerge({
+        id: `project-${p.id}`,
+        name: clientLabel || p.email || 'Client Projet',
+        phone: norm.valid ? norm.formatted : rawPhone,
+        e164: norm.valid ? norm.e164 : '',
+        hasValidPhone: norm.valid,
+        rawPhone,
+        city: [p.zip, p.city].filter(Boolean).join(' ').trim(),
+        email: p.email || '',
+        prm: (p.enedisPrm || p.prm || p.pdl || '').toString().replace(/\D/g, ''),
+        projectId: p.id || '',
+        source: 'CRM • Projet',
+        sourceType: 'crm_projects'
+      });
     });
 
     // 2. CRM Contacts
     (crmContacts || []).forEach(c => {
-      if (!c?.phone) return;
-      const norm = normalizePhoneNumber(c.phone);
-      if (!norm.valid) return;
-      if (!map.has(norm.e164)) {
-        map.set(norm.e164, {
-          id: `contact-${c.id}`,
-          name: c.name || c.company || 'Contact CRM',
-          phone: norm.formatted,
-          e164: norm.e164,
-          city: c.city || '',
-          prm: c.prm || '',
-          projectId: c.projectId || '',
-          source: 'CRM • Contact',
-          sourceType: 'crm_contacts'
-        });
-      }
+      const rawPhone = String(c?.phone || c?.telephone || c?.tel || c?.mobile || '').trim();
+      const norm = rawPhone ? normalizePhoneNumber(rawPhone) : { valid: false, e164: '', formatted: '' };
+      const label = [c.name, c.company].filter(Boolean).join(' • ').trim() || c.email || '';
+      if (!label && !rawPhone) return;
+
+      addOrMerge({
+        id: `contact-${c.id}`,
+        name: c.name || c.company || c.email || 'Contact CRM',
+        phone: norm.valid ? norm.formatted : rawPhone,
+        e164: norm.valid ? norm.e164 : '',
+        hasValidPhone: norm.valid,
+        rawPhone,
+        city: [c.zipCode, c.city].filter(Boolean).join(' ').trim(),
+        email: c.email || '',
+        prm: (c.prm || '').toString().replace(/\D/g, ''),
+        projectId: c.projectId || '',
+        source: 'CRM • Contact',
+        sourceType: 'crm_contacts'
+      });
     });
 
-    // 3. CRM Projets
-    (projects || []).forEach(p => {
-      if (!p?.phone) return;
-      const norm = normalizePhoneNumber(p.phone);
-      if (!norm.valid) return;
-      const clientLabel = `${p.name || ''} ${p.firstName || ''}`.trim() || 'Client Projet';
-      if (!map.has(norm.e164)) {
-        map.set(norm.e164, {
-          id: `project-${p.id}`,
-          name: clientLabel,
-          phone: norm.formatted,
-          e164: norm.e164,
-          city: p.city || '',
-          prm: p.enedisPrm || p.prm || '',
-          projectId: p.id || '',
-          source: 'CRM • Projet',
-          sourceType: 'crm_projects'
-        });
-      }
+    // 3. Monday Leads / Tableaux
+    mondayLeads.forEach(item => {
+      addOrMerge(item);
     });
 
-    return Array.from(map.values());
-  }, [mondayLeads, crmContacts, projects]);
+    return Array.from(map.values()).sort((a, b) => {
+      // Trier d'abord ceux qui ont un téléphone valide, puis alphabétiquement
+      if (a.hasValidPhone !== b.hasValidPhone) return a.hasValidPhone ? -1 : 1;
+      return (a.name || '').localeCompare(b.name || '', 'fr');
+    });
+  }, [mondayLeads, crmContacts, allProjects]);
 
   const filteredDirectory = useMemo(() => {
     return allRecipientsDirectory.filter(item => {
       if (sourceTab !== 'all' && item.sourceType !== sourceTab) return false;
+      if (onlyWithPhone && !item.hasValidPhone) return false;
       if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        (item.name || '').toLowerCase().includes(q) ||
-        (item.phone || '').toLowerCase().includes(q) ||
-        (item.e164 || '').toLowerCase().includes(q) ||
-        (item.city || '').toLowerCase().includes(q) ||
-        (item.prm || '').toLowerCase().includes(q)
-      );
+      const q = searchQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const haystack = [
+        item.name,
+        item.phone,
+        item.rawPhone,
+        item.e164,
+        item.city,
+        item.email,
+        item.prm,
+        item.source
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      return haystack.includes(q);
     });
-  }, [allRecipientsDirectory, sourceTab, searchQuery]);
+  }, [allRecipientsDirectory, sourceTab, onlyWithPhone, searchQuery]);
 
   // ── 3. État de la campagne / destinataires sélectionnés & saisie manuelle ──
   const [selectedRecipients, setSelectedRecipients] = useState([]);
@@ -351,6 +443,19 @@ export default function SmsCampaignView({ tabs = [] }) {
   };
 
   const toggleRecipientFromDirectory = (item) => {
+    if (!item.hasValidPhone || !item.e164) {
+      setManualName(item.name || '');
+      setManualPhone(item.rawPhone || '');
+      setManualPrm(item.prm || '');
+      toast({
+        title: item.rawPhone ? 'Numéro à compléter / vérifier' : 'Aucun numéro enregistré',
+        description: item.rawPhone
+          ? `Le numéro "${item.rawPhone}" de ${item.name} est incomplet. Corrigez-le dans l'encadré 1 puis cliquez sur Ajouter.`
+          : `Renseignez le mobile de ${item.name} dans l'encadré 1 puis cliquez sur Ajouter.`
+      });
+      return;
+    }
+
     setSelectedRecipients(prev => {
       const exists = prev.some(r => r.e164 === item.e164);
       if (exists) return prev.filter(r => r.e164 !== item.e164);
@@ -359,16 +464,19 @@ export default function SmsCampaignView({ tabs = [] }) {
   };
 
   const handleSelectAllFiltered = () => {
-    const allSelected = filteredDirectory.every(d =>
+    const validItems = filteredDirectory.filter(d => d.hasValidPhone && d.e164);
+    if (validItems.length === 0) return;
+
+    const allSelected = validItems.every(d =>
       selectedRecipients.some(r => r.e164 === d.e164)
     );
     if (allSelected) {
-      const filteredSet = new Set(filteredDirectory.map(d => d.e164));
+      const filteredSet = new Set(validItems.map(d => d.e164));
       setSelectedRecipients(prev => prev.filter(r => !filteredSet.has(r.e164)));
     } else {
       setSelectedRecipients(prev => {
         const map = new Map(prev.map(r => [r.e164, r]));
-        filteredDirectory.slice(0, 50).forEach(d => map.set(d.e164, d));
+        validItems.slice(0, 50).forEach(d => map.set(d.e164, d));
         return Array.from(map.values());
       });
     }
@@ -666,27 +774,38 @@ export default function SmsCampaignView({ tabs = [] }) {
               )}
             </div>
 
-            {/* Filtres de source */}
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { id: 'all', label: `Tous (${allRecipientsDirectory.length})` },
-                { id: 'monday', label: `Tableaux Monday (${mondayLeads.length})` },
-                { id: 'crm_contacts', label: 'Contacts CRM' },
-                { id: 'crm_projects', label: 'Projets CRM' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSourceTab(tab.id)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    sourceTab === tab.id
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            {/* Filtres de source + option téléphone valide */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: 'all', label: `Tous (${allRecipientsDirectory.length})` },
+                  { id: 'monday', label: `Tableaux Monday (${mondayLeads.length})` },
+                  { id: 'crm_contacts', label: 'Contacts CRM' },
+                  { id: 'crm_projects', label: 'Projets CRM' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSourceTab(tab.id)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      sourceTab === tab.id
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={onlyWithPhone}
+                  onChange={e => setOnlyWithPhone(e.target.checked)}
+                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+                />
+                <span>Avec tél. valide</span>
+              </label>
             </div>
 
             {/* Barre de recherche */}
@@ -695,20 +814,20 @@ export default function SmsCampaignView({ tabs = [] }) {
               <Input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Rechercher par nom, téléphone, ville ou PRM..."
+                placeholder="Rechercher par nom, téléphone, ville, email ou PRM..."
                 className="pl-8 h-9 text-xs rounded-xl bg-slate-50"
               />
             </div>
 
             {/* Liste des contacts */}
-            <div className="max-h-[320px] overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-2xl">
+            <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-2xl">
               {filteredDirectory.length === 0 ? (
                 <div className="p-6 text-center text-xs text-slate-400">
-                  Aucun contact avec numéro de téléphone trouvé dans cette vue. Utilisez l'ajout rapide ci-dessus.
+                  Aucun contact trouvé pour « {searchQuery || 'cette vue'} ». Utilisez l'ajout rapide ci-dessus.
                 </div>
               ) : (
                 filteredDirectory.map(item => {
-                  const isChecked = selectedRecipients.some(r => r.e164 === item.e164);
+                  const isChecked = Boolean(item.e164 && selectedRecipients.some(r => r.e164 === item.e164));
                   return (
                     <div
                       key={item.id}
@@ -721,12 +840,20 @@ export default function SmsCampaignView({ tabs = [] }) {
                         {isChecked ? (
                           <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
                         ) : (
-                          <Square className="w-4 h-4 text-slate-300 shrink-0" />
+                          <Square className={`w-4 h-4 shrink-0 ${item.hasValidPhone ? 'text-slate-300' : 'text-amber-300'}`} />
                         )}
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-slate-900 truncate">{item.name}</div>
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                            <span className="font-mono font-semibold text-emerald-700">{item.phone}</span>
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                            {item.hasValidPhone ? (
+                              <span className="font-mono font-semibold text-emerald-700">{item.phone}</span>
+                            ) : item.rawPhone ? (
+                              <span className="font-mono font-semibold text-amber-700 bg-amber-50 px-1.5 rounded border border-amber-200">
+                                À vérifier : {item.rawPhone}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] italic text-slate-400">Pas de tél.</span>
+                            )}
                             {item.city && <span className="truncate">• {item.city}</span>}
                             {item.prm && <span className="font-mono text-[10px] bg-blue-50 text-blue-700 px-1.5 rounded">PRM {item.prm}</span>}
                           </div>
