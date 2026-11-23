@@ -1564,7 +1564,7 @@ function SaturationReseauLayerManager({ layersRef, activeLayers }) {
           const jsonVoronoi = await resVoronoi.json();
           if (jsonVoronoi && Array.isArray(jsonVoronoi.features) && jsonVoronoi.features.length > 0) {
             voronoiCacheRef.current = jsonVoronoi.features;
-            if (layersRef.current) layersRef.current._saturationDataSource = 'Polygones Caparéseau / S3REnR & CRE 2025-227';
+            if (layerGroupRef.current) layerGroupRef.current._saturationDataSource = 'Polygones Caparéseau / S3REnR & CRE 2025-227';
           }
         }
       } catch (err) {
@@ -1580,7 +1580,7 @@ function SaturationReseauLayerManager({ layersRef, activeLayers }) {
           const jsonMap = await resMap.json();
           if (Array.isArray(jsonMap) && jsonMap.length > 0) {
             mapPointsCacheRef.current = jsonMap;
-            if (layersRef.current) layersRef.current._saturationDataSource = 'Postes Sources Caparéseau (Rayon d’influence)';
+            if (layerGroupRef.current) layerGroupRef.current._saturationDataSource = 'Postes Sources Caparéseau (Rayon d’influence)';
           }
         }
       } catch (err) {
@@ -1589,12 +1589,12 @@ function SaturationReseauLayerManager({ layersRef, activeLayers }) {
 
       if (!mapPointsCacheRef.current && Array.isArray(CAPARESEAU_SUBSTATIONS)) {
         mapPointsCacheRef.current = CAPARESEAU_SUBSTATIONS;
-        if (layersRef.current) layersRef.current._saturationDataSource = 'Base locale NELSON (Caparéseau / ODRE)';
+        if (layerGroupRef.current) layerGroupRef.current._saturationDataSource = 'Base locale NELSON (Caparéseau / ODRE)';
       }
     }
 
     const bounds = map.getBounds().pad(0.25);
-    const sourceLabel = layersRef.current?._saturationDataSource || 'Caparéseau / Enedis / ODRE';
+    const sourceLabel = layerGroupRef.current?._saturationDataSource || 'Caparéseau / Enedis / ODRE';
 
     // Cas A : Rendu des polygones de saturation (Voronoï) + Marqueurs des postes sources
     if (voronoiCacheRef.current) {
@@ -4838,10 +4838,10 @@ function SaturationReseauLegend({ layersRef, activeLayers }) {
   useEffect(() => {
     const checkLayer = () => {
       const layer = layersRef.current?.['saturationReseau'];
-      const isVisible = Boolean(activeLayers?.has('saturationReseau') || (layer && map.hasLayer(layer)));
+      const isVisible = Boolean(activeLayers?.has('saturationReseau') || (layer && typeof layer === 'object' && map.hasLayer(layer)));
       setShowLegend(isVisible);
-      if (layersRef.current?._saturationDataSource) {
-        setDataSource(layersRef.current._saturationDataSource);
+      if (layer?._saturationDataSource) {
+        setDataSource(layer._saturationDataSource);
       }
     };
     checkLayer();
@@ -5776,7 +5776,7 @@ function LayersBootstrap({ layersRef }) {
 
     return () => {
       Object.values(layersRef.current).forEach((l) => {
-        if (l && map.hasLayer(l)) map.removeLayer(l);
+        if (l && typeof l === 'object' && map.hasLayer(l)) map.removeLayer(l);
       });
     };
   }, [map, layersRef]);
