@@ -182,9 +182,13 @@ export async function generateFicheReseauPdf({
   doc.setFontSize(6.5);
   doc.setTextColor(100, 116, 139);
   doc.text('DATE & STATUT RÉSEAU', marginX + colW * 3 + 4, currentY + 4.5);
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setTextColor(16, 185, 129); // Emerald
-  doc.text(isEligibleSoutirage ? '● Capacité Réseau Favorable' : '● Réseau Contraint', marginX + colW * 3 + 4, currentY + 8.5);
+  const statutLines = doc.splitTextToSize(
+    isEligibleSoutirage ? 'Capacité Réseau Favorable' : 'Réseau Contraint',
+    colW - 6
+  );
+  doc.text(statutLines[0], marginX + colW * 3 + 4, currentY + 8.5);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(71, 85, 105);
@@ -215,7 +219,7 @@ export async function generateFicheReseauPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(`⚡ Poste Source RTE : ${subName}`, marginX + 3.5, currentY + 4.5);
+  doc.text(`Poste Source RTE : ${subName}`, marginX + 3.5, currentY + 4.5);
 
   let py = currentY + 10;
   const subRows = [
@@ -249,7 +253,7 @@ export async function generateFicheReseauPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(`🔌 Tronçon HTA 20 kV : ${lineDepart}`, card2X + 3.5, currentY + 4.5);
+  doc.text(`Tronçon HTA 20 kV : ${lineDepart}`, card2X + 3.5, currentY + 4.5);
 
   let py2 = currentY + 10;
   const lineRows = [
@@ -276,33 +280,36 @@ export async function generateFicheReseauPdf({
   currentY += card1H + 3.5;
 
   // --- Encadré Synthèse Faisabilité / Éligibilité ---
-  const eligH = 11;
   const isOk = isEligibleSoutirage;
+  const diagTitle = isOk
+    ? `DIAGNOSTIC DE FAISABILITÉ : Poste HTA/BT ${targetPowerKva} kVA Éligible en soutirage sur le tronçon HTA existant`
+    : `CONTRAINTE RÉSEAU : La puissance demandée (${targetPowerKva} kVA) excède la capacité du départ HTA local (${formatNum(lineSoutirageKva)} kVA)`;
+  const diagBody = isOk
+    ? `La marge disponible en soutirage sur le départ ${lineDepart} (${formatNum(lineSoutirageKva)} kVA / ${lineSoutirageMw} MW) permet le raccordement en coupure d'artère sans nécessiter de départ direct dédié depuis le poste source.`
+    : `Un départ dédié depuis le Poste Source (${subName}) ou une optimisation de l'architecture d'alimentation avec batterie tampon est requis.`;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.4);
+  const splitDiagTitle = doc.splitTextToSize(diagTitle, contentWidth - 8);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  const splitDiagBody = doc.splitTextToSize(diagBody, contentWidth - 8);
+
+  const eligH = Math.max(12, 4.2 + splitDiagTitle.length * 3.4 + 0.8 + splitDiagBody.length * 3.0 + 2.2);
   drawCard(marginX, currentY, contentWidth, eligH, isOk ? [240, 253, 244] : [254, 242, 242], isOk ? [187, 247, 208] : [254, 202, 202], 2);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.6);
+  doc.setFontSize(7.4);
   doc.setTextColor(...(isOk ? [22, 101, 52] : [153, 27, 27]));
-  doc.text(
-    isOk 
-      ? `✓ DIAGNOSTIC DE FAISABILITÉ : Poste HTA/BT ${targetPowerKva} kVA Éligible en soutirage sur le tronçon HTA existant`
-      : `⚠ CONTRAINTE RÉSEAU : La puissance demandée (${targetPowerKva} kVA) excède la capacité du départ HTA local (${formatNum(lineSoutirageKva)} kVA)`,
-    marginX + 4,
-    currentY + 4.5
-  );
+  doc.text(splitDiagTitle, marginX + 4, currentY + 4.3);
 
+  const bodyStartY = currentY + 4.3 + splitDiagTitle.length * 3.4 + 0.6;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(
-    isOk
-      ? `La marge disponible en soutirage sur le départ ${lineDepart} (${formatNum(lineSoutirageKva)} kVA / ${lineSoutirageMw} MW) permet le raccordement en coupure d'artère sans nécessiter de départ direct dédié depuis le poste source.`
-      : `Un départ dédié depuis le Poste Source (${subName}) ou une optimisation de l'architecture d'alimentation avec batterie tampon est requis.`,
-    marginX + 4,
-    currentY + 8.5
-  );
+  doc.text(splitDiagBody, marginX + 4, bodyStartY);
 
-  currentY += eligH + 5;
+  currentY += eligH + 4.5;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 4. SECTION 2 : COMPARATIF TECHNIQUE ET ÉCONOMIQUE OBJECTIF DES 2 ARCHITECTURES
@@ -368,7 +375,7 @@ export async function generateFicheReseauPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.8);
   doc.setTextColor(22, 101, 52); // Green
-  doc.text('✓ Avantages techniques :', marginX + 3.5, ay);
+  doc.text('Avantages techniques :', marginX + 3.5, ay);
   ay += 3.5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.1);
@@ -379,8 +386,9 @@ export async function generateFicheReseauPdf({
     '• Ouvrage dimensionné pour extensions futures de puissance.'
   ];
   advA.forEach(line => {
-    doc.text(line, marginX + 3.5, ay);
-    ay += 2.8;
+    const wrapped = doc.splitTextToSize(line, cardW - 7);
+    doc.text(wrapped, marginX + 3.5, ay);
+    ay += wrapped.length * 2.8;
   });
   ay += 1.5;
 
@@ -388,7 +396,7 @@ export async function generateFicheReseauPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.8);
   doc.setTextColor(194, 65, 12); // Amber-700
-  doc.text('⚠ Points de vigilance & Contraintes :', marginX + 3.5, ay);
+  doc.text('Points de vigilance & Contraintes :', marginX + 3.5, ay);
   ay += 3.5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.1);
@@ -399,8 +407,9 @@ export async function generateFicheReseauPdf({
     '• Délais Enedis d\'instruction (PTF) et de travaux : 12 à 18 mois.'
   ];
   vigA.forEach(line => {
-    doc.text(line, marginX + 3.5, ay);
-    ay += 2.8;
+    const wrapped = doc.splitTextToSize(line, cardW - 7);
+    doc.text(wrapped, marginX + 3.5, ay);
+    ay += wrapped.length * 2.8;
   });
   ay += 2;
 
@@ -455,7 +464,7 @@ export async function generateFicheReseauPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.2);
   doc.setTextColor(21, 128, 61);
-  doc.text('Raccordement BT ≤ 250 kVA + Stockage BESS / Ombrières PV', card2X + 3.5, currentY + 7.2);
+  doc.text('Raccordement BT <= 250 kVA + Stockage BESS', card2X + 3.5, currentY + 7.2);
 
   let by2 = currentY + 12;
 
@@ -477,7 +486,7 @@ export async function generateFicheReseauPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.8);
   doc.setTextColor(22, 101, 52);
-  doc.text('✓ Avantages techniques :', card2X + 3.5, by2);
+  doc.text('Avantages techniques :', card2X + 3.5, by2);
   by2 += 3.5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.1);
@@ -489,8 +498,9 @@ export async function generateFicheReseauPdf({
     '• Synergie naturelle avec l\'énergie solaire autoproduite locale.'
   ];
   advB.forEach(line => {
-    doc.text(line, card2X + 3.5, by2);
-    by2 += 2.8;
+    const wrapped = doc.splitTextToSize(line, cardW - 7);
+    doc.text(wrapped, card2X + 3.5, by2);
+    by2 += wrapped.length * 2.8;
   });
   by2 += 1.5;
 
@@ -499,7 +509,7 @@ export async function generateFicheReseauPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.8);
   doc.setTextColor(194, 65, 12);
-  doc.text('⚠ Points de vigilance & Contraintes :', card2X + 3.5, by2);
+  doc.text('Points de vigilance & Contraintes :', card2X + 3.5, by2);
   by2 += 3.5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.1);
@@ -510,8 +520,9 @@ export async function generateFicheReseauPdf({
     '• Investissement matériel dans le pack batterie tampon.'
   ];
   vigB.forEach(line => {
-    doc.text(line, card2X + 3.5, by2);
-    by2 += 2.8;
+    const wrapped = doc.splitTextToSize(line, cardW - 7);
+    doc.text(wrapped, card2X + 3.5, by2);
+    by2 += wrapped.length * 2.8;
   });
   by2 += 2;
 

@@ -1375,6 +1375,28 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
           >
             {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
+
+          {/* Boutons de zoom + / - (identiques à l'onglet Carte) */}
+          <div className="bg-white shadow-md rounded-lg border border-slate-200 flex flex-col overflow-hidden divide-y divide-slate-200">
+            <button
+              type="button"
+              onClick={() => mapInstanceRef.current?.zoomIn()}
+              className="w-8 h-8 flex items-center justify-center text-slate-700 hover:bg-slate-100 font-bold text-base leading-none transition-colors cursor-pointer"
+              title="Zoom avant (+)"
+              aria-label="Zoom avant"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              onClick={() => mapInstanceRef.current?.zoomOut()}
+              className="w-8 h-8 flex items-center justify-center text-slate-700 hover:bg-slate-100 font-bold text-base leading-none transition-colors cursor-pointer"
+              title="Zoom arrière (-)"
+              aria-label="Zoom arrière"
+            >
+              −
+            </button>
+          </div>
         </div>
 
         {/* LEAFLET MAP CONTAINER */}
