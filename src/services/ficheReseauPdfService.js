@@ -99,7 +99,7 @@ export async function generateFicheReseauPdf({
     }
   } catch (e) {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
+    doc.setFontSize(14);
     doc.setTextColor(15, 23, 42);
     doc.text('ENR COURTAGE', marginX, currentY + 7);
   }
@@ -108,18 +108,18 @@ export async function generateFicheReseauPdf({
   doc.setFillColor(245, 158, 11); // Amber-500
   doc.roundedRect(pageWidth - marginX - 60, currentY, 60, 5.5, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
   doc.text('INGÉNIERIE HTA / BT — FACTUEL & NEUTRE', pageWidth - marginX - 30, currentY + 3.8, { align: 'center' });
 
   // Titre principal
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  doc.setFontSize(14);
   doc.setTextColor(15, 23, 42);
   doc.text('FICHE D\'ÉTUDE DE RACCORDEMENT & COMPARATIF D\'ARCHITECTURE', marginX, currentY + 16.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(8.5);
   doc.setTextColor(100, 116, 139);
   doc.text('Cadrage des capacités réseau Enedis Open Data & Caparéseau RTE — Analyse objective de dimensionnement', marginX, currentY + 20.8);
 
@@ -128,36 +128,36 @@ export async function generateFicheReseauPdf({
   // ═══════════════════════════════════════════════════════════════════════════
   // 2. BANDEAU DE SYNTHÈSE DU PROJET ÉTUDIÉ
   // ═══════════════════════════════════════════════════════════════════════════
-  const ribbonH = 14;
+  const ribbonH = 16;
   drawCard(marginX, currentY, contentWidth, ribbonH, [248, 250, 252], [203, 213, 225], 2);
 
   const colW = contentWidth / 4;
 
   // Col 1 : Projet & Commune
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text('PROJET & EMPLACEMENT', marginX + 4, currentY + 4.5);
   doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('PROJET & EMPLACEMENT', marginX + 4, currentY + 4.8);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(doc.splitTextToSize(projectName, colW - 6)[0], marginX + 4, currentY + 8.5);
+  doc.text(doc.splitTextToSize(projectName, colW - 6)[0], marginX + 4, currentY + 9.5);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(projectCity, marginX + 4, currentY + 12);
+  doc.text(projectCity, marginX + 4, currentY + 13.8);
 
   // Col 2 : Coordonnées GPS
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text('COORDONNÉES GPS', marginX + colW + 4, currentY + 4.5);
   doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('COORDONNÉES GPS', marginX + colW + 4, currentY + 4.8);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(coordsStr, marginX + colW + 4, currentY + 8.5);
+  doc.text(coordsStr, marginX + colW + 4, currentY + 9.5);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Réf. étude : NELSON-${new Date().getFullYear()}`, marginX + colW + 4, currentY + 12);
+  doc.text(`Réf. étude : NELSON-${new Date().getFullYear()}`, marginX + colW + 4, currentY + 13.8);
 
   // Col 3 : Puissance étudiée & Mode
   const modeLabel = bessMode === 'soutirage' 
@@ -166,33 +166,33 @@ export async function generateFicheReseauPdf({
     ? 'Injection seule (Solaire PV)' 
     : 'BESS Stockage (Mixte)';
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
-  doc.text('TRANSFORMATEUR ÉTUDIÉ', marginX + colW * 2 + 4, currentY + 4.5);
-  doc.setFontSize(8);
+  doc.text('TRANSFORMATEUR ÉTUDIÉ', marginX + colW * 2 + 4, currentY + 4.8);
+  doc.setFontSize(9);
   doc.setTextColor(217, 119, 6); // Amber
-  doc.text(`${targetPowerKva} kVA`, marginX + colW * 2 + 4, currentY + 8.5);
+  doc.text(`${targetPowerKva} kVA`, marginX + colW * 2 + 4, currentY + 9.5);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(modeLabel, marginX + colW * 2 + 4, currentY + 12);
+  doc.text(modeLabel, marginX + colW * 2 + 4, currentY + 13.8);
 
   // Col 4 : Date & Statut préliminaire
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
-  doc.text('DATE & STATUT RÉSEAU', marginX + colW * 3 + 4, currentY + 4.5);
-  doc.setFontSize(7.2);
+  doc.text('DATE & STATUT RÉSEAU', marginX + colW * 3 + 4, currentY + 4.8);
+  doc.setFontSize(8.2);
   doc.setTextColor(16, 185, 129); // Emerald
   const statutLines = doc.splitTextToSize(
     isEligibleSoutirage ? 'Capacité Réseau Favorable' : 'Réseau Contraint',
     colW - 6
   );
-  doc.text(statutLines[0], marginX + colW * 3 + 4, currentY + 8.5);
+  doc.text(statutLines[0], marginX + colW * 3 + 4, currentY + 9.5);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Établi le ${dateStr}`, marginX + colW * 3 + 4, currentY + 12);
+  doc.text(`Établi le ${dateStr}`, marginX + colW * 3 + 4, currentY + 13.8);
 
   currentY += ribbonH + 4.5;
 
@@ -200,7 +200,7 @@ export async function generateFicheReseauPdf({
   // 3. SECTION 1 : ÉTAT DES CAPACITÉS RÉSEAU (POSTE SOURCE RTE & TRONÇON HTA)
   // ═══════════════════════════════════════════════════════════════════════════
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(9.5);
   doc.setTextColor(15, 23, 42);
   doc.text('1. ÉTAT DES CAPACITÉS DU RÉSEAU PUBLIC (POSTE SOURCE RTE & TRONÇON HTA ENEDIS)', marginX, currentY + 2.5);
 
@@ -208,7 +208,7 @@ export async function generateFicheReseauPdf({
 
   // Deux colonnes pour la Section 1 (Poste Source vs Tronçon HTA)
   const cardW = (contentWidth - 6) / 2; // 90 mm
-  const card1H = 43;
+  const card1H = 46;
 
   // --- Carte 1.A : Poste Source RTE ---
   drawCard(marginX, currentY, cardW, card1H, [255, 255, 255], [203, 213, 225], 2);
@@ -217,9 +217,9 @@ export async function generateFicheReseauPdf({
   doc.setFillColor(241, 245, 249);
   doc.roundedRect(marginX, currentY, cardW, 6.5, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(`Poste Source RTE : ${subName}`, marginX + 3.5, currentY + 4.5);
+  doc.text(`Poste Source RTE : ${subName}`, marginX + 3.5, currentY + 4.8);
 
   let py = currentY + 10;
   const subRows = [
@@ -233,14 +233,14 @@ export async function generateFicheReseauPdf({
 
   subRows.forEach(row => {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.6);
+    doc.setFontSize(7.6);
     doc.setTextColor(71, 85, 105);
     doc.text(row.label, marginX + 3.5, py);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...(row.color || [15, 23, 42]));
     doc.text(row.val, marginX + cardW - 3.5, py, { align: 'right' });
-    py += 5;
+    py += 5.5;
   });
 
   // --- Carte 1.B : Tronçon HTA Enedis le plus proche ---
@@ -251,9 +251,9 @@ export async function generateFicheReseauPdf({
   doc.setFillColor(241, 245, 249);
   doc.roundedRect(card2X, currentY, cardW, 6.5, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(`Tronçon HTA 20 kV : ${lineDepart}`, card2X + 3.5, currentY + 4.5);
+  doc.text(`Tronçon HTA 20 kV : ${lineDepart}`, card2X + 3.5, currentY + 4.8);
 
   let py2 = currentY + 10;
   const lineRows = [
@@ -267,14 +267,14 @@ export async function generateFicheReseauPdf({
 
   lineRows.forEach(row => {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.6);
+    doc.setFontSize(7.6);
     doc.setTextColor(71, 85, 105);
     doc.text(row.label, card2X + 3.5, py2);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...(row.color || [15, 23, 42]));
     doc.text(row.val, card2X + cardW - 3.5, py2, { align: 'right' });
-    py2 += 5;
+    py2 += 5.5;
   });
 
   currentY += card1H + 3.5;
@@ -289,23 +289,23 @@ export async function generateFicheReseauPdf({
     : `Un départ dédié depuis le Poste Source (${subName}) ou une optimisation de l'architecture d'alimentation avec batterie tampon est requis.`;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.4);
+  doc.setFontSize(8.4);
   const splitDiagTitle = doc.splitTextToSize(diagTitle, contentWidth - 8);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   const splitDiagBody = doc.splitTextToSize(diagBody, contentWidth - 8);
 
-  const eligH = Math.max(12, 4.2 + splitDiagTitle.length * 3.4 + 0.8 + splitDiagBody.length * 3.0 + 2.2);
+  const eligH = Math.max(12, 4.2 + splitDiagTitle.length * 3.8 + 1.0 + splitDiagBody.length * 3.4 + 2.4);
   drawCard(marginX, currentY, contentWidth, eligH, isOk ? [240, 253, 244] : [254, 242, 242], isOk ? [187, 247, 208] : [254, 202, 202], 2);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.4);
+  doc.setFontSize(8.4);
   doc.setTextColor(...(isOk ? [22, 101, 52] : [153, 27, 27]));
   doc.text(splitDiagTitle, marginX + 4, currentY + 4.3);
 
-  const bodyStartY = currentY + 4.3 + splitDiagTitle.length * 3.4 + 0.6;
+  const bodyStartY = currentY + 4.3 + splitDiagTitle.length * 3.8 + 0.8;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
   doc.text(splitDiagBody, marginX + 4, bodyStartY);
 
@@ -315,12 +315,12 @@ export async function generateFicheReseauPdf({
   // 4. SECTION 2 : COMPARATIF TECHNIQUE ET ÉCONOMIQUE OBJECTIF DES 2 ARCHITECTURES
   // ═══════════════════════════════════════════════════════════════════════════
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(9.5);
   doc.setTextColor(15, 23, 42);
   doc.text('2. COMPARATIF OBJECTIF DES ARCHITECTURES DE RACCORDEMENT (HTA VS BASSE TENSION OPTIMISÉE)', marginX, currentY + 2.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(100, 116, 139);
   doc.text('Comparaison factuelle et transparente des deux solutions envisageables selon les contraintes techniques et le calendrier de déploiement.', marginX, currentY + 6.8);
 
@@ -338,7 +338,7 @@ export async function generateFicheReseauPdf({
   // Architecture B : Optimisation BT C4 (≤ 250 kVA) + BESS
   const totalArchB_Enedis = 9000; // Fourchette standard 8 500 € – 9 500 € HT
 
-  const archH = 100;
+  const archH = 116;
 
   // --- COLONNE ARCHITECTURE A (HTA DÉDIÉ) ---
   drawCard(marginX, currentY, cardW, archH, [248, 250, 252], [203, 213, 225], 2);
@@ -347,38 +347,38 @@ export async function generateFicheReseauPdf({
   doc.setFillColor(224, 242, 254); // Sky-100
   doc.roundedRect(marginX, currentY, cardW, 8.5, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
+  doc.setFontSize(8.8);
   doc.setTextColor(3, 105, 161); // Sky-700
   doc.text('ARCHITECTURE A : Raccordement HTA Dédié', marginX + 3.5, currentY + 4.2);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(7.2);
   doc.setTextColor(14, 116, 144);
   doc.text(`Poste privatif HTA/BT ${targetPowerKva} kVA (Norme NF C 13-100)`, marginX + 3.5, currentY + 7.2);
 
-  let ay = currentY + 12;
+  let ay = currentY + 13.8;
 
   // A. Principe
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(15, 23, 42);
   doc.text('Principe d\'intégration :', marginX + 3.5, ay);
-  ay += 3.5;
+  ay += 3.8;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(7.2);
   doc.setTextColor(71, 85, 105);
   const descA = 'Raccordement direct en coupure d\'artère sur la boucle 20 kV Enedis. Implantation d\'un poste préfabriqué privatif abritant cellules HTA, transfo abaisseur et tableau général basse tension (TGBT).';
   const splitA = doc.splitTextToSize(descA, cardW - 7);
   doc.text(splitA, marginX + 3.5, ay);
-  ay += splitA.length * 2.8 + 2;
+  ay += splitA.length * 3.25 + 2;
 
   // A. Avantages
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(22, 101, 52); // Green
   doc.text('Avantages techniques :', marginX + 3.5, ay);
-  ay += 3.5;
+  ay += 3.8;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.1);
+  doc.setFontSize(7.1);
   doc.setTextColor(51, 65, 85);
   const advA = [
     '• Puissance réseau directe élevée sans contrainte d\'écrêtage.',
@@ -388,18 +388,18 @@ export async function generateFicheReseauPdf({
   advA.forEach(line => {
     const wrapped = doc.splitTextToSize(line, cardW - 7);
     doc.text(wrapped, marginX + 3.5, ay);
-    ay += wrapped.length * 2.8;
+    ay += wrapped.length * 3.25;
   });
   ay += 1.5;
 
   // A. Points de vigilance
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(194, 65, 12); // Amber-700
   doc.text('Points de vigilance & Contraintes :', marginX + 3.5, ay);
-  ay += 3.5;
+  ay += 3.8;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.1);
+  doc.setFontSize(7.1);
   doc.setTextColor(51, 65, 85);
   const vigA = [
     '• Emprise au sol nécessaire pour le poste (~15 à 20 m²) + accès Enedis 24/7.',
@@ -409,44 +409,44 @@ export async function generateFicheReseauPdf({
   vigA.forEach(line => {
     const wrapped = doc.splitTextToSize(line, cardW - 7);
     doc.text(wrapped, marginX + 3.5, ay);
-    ay += wrapped.length * 2.8;
+    ay += wrapped.length * 3.25;
   });
   ay += 2;
 
   // A. Budget indicatif
   doc.setFillColor(241, 245, 249);
-  doc.roundedRect(marginX + 2.5, ay, cardW - 5, 23, 1.5, 1.5, 'F');
+  doc.roundedRect(marginX + 2.5, ay, cardW - 5, 25, 1.5, 1.5, 'F');
   let by = ay + 3.8;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(15, 23, 42);
   doc.text('BUDGET PRÉVISIONNEL INDICATIF (HT) :', marginX + 4.5, by);
   by += 3.5;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.9);
+  doc.setFontSize(6.9);
   doc.setTextColor(71, 85, 105);
   doc.text(`• Liaison souterraine HTA (${distToHtaMeters} m Enedis) :`, marginX + 4.5, by);
   doc.text(`${formatNum(liaisonHtaCost)} €`, marginX + cardW - 4.5, by, { align: 'right' });
-  by += 2.9;
+  by += 3.3;
   doc.text('• Cellule comptage & raccordement HTA :', marginX + 4.5, by);
   doc.text(`${formatNum(celluleHtaCost)} €`, marginX + cardW - 4.5, by, { align: 'right' });
-  by += 2.9;
+  by += 3.3;
   doc.text(`• Poste de transformation HTA/BT ${targetPowerKva} kVA :`, marginX + 4.5, by);
   doc.text(`${formatNum(posteTransfoCost)} €`, marginX + cardW - 4.5, by, { align: 'right' });
-  by += 3.6;
+  by += 4.0;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(3, 105, 161);
   doc.text('Total indicatif Architecture A :', marginX + 4.5, by);
   doc.text(`~ ${formatNum(totalArchA)} € HT`, marginX + cardW - 4.5, by, { align: 'right' });
 
   // A. Délai
-  ay += 25;
+  ay += 27.5;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.text('Délai moyen constaté :', marginX + 3.5, ay);
-  doc.setFontSize(7.2);
+  doc.setFontSize(8.2);
   doc.setTextColor(15, 23, 42);
   doc.text('12 à 18 mois', marginX + cardW - 3.5, ay, { align: 'right' });
 
@@ -458,38 +458,38 @@ export async function generateFicheReseauPdf({
   doc.setFillColor(220, 252, 231); // Emerald-100
   doc.roundedRect(card2X, currentY, cardW, 8.5, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
+  doc.setFontSize(8.8);
   doc.setTextColor(22, 101, 52); // Emerald-700
   doc.text('ARCHITECTURE B : Basse Tension C4 + Batterie Tampon', card2X + 3.5, currentY + 4.2);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(7.2);
   doc.setTextColor(21, 128, 61);
   doc.text('Raccordement BT <= 250 kVA + Stockage BESS', card2X + 3.5, currentY + 7.2);
 
-  let by2 = currentY + 12;
+  let by2 = currentY + 13.8;
 
   // B. Principe
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(15, 23, 42);
   doc.text('Principe d\'intégration :', card2X + 3.5, by2);
-  by2 += 3.5;
+  by2 += 3.8;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(7.2);
   doc.setTextColor(71, 85, 105);
   const descB = 'Maintien du raccordement en Basse Tension (Tarif C4, 400 V triphasé) couplé à une batterie tampon stationnaire (BESS) et/ou ombrières photovoltaïques pour absorber les appels de puissance de pointe.';
   const splitB = doc.splitTextToSize(descB, cardW - 7);
   doc.text(splitB, card2X + 3.5, by2);
-  by2 += splitB.length * 2.8 + 2;
+  by2 += splitB.length * 3.25 + 2;
 
   // B. Avantages
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(22, 101, 52);
   doc.text('Avantages techniques :', card2X + 3.5, by2);
-  by2 += 3.5;
+  by2 += 3.8;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.1);
+  doc.setFontSize(7.1);
   doc.setTextColor(51, 65, 85);
   const advB = [
     '• Maintien en domaine Basse Tension (aucun poste HTA privatif à acquérir).',
@@ -500,19 +500,19 @@ export async function generateFicheReseauPdf({
   advB.forEach(line => {
     const wrapped = doc.splitTextToSize(line, cardW - 7);
     doc.text(wrapped, card2X + 3.5, by2);
-    by2 += wrapped.length * 2.8;
+    by2 += wrapped.length * 3.25;
   });
   by2 += 1.5;
 
   // B. Points de vigilance
   by2 += 1.5;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(194, 65, 12);
   doc.text('Points de vigilance & Contraintes :', card2X + 3.5, by2);
-  by2 += 3.5;
+  by2 += 3.8;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.1);
+  doc.setFontSize(7.1);
   doc.setTextColor(51, 65, 85);
   const vigB = [
     '• Pilotage intelligent (EMS) requis pour coordonner charge et batterie.',
@@ -522,44 +522,44 @@ export async function generateFicheReseauPdf({
   vigB.forEach(line => {
     const wrapped = doc.splitTextToSize(line, cardW - 7);
     doc.text(wrapped, card2X + 3.5, by2);
-    by2 += wrapped.length * 2.8;
+    by2 += wrapped.length * 3.25;
   });
   by2 += 2;
 
   // B. Budget indicatif
   doc.setFillColor(241, 245, 249);
-  doc.roundedRect(card2X + 2.5, by2, cardW - 5, 23, 1.5, 1.5, 'F');
+  doc.roundedRect(card2X + 2.5, by2, cardW - 5, 25, 1.5, 1.5, 'F');
   let bby = by2 + 3.8;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(15, 23, 42);
   doc.text('BUDGET PRÉVISIONNEL INDICATIF (HT) :', card2X + 4.5, bby);
   bby += 3.5;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.9);
+  doc.setFontSize(6.9);
   doc.setTextColor(71, 85, 105);
   doc.text('• Raccordement Enedis BT C4 (coffret comptage) :', card2X + 4.5, bby);
   doc.text('8 500 € – 9 500 €', card2X + cardW - 4.5, bby, { align: 'right' });
-  bby += 2.9;
+  bby += 3.3;
   doc.text('• Batterie tampon stationnaire (BESS) :', card2X + 4.5, bby);
   doc.text('Selon capacité kWh', card2X + cardW - 4.5, bby, { align: 'right' });
-  bby += 2.9;
+  bby += 3.3;
   doc.text('• Économie d\'infrastructure réseau HTA :', card2X + 4.5, bby);
   doc.text(`~ ${formatNum(totalArchA - totalArchB_Enedis)} € préservés`, card2X + cardW - 4.5, bby, { align: 'right' });
-  bby += 3.6;
+  bby += 4.0;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(22, 101, 52);
   doc.text('Raccordement réseau Enedis BT :', card2X + 4.5, bby);
   doc.text('8 500 € – 9 500 € HT', card2X + cardW - 4.5, bby, { align: 'right' });
 
   // B. Délai
-  by2 += 25;
+  by2 += 27.5;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.text('Délai moyen constaté :', card2X + 3.5, by2);
-  doc.setFontSize(7.2);
+  doc.setFontSize(8.2);
   doc.setTextColor(16, 185, 129);
   doc.text('3 à 6 mois', card2X + cardW - 3.5, by2, { align: 'right' });
 
@@ -575,14 +575,14 @@ export async function generateFicheReseauPdf({
   currentY += 3.5;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.2);
+  doc.setFontSize(7.2);
   doc.setTextColor(71, 85, 105);
   doc.text('SAS ENR COURTAGE — Plateforme NELSON (nelsonpv.fr) | AMO Raccordement Réseau Électrique & Bureau d\'études Énergies Renouvelables', marginX, currentY);
 
   currentY += 3.2;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.5);
+  doc.setFontSize(6.5);
   doc.setTextColor(148, 163, 184);
   const disclaimer = 'Note méthodologique : Ce document constitue une étude technique préliminaire réalisée à partir des données ouvertes Enedis Open Data et RTE Caparéseau. Les budgets et délais indiqués sont fournis à titre indicatif et restent subordonnés à la délivrance de la Proposition Technique et Financière (PTF) officielle par le gestionnaire de réseau Enedis. Aucune garantie contractuelle ne saurait être déduite de ce document préparatoire.';
   const splitDisclaimer = doc.splitTextToSize(disclaimer, contentWidth);
