@@ -160,11 +160,14 @@ export function formatEuro(val) {
 }
 
 /**
- * Normalise une chaîne pour l'encodage WinAnsi de jsPDF (évite les glyphes manquants sur apostrophes courbes, tirets longs, ≥, espaces insécables)
+ * Normalise une chaîne pour l'encodage WinAnsi de jsPDF (évite les glyphes manquants ou la police déformée sur Δ, φ, Ω, apostrophes courbes, tirets longs, ≥, espaces insécables)
  */
 export function sanitizePdfText(input) {
   if (input === null || input === undefined) return '';
   return String(input)
+    .replace(/[\u0394\u2206]\s*/g, 'Delta ')
+    .replace(/[\u03C6\u03D5]/g, 'phi')
+    .replace(/[\u03A9\u2126]/g, 'Ohm')
     .replace(/[\u2018\u2019\u201B\u2032]/g, "'")
     .replace(/[\u201C\u201D\u201F\u2033]/g, '"')
     .replace(/[\u2013\u2014\u2212]/g, '-')
@@ -759,12 +762,14 @@ export function getInitialRaccordementData(project) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * Dessine une case à cocher officielle dans un PDF jsPDF
+ * Dessine une case à cocher officielle dans un PDF jsPDF avec retour à la ligne automatique si le texte dépasse la largeur disponible
  */
 function drawPdfCheckbox(doc, x, y, checked, label, options = {}) {
   const size = options.size || 3.6;
-  const fontSize = options.fontSize || 8;
+  const fontSize = options.fontSize || 7.8;
   const boldLabel = options.bold || false;
+  const textX = x + size + 2;
+  const maxWidth = options.maxWidth || Math.max(25, 192 - textX);
 
   doc.setDrawColor(0, 94, 184);
   doc.setLineWidth(0.35);
@@ -784,7 +789,10 @@ function drawPdfCheckbox(doc, x, y, checked, label, options = {}) {
   doc.setTextColor(checked ? 15 : 71, checked ? 23 : 85, checked ? 42 : 105);
   doc.setFont('helvetica', checked || boldLabel ? 'bold' : 'normal');
   doc.setFontSize(fontSize);
-  doc.text(sanitizePdfText(label), x + size + 2, y);
+  const cleanLabel = sanitizePdfText(label);
+  const lines = doc.splitTextToSize(cleanLabel, maxWidth);
+  doc.text(lines, textX, y, { lineHeightFactor: 1.15 });
+  return lines.length;
 }
 
 /**
@@ -871,7 +879,7 @@ function drawEnedis056EFooter(doc, pageNum, totalPages, siteName) {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
   doc.text(
-    sanitizePdfText(`Dossier : ${siteName || 'BESS Standalone 500 kW'} • Demandeur / Mandataire : ENR COURTAGE (SIREN 881 890 982)`),
+    sanitizePdfText(`Dossier : ${siteName || 'BESS Standalone 500 kW'}`),
     W / 2,
     H - 8.5,
     { align: 'center' }
@@ -903,7 +911,7 @@ function drawSectionFrame(doc, x, y, w, h, title, accentColor = [0, 94, 184]) {
 }
 
 /**
- * Dessine une paire Libellé / Valeur dans une grille
+ * Dessine une paire Libellé / Valeur dans une grille avec retour à la ligne automatique si la valeur dépasse maxWidth
  */
 function drawFieldRow(doc, x, y, label, value, labelWidth = 46, maxWidth = 120) {
   doc.setFont('helvetica', 'bold');
@@ -912,11 +920,13 @@ function drawFieldRow(doc, x, y, label, value, labelWidth = 46, maxWidth = 120) 
   doc.text(sanitizePdfText(label), x, y);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.2);
+  doc.setFontSize(8.0);
   doc.setTextColor(15, 23, 42);
   const cleanVal = sanitizePdfText(value || '—');
-  const lines = doc.splitTextToSize(cleanVal, maxWidth);
-  doc.text(lines[0] || '—', x + labelWidth, y);
+  const effectiveMaxW = Math.min(maxWidth, Math.max(20, 192 - (x + labelWidth)));
+  const lines = doc.splitTextToSize(cleanVal, effectiveMaxW);
+  doc.text(lines, x + labelWidth, y, { lineHeightFactor: 1.15 });
+  return lines.length;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1012,19 +1022,19 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
     m,
     y,
     usableW,
-    46,
+    48,
     'A.2 — MANDATAIRE / SOCIÉTÉ EN CHARGE DU DÉPÔT ET DU SUIVI TECHNIQUE',
     [15, 43, 92]
   );
 
-  cy = y + 12;
+  cy = y + 11.5;
   drawPdfCheckbox(
     doc,
     m + 4,
     cy,
     isEnrProducteur,
     'ENR COURTAGE agit directement en tant que Producteur / Demandeur',
-    { fontSize: 7.5 }
+    { fontSize: 7.5, maxWidth: 90 }
   );
   drawPdfCheckbox(
     doc,
@@ -1032,21 +1042,21 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
     cy,
     !isEnrProducteur,
     'Client / SPV Producteur + ENR COURTAGE Mandataire',
-    { fontSize: 7.5 }
+    { fontSize: 7.5, maxWidth: 76 }
   );
 
-  cy += 7.5;
+  cy += 7.2;
   drawFieldRow(doc, m + 4, cy, 'Société / Raison sociale :', d.mandataireRaisonSociale || 'ENR COURTAGE', 42, 52);
   drawFieldRow(doc, m + 98, cy, 'SIREN / SIRET :', `${d.mandataireSiren || '881 890 982'} / ${d.mandataireSiret || '881 890 982 00047'}`, 32, 52);
 
-  cy += 6.8;
+  cy += 6.5;
   drawFieldRow(doc, m + 4, cy, 'Adresse du siège :', `${d.mandataireAdresse || '7 Rue Gutenberg'}, ${d.mandataireCpVillePays || '33700 Mérignac - France'}`, 42, 132);
 
-  cy += 6.8;
+  cy += 6.5;
   drawFieldRow(doc, m + 4, cy, 'Représentant & Fonction :', `${d.mandataireInterlocuteur || 'BARBERIS Yann'} (${d.mandataireFonction || 'Président'})`, 42, 52);
-  drawFieldRow(doc, m + 98, cy, 'Tél. & E-mail :', `${d.mandataireTelephone || '07 63 87 71 40'} • ${d.mandataireEmail || 'y.barberis@enr-courtage.fr'}`, 32, 52);
+  drawFieldRow(doc, m + 98, cy, 'Tél. & E-mail :', `${d.mandataireTelephone || '07 63 87 71 40'}\n${d.mandataireEmail || 'y.barberis@enr-courtage.fr'}`, 26, 56);
 
-  y += 50;
+  y += 51;
 
   // ── CADRE A3 : LOCALISATION DU SITE D'IMPLANTATION ──
   drawSectionFrame(
@@ -1054,30 +1064,30 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
     m,
     y,
     usableW,
-    68,
+    64,
     'A.3 — LOCALISATION DU SITE DE L’INSTALLATION À RACCORDER (FICHE A)',
     [0, 94, 184]
   );
 
-  cy = y + 12;
+  cy = y + 11.5;
   drawFieldRow(doc, m + 4, cy, 'Nom de l’Installation :', d.siteNomInstallation, 44, 130);
 
-  cy += 7.2;
+  cy += 6.8;
   drawFieldRow(doc, m + 4, cy, 'SIRET du site :', d.siteSiret || '881 890 982 00047', 44, 52);
   drawFieldRow(doc, m + 98, cy, 'Code INSEE Commune :', d.siteCodeInsee || 'À compléter', 38, 44);
 
-  cy += 7.2;
+  cy += 6.8;
   drawFieldRow(doc, m + 4, cy, 'Adresse de l’installation :', d.siteAdresse, 44, 130);
 
-  cy += 7.2;
+  cy += 6.8;
   drawFieldRow(doc, m + 4, cy, 'Code Postal - Ville :', `${d.siteCodePostal || ''} ${d.siteCommune || ''}`.trim(), 44, 52);
   drawFieldRow(doc, m + 98, cy, 'Réf. Cadastrale(s) :', d.siteParcelle || 'À préciser', 38, 44);
 
-  cy += 6;
+  cy += 5.5;
   // Sous-cadre Coordonnées GPS WGS84 Décimal
   doc.setFillColor(240, 249, 255);
   doc.setDrawColor(186, 230, 253);
-  doc.roundedRect(m + 4, cy, usableW - 8, 22, 1.5, 1.5, 'FD');
+  doc.roundedRect(m + 4, cy, usableW - 8, 20, 1.5, 1.5, 'FD');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.8);
@@ -1085,26 +1095,26 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
   doc.text(
     sanitizePdfText('COORDONNÉES GPS DU POINT DE RACCORDEMENT (Système géodésique WGS84 Décimal) :'),
     m + 8,
-    cy + 6.5
+    cy + 6.2
   );
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.8);
+  doc.setFontSize(8.6);
   doc.setTextColor(15, 23, 42);
   doc.text(
     sanitizePdfText(`[Latitude (Décimal) ; Longitude (Décimal)] WGS84 :   ( ${d.siteLatitude || '—'}  ;  ${d.siteLongitude || '—'} )`),
     m + 8,
-    cy + 14.5
+    cy + 14
   );
 
   // ── CADRE A3-BIS : CARACTÉRISTIQUES GÉNÉRALES EN INJECTION & EN SOUTIRAGE (PAGES 6-7/41) ──
-  y += 71;
+  y += 67;
   drawSectionFrame(
     doc,
     m,
     y,
     usableW,
-    24,
+    27,
     'A.3-BIS — CARACTÉRISTIQUES GÉNÉRALES EN INJECTION & EN SOUTIRAGE (PAGES 6 & 7/41 DU 056E)',
     [15, 43, 92]
   );
@@ -1113,9 +1123,9 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
   drawFieldRow(doc, m + 4, cy, 'P_installée (après bridage) :', `${d.puissanceProductionInstalleeKw || d.puissanceActiveTotaleInstalleeKw || '500'} kW (Bridage statique : ${d.bridageStatique === 'oui' ? 'Oui' : 'Non'})`, 44, 52);
   drawFieldRow(doc, m + 102, cy, 'P_racc_inj (Injection HTA) :', `${d.puissanceRaccInjectionKw || '500'} kW`, 42, 34);
 
-  cy += 7;
+  cy += 6.8;
   drawFieldRow(doc, m + 4, cy, 'P_racc_sout (Soutirage HTA) :', `${d.puissanceRaccSoutirageKw || '500'} kW (Recharge BESS)`, 44, 52);
-  drawFieldRow(doc, m + 102, cy, 'Période de fonctionnement :', d.periodeProductionEnvisagee || 'Toute l\'année (365 j/an)', 42, 36);
+  drawFieldRow(doc, m + 102, cy, 'Période de fonctionnement :', d.periodeProductionEnvisagee || 'Toute l\'année (365 j/an)', 42, 38);
 
   drawEnedis056EFooter(doc, 1, totalPages, d.siteNomInstallation);
 
@@ -1504,14 +1514,14 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
 
   y += 81.5;
 
-  // ── CADRE C4 : RÉGULATION P = f(f) & VARIATION MAXIMALE ΔPmax SUR 1 MINUTE (PAGE 17/41) ──
+  // ── CADRE C4 : RÉGULATION P = f(f) & VARIATION MAXIMALE Delta Pmax SUR 1 MINUTE (PAGE 17/41) ──
   drawSectionFrame(
     doc,
     m,
     y,
     usableW,
-    46,
-    'C.4 — RÉGULATION DE FRÉQUENCE P = f(f) & VARIATION MAXIMALE ΔPmax SUR 1 MINUTE (PAGE 17/41)'
+    50,
+    'C.4 — RÉGULATION DE FRÉQUENCE P = f(f) & VARIATION MAXIMALE Delta Pmax SUR 1 MINUTE (PAGE 17/41)'
   );
 
   cy = y + 12;
@@ -1520,8 +1530,8 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
   doc.setTextColor(30, 41, 59);
   doc.text(sanitizePdfText('1. Loi de régulation de puissance active en fonction de la fréquence P = f(f) :'), m + 4, cy);
   const isRegulPf = d.regulationPuissanceActivePf !== 'non';
-  drawPdfCheckbox(doc, m + 114, cy, isRegulPf, 'Oui');
-  drawPdfCheckbox(doc, m + 136, cy, !isRegulPf, 'Non');
+  drawPdfCheckbox(doc, m + 114, cy, isRegulPf, 'Oui', { fontSize: 7.8 });
+  drawPdfCheckbox(doc, m + 136, cy, !isRegulPf, 'Non', { fontSize: 7.8 });
 
   cy += 7.5;
   doc.setFont('helvetica', 'bold');
@@ -1529,29 +1539,29 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
   doc.setTextColor(30, 41, 59);
   doc.text(sanitizePdfText('2. Variations volontaires de puissance active (systématique pour stockage) :'), m + 4, cy);
   const isVarVol = d.variationsVolontairesPuissanceActive !== 'non';
-  drawPdfCheckbox(doc, m + 114, cy, isVarVol, 'Oui');
-  drawPdfCheckbox(doc, m + 136, cy, !isVarVol, 'Non');
+  drawPdfCheckbox(doc, m + 114, cy, isVarVol, 'Oui', { fontSize: 7.8 });
+  drawPdfCheckbox(doc, m + 136, cy, !isVarVol, 'Non', { fontSize: 7.8 });
 
   cy += 7.5;
   const isDeltaDefaut = d.deltaPmaxMode !== 'autre';
   const deltaMwVal = d.deltaPmaxMwMin || '0,25';
   const deltaKwVal = d.deltaPmaxKwMin || '250';
-  drawPdfCheckbox(
+  const nbLinesDelta = drawPdfCheckbox(
     doc,
     m + 4,
     cy,
     isDeltaDefaut,
-    `ΔPmax — Valeur par défaut pour installation de stockage : 0,5 × 500 kW = ${deltaMwVal} MW/min (${deltaKwVal} kW/min)`,
-    { fontSize: 7.7, bold: true }
+    `Delta Pmax — Valeur par défaut pour installation de stockage : 0,5 × 500 kW = ${deltaMwVal} MW/min (${deltaKwVal} kW/min)`,
+    { fontSize: 7.8, bold: true, maxWidth: usableW - 16 }
   );
-  cy += 6.5;
+  cy += nbLinesDelta > 1 ? 10 : 7;
   drawPdfCheckbox(
     doc,
     m + 4,
     cy,
     !isDeltaDefaut,
-    `Autre valeur ΔPmax déclarée (<= 8 MW/min) : ${!isDeltaDefaut ? `${deltaMwVal} MW/min` : '—'}`,
-    { fontSize: 7.5 }
+    `Autre valeur Delta Pmax déclarée (<= 8 MW/min) : ${!isDeltaDefaut ? `${deltaMwVal} MW/min` : '—'}`,
+    { fontSize: 7.8, maxWidth: usableW - 16 }
   );
 
   drawEnedis056EFooter(doc, 3, totalPages, d.siteNomInstallation);
@@ -1994,10 +2004,21 @@ export async function generateOraMpNotePdf(project, enedisDataInput, options = {
 
   // ── 4. ENCADRÉ SYNTHÉTIQUE DES RÉFÉRENCES RÉGLEMENTAIRES & PARAMÈTRES TECHNIQUES ──
   y += 1.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  const synthBullets = [
+    sanitizePdfText(`• Architecture BESS : ${d.nombreUnitesTexte || '4 armoires de 125 kW'} (${d.modeleBatterie || 'CESC Mercury 261 - LFP'}) — Capacité : ${d.energieStockableMwh || '1,044'} MWh (${d.capaciteTotaleKwh || '1044'} kWh)`),
+    sanitizePdfText(`• Puissances HTA 20 kV : Pracc inj = ${d.puissanceRaccInjectionKw || '500'} kW | Pracc sout = ${d.puissanceRaccSoutirageKw || '500'} kW | Delta Pmax = ${d.deltaPmaxMwMin || '0,25'} MW/min (${d.deltaPmaxKwMin || '250'} kW/min)`),
+    sanitizePdfText('• Cadre réglementaire Enedis : Article 11 de la procédure Enedis-NMO-RES_030E & Variante 2A (Article 3.7 – Gabarit en injection, pages 20 à 21/29, interdiction d\'injection 10 h à 18 h de mars à octobre inclus) du modèle Enedis-MOP-RES_046E.'),
+  ];
+  const synthWrapped = synthBullets.map(b => doc.splitTextToSize(b, usableW - 8));
+  const totalSynthLines = synthWrapped.reduce((acc, arr) => acc + arr.length, 0);
+  const synthBoxH = Math.max(25, 9 + totalSynthLines * 3.8);
+
   doc.setFillColor(240, 249, 255);
   doc.setDrawColor(186, 230, 253);
   doc.setLineWidth(0.35);
-  doc.roundedRect(m, y, usableW, 25, 1.8, 1.8, 'FD');
+  doc.roundedRect(m, y, usableW, synthBoxH, 1.8, 1.8, 'FD');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.6);
@@ -2009,39 +2030,16 @@ export async function generateOraMpNotePdf(project, enedisDataInput, options = {
   );
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.4);
+  doc.setFontSize(7.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(
-    sanitizePdfText(
-      `• Architecture BESS : ${d.nombreUnitesTexte || '4 armoires de 125 kW'} (${d.modeleBatterie || 'CESC Mercury 261 - LFP'}) — Capacité : ${d.energieStockableMwh || '1,044'} MWh (${d.capaciteTotaleKwh || '1044'} kWh)`
-    ),
-    m + 4,
-    y + 10.6
-  );
-  doc.text(
-    sanitizePdfText(
-      `• Puissances HTA 20 kV : Pracc inj = ${d.puissanceRaccInjectionKw || '500'} kW | Pracc sout = ${d.puissanceRaccSoutirageKw || '500'} kW | ΔPmax = ${d.deltaPmaxMwMin || '0,25'} MW/min (${d.deltaPmaxKwMin || '250'} kW/min)`
-    ),
-    m + 4,
-    y + 15.4
-  );
-  doc.text(
-    sanitizePdfText(
-      '• Cadre réglementaire Enedis : Article 11 de la procédure Enedis-NMO-RES_030E & Variante 2A (Article 3.7 – Gabarit en injection,'
-    ),
-    m + 4,
-    y + 20.1
-  );
-  doc.text(
-    sanitizePdfText(
-      '  pages 20 à 21/29, interdiction d\'injection 10 h à 18 h de mars à octobre inclus) du modèle Enedis-MOP-RES_046E.'
-    ),
-    m + 4,
-    y + 23.6
-  );
+  let sy = y + 10.2;
+  synthWrapped.forEach((linesArr) => {
+    doc.text(linesArr, m + 4, sy, { lineHeightFactor: 1.15 });
+    sy += linesArr.length * 3.7 + 0.6;
+  });
 
   // ── 5. BLOC DATE, LIEU, QUALITÉ & SIGNATURE EN BAS DE PAGE ──
-  y = Math.min(Math.max(y + 29, 224), 233);
+  y = Math.min(Math.max(y + synthBoxH + 4, 224), 233);
 
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(203, 213, 225);
