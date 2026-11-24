@@ -5,7 +5,7 @@ import {
   ShieldCheck, AlertCircle, CheckCircle2, FileDown,
   Clock, Archive, Save, Layers, BatteryCharging,
   Check, AlertTriangle, RefreshCw, Upload, MapPin, Sparkles,
-  CheckSquare, HelpCircle, Eye
+  CheckSquare, HelpCircle, Eye, ExternalLink, Copy
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { cadastreService } from '@/services/CadastreService';
@@ -15,6 +15,7 @@ import {
   DEFAULT_NOTE_ORAMP_CORPS,
   SCHEMAS_COMPTAGE_056E,
   ENEDIS_056E_CHECKLIST_PIECES,
+  ENEDIS_SIMULATION_DIAGNOSTIC_OPTIONS,
   extractProjectEnedisVariables,
   buildNoteOraMpSiteLine,
   generateDefaultEnrCourtageStampDataUrl,
@@ -23,6 +24,12 @@ import {
   generateOraMpNotePdf,
   generateEnedisCompletePackPdf,
   generateEnedisCompletePackZip,
+  computeEnedisNetworkPreDiagnosis,
+  buildEnedisSimulatorClipboardPayload,
+  openEnedisSimulatorWithClipboard,
+  getSavedEnedisSimulation,
+  saveEnedisSimulationToStorage,
+  parseEnedisSimulationPdf,
 } from '@/services/raccordementDocumentService';
 
 const PCS_CONSTRUCTOR_PRESETS = [
@@ -58,9 +65,69 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
   const [defaultStampUrl, setDefaultStampUrl] = useState(null);
   const [noteSiteManuallyEdited, setNoteSiteManuallyEdited] = useState(false);
 
+  // État Simulation indicative Enedis (Pré-diagnostic, PDF importé & références extraites)
+  const [enedisSimulation, setEnedisSimulation] = useState(() => getSavedEnedisSimulation(project));
+  const [isParsingSimPdf, setIsParsingSimPdf] = useState(false);
+  const [isDraggingSimPdf, setIsDraggingSimPdf] = useState(false);
+
   const fileInputRef = useRef(null);
+  const simPdfInputRef = useRef(null);
   const autoSaveTimerRef = useRef(null);
   const loadedProjectIdRef = useRef(null);
+
+  const networkPreDiagnosis = computeEnedisNetworkPreDiagnosis(project);
+  const simulatorClipboardPayload = buildEnedisSimulatorClipboardPayload(project, formData);
+
+  const persistSimulationData = (nextSim) => {
+    setEnedisSimulation(nextSim);
+    if (!project?.id) return;
+    saveEnedisSimulationToStorage(project.id, nextSim);
+    const todayFr = new Date().toLocaleDateString('fr-FR');
+    if (onSave) {
+      onSave({
+        enedisSimulation: nextSim,
+        lastIntervention: todayFr,
+        derniereIntervention: todayFr,
+      });
+    }
+  };
+
+  const handleImportEnedisSimulationPdf = async (file) => {
+    if (!file) return;
+    setIsParsingSimPdf(true);
+    try {
+      const parsed = await parseEnedisSimulationPdf(file);
+      if (parsed) {
+        persistSimulationData(parsed);
+        setLastSavedAt(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+        toast({
+          title: 'PDF de simulation Enedis importé ✓',
+          description: `Simulation n° ${parsed.simulationNumber} (Réf. ${parsed.reference}) • Diagnostic : ${parsed.diagnosticReseau}`,
+        });
+      }
+    } catch (err) {
+      console.error('Erreur import PDF simulation Enedis:', err);
+      toast({
+        title: 'Erreur lecture PDF',
+        description: 'Impossible d’extraire automatiquement le PDF de simulation Enedis.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsParsingSimPdf(false);
+    }
+  };
+
+  const handleUpdateSimulationField = (field, value) => {
+    const base = enedisSimulation || {
+      simulationNumber: '',
+      reference: '',
+      diagnosticReseau: 'Adaptation de réseau',
+      dateSimulation: new Date().toLocaleDateString('fr-FR'),
+      fileName: '',
+    };
+    const updated = { ...base, [field]: value };
+    persistSimulationData(updated);
+  };
 
   // Générer le cachet vectoriel ENR COURTAGE au montage
   useEffect(() => {
@@ -139,6 +206,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
     if (project && isOpen) {
       const initial = getInitialEnedis056EData(project);
       setFormData(initial);
+      setEnedisSimulation(getSavedEnedisSimulation(project));
       setNoteSiteManuallyEdited(false);
       loadedProjectIdRef.current = project.id;
       resolveCadastreAndInseeAsync(initial);
@@ -658,9 +726,256 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            3. CORPS SCROLLABLE DE LA MODALE — CONTENU DES 4 ONGLETS
+            3. CORPS SCROLLABLE DE LA MODALE — SIMULATION ENEDIS + 4 ONGLETS
         ═══════════════════════════════════════════════════════════════════ */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/60 space-y-5">
+          {/* ═══════════════════════════════════════════════════════════════════
+              BLOC DÉDIÉ : SIMULATION INDICATIVE DE RACCORDEMENT ENEDIS
+          ═══════════════════════════════════════════════════════════════════ */}
+          <div className="bg-white p-4 md:p-5 rounded-2xl border-2 border-blue-200 shadow-2xs space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-blue-600 text-white flex items-center gap-1">
+                  <Zap className="w-3 h-3" />
+                  Simulation indicative Enedis
+                </span>
+                <h3 className="text-sm font-black text-slate-900">
+                  Pré-diagnostic Réseau Local (Caparéseau / ODRE) &amp; Simulateur Officiel Enedis
+                </h3>
+                <span
+                  className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                    networkPreDiagnosis.isStandardProbable
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      : 'bg-amber-50 text-amber-800 border-amber-300'
+                  }`}
+                >
+                  {networkPreDiagnosis.badgeLabel}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openEnedisSimulatorWithClipboard(project, formData, toast)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xs transition-all cursor-pointer"
+                  title="Copie automatiquement le nom du poste client, les coordonnées GPS et 500 kW dans le presse-papiers puis ouvre le simulateur Enedis"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Ouvrir le simulateur Enedis
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+              {/* 1. Encart Pré-diagnostic réseau instantané (5 colonnes) */}
+              <div className="lg:col-span-5 bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
+                    1. Pré-diagnostic réseau instantané (NELSON)
+                  </span>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    {networkPreDiagnosis.tension}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 text-xs">
+                  <div className="bg-white p-2.5 rounded-lg border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 block">Poste source associé :</span>
+                    <span className="font-black text-slate-900 block truncate" title={networkPreDiagnosis.posteSource}>
+                      {networkPreDiagnosis.posteSource}
+                    </span>
+                    <span className="text-[10.5px] font-bold text-blue-700">
+                      Distance : {networkPreDiagnosis.distanceKm != null ? `${networkPreDiagnosis.distanceKm} km` : '— km'}
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-lg border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 block">Capacité résiduelle &amp; File :</span>
+                    <span className={`font-black block ${networkPreDiagnosis.capaciteResiduelleMw > 0.5 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {networkPreDiagnosis.capaciteResiduelleMw} MW disponible
+                    </span>
+                    <span className="text-[10.5px] font-semibold text-slate-600">
+                      File d’attente : {networkPreDiagnosis.fileAttenteMw} MW
+                    </span>
+                  </div>
+
+                  <div className="col-span-2 bg-white p-2.5 rounded-lg border border-slate-200/80 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">Quote-part S3REnR estimée (500 kW) :</span>
+                      <span className="font-black text-slate-900 text-xs">
+                        {networkPreDiagnosis.quotePart500KwEur.toLocaleString('fr-FR')} € HT{' '}
+                        <span className="text-[10.5px] font-semibold text-slate-500">
+                          (barème : {networkPreDiagnosis.quotePartUnitaireStr})
+                        </span>
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                      {networkPreDiagnosis.typologieZoneCre}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Paramètres prêts à coller dans le simulateur Enedis (3 colonnes) */}
+              <div className="lg:col-span-3 bg-blue-50/50 p-3.5 rounded-xl border border-blue-200/80 flex flex-col justify-between space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold text-blue-950 uppercase tracking-wider">
+                    2. Paramètres copiés
+                  </span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(simulatorClipboardPayload.text);
+                        toast({
+                          title: 'Paramètres copiés ! Collez les coordonnées dans le simulateur Enedis',
+                          description: simulatorClipboardPayload.nomPosteClient,
+                        });
+                      } catch (e) {
+                        // ignore
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-white hover:bg-blue-100 text-blue-700 border border-blue-200 cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3" /> Copier
+                  </button>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-lg border border-blue-200/70 text-[11px] space-y-1 font-medium text-slate-700">
+                  <div className="truncate">
+                    <span className="text-slate-400 font-bold">Poste client :</span>{' '}
+                    <strong className="text-slate-900">{simulatorClipboardPayload.nomPosteClient}</strong>
+                  </div>
+                  <div className="truncate">
+                    <span className="text-slate-400 font-bold">GPS :</span>{' '}
+                    <strong className="font-mono text-blue-900">{simulatorClipboardPayload.gpsCoords}</strong>
+                  </div>
+                  <div className="flex items-center justify-between pt-0.5 border-t border-slate-100">
+                    <span>
+                      <span className="text-slate-400 font-bold">Type :</span>{' '}
+                      <strong className="text-slate-900">{simulatorClipboardPayload.type}</strong>
+                    </span>
+                    <span className="font-black text-blue-700">{simulatorClipboardPayload.puissance}</span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-blue-800 leading-tight">
+                  Ces 4 paramètres sont copiés automatiquement au clic sur « Ouvrir le simulateur Enedis ».
+                </p>
+              </div>
+
+              {/* 3. Import & Parsing du PDF de simulation Enedis (4 colonnes) */}
+              <div className="lg:col-span-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider">
+                    3. Importer le PDF de simulation Enedis
+                  </span>
+                  {enedisSimulation?.fileDataUrl && (
+                    <a
+                      href={enedisSimulation.fileDataUrl}
+                      download={enedisSimulation.fileName || 'Simulation_Enedis.pdf'}
+                      className="text-[10px] font-extrabold text-blue-700 hover:underline flex items-center gap-1"
+                    >
+                      <Download className="w-3 h-3" /> Télécharger PDF
+                    </a>
+                  )}
+                </div>
+
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setIsDraggingSimPdf(true); }}
+                  onDragLeave={() => setIsDraggingSimPdf(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingSimPdf(false);
+                    const f = e.dataTransfer?.files?.[0];
+                    if (f) handleImportEnedisSimulationPdf(f);
+                  }}
+                >
+                  <input
+                    ref={simPdfInputRef}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleImportEnedisSimulationPdf(f);
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => simPdfInputRef.current?.click()}
+                    disabled={isParsingSimPdf}
+                    className={`w-full py-2 px-3 rounded-xl border-2 border-dashed text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      isDraggingSimPdf
+                        ? 'bg-blue-50 border-blue-500 text-blue-900'
+                        : enedisSimulation?.fileName
+                          ? 'bg-emerald-50/70 border-emerald-400 text-emerald-950 hover:bg-emerald-100/70'
+                          : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {isParsingSimPdf ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : (
+                      <Upload className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    )}
+                    <span className="truncate">
+                      {enedisSimulation?.fileName
+                        ? `📄 ${enedisSimulation.fileName} (Cliquer/Glisser pour remplacer)`
+                        : 'Glisser-déposer le PDF Enedis (ex: Simulation_7060609_7060610.pdf)'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Champs extraits / saisie rapide assistée */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <label className="block text-[9.5px] font-bold text-slate-500">N° Simulation</label>
+                    <input
+                      type="text"
+                      value={enedisSimulation?.simulationNumber || ''}
+                      onChange={(e) => handleUpdateSimulationField('simulationNumber', e.target.value)}
+                      placeholder="7060609"
+                      className="w-full px-2 py-1 rounded-lg border border-slate-200 bg-white text-[11px] font-mono font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9.5px] font-bold text-slate-500">Référence</label>
+                    <input
+                      type="text"
+                      value={enedisSimulation?.reference || ''}
+                      onChange={(e) => handleUpdateSimulationField('reference', e.target.value)}
+                      placeholder="7060609 / 7060610"
+                      className="w-full px-2 py-1 rounded-lg border border-slate-200 bg-white text-[11px] font-mono font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9.5px] font-bold text-slate-500">Diagnostic réseau</label>
+                    <select
+                      value={enedisSimulation?.diagnosticReseau || 'Adaptation de réseau'}
+                      onChange={(e) => handleUpdateSimulationField('diagnosticReseau', e.target.value)}
+                      className="w-full px-1.5 py-1 rounded-lg border border-slate-200 bg-white text-[10.5px] font-bold text-slate-900"
+                    >
+                      {ENEDIS_SIMULATION_DIAGNOSTIC_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[9.5px] font-bold text-slate-500">Date simulation</label>
+                    <input
+                      type="text"
+                      value={enedisSimulation?.dateSimulation || ''}
+                      onChange={(e) => handleUpdateSimulationField('dateSimulation', e.target.value)}
+                      placeholder="JJ/MM/AAAA"
+                      className="w-full px-2 py-1 rounded-lg border border-slate-200 bg-white text-[11px] font-bold text-slate-900"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <AnimatePresence mode="wait">
             {/* ─────────────────────────────────────────────────────────────
                 ONGLET 1 : FICHE A – DONNÉES GÉNÉRALES (Pages 4 à 10/41 du 056E)

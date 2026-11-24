@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import fileSaver from 'file-saver';
 import { ENR_COURTAGE_LOGO_BASE64 } from '@/assets/logoBase64';
 import { findBessOdreData } from '@/data/bessOdreMatrix';
+import { CAPARESEAU_SUBSTATIONS } from '@/data/capareseauSubstations';
 
 const saveAs = fileSaver.saveAs || fileSaver;
 
@@ -2258,6 +2259,394 @@ export async function generateEnedisGlobalZip(project, racData) {
   return generateEnedisCompletePackZip(project, racData);
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// 7. SIMULATION DE RACCORDEMENT ENEDIS : PRÉ-DIAGNOSTIC, COPIE & PARSING PDF
+// ═════════════════════════════════════════════════════════════════════════════
+
+export const ENEDIS_SIMULATOR_URL = 'https://mon-compte-entreprise.enedis.fr/simulateur-raccordement';
+
+export const ENEDIS_SIMULATION_DIAGNOSTIC_OPTIONS = [
+  'Adaptation de réseau',
+  'Raccordement standard / Sans adaptation',
+  'Extension réseau HTA',
+  'Création de départ HTA',
+  'Renforcement Poste Source',
+  'ORA-MP Stockage recommandée',
+];
+
+function computeHaversineKm(lat1, lon1, lat2, lon2) {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+  const nLat1 = parseFloat(lat1);
+  const nLon1 = parseFloat(lon1);
+  const nLat2 = parseFloat(lat2);
+  const nLon2 = parseFloat(lon2);
+  if (isNaN(nLat1) || isNaN(nLon1) || isNaN(nLat2) || isNaN(nLon2)) return null;
+  const R = 6371;
+  const dLat = ((nLat2 - nLat1) * Math.PI) / 180;
+  const dLon = ((nLon2 - nLon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((nLat1 * Math.PI) / 180) *
+      Math.cos((nLat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Calcule instantanément le pré-diagnostic réseau d'un projet à partir de
+ * `bessOdreMatrix.js` et `capareseauSubstations.js` (3 118 postes sources).
+ */
+export function computeEnedisNetworkPreDiagnosis(project) {
+  const p = project || {};
+  const vars = extractProjectEnedisVariables(p);
+  const odreSite = findBessOdreData(
+    p.name || p.projectName || p.client || p.clientName || p.id || '',
+    p.city || p.commune || '',
+    p.address || p.adresse || p.clientAddress || '',
+    p.lat || p.latitude || vars.latitude,
+    p.lng || p.longitude || vars.longitude
+  );
+
+  const lat = parseFloat(vars.latitude);
+  const lng = parseFloat(vars.longitude);
+  const hasCoords = !isNaN(lat) && !isNaN(lng);
+
+  // 1. Rechercher le poste source dans CAPARESEAU_SUBSTATIONS (par nom ODRE d'abord, puis par distance GPS)
+  let matchedSubstation = null;
+  let minDistanceKm = null;
+
+  if (odreSite?.posteSourceEnedis && Array.isArray(CAPARESEAU_SUBSTATIONS)) {
+    const targetName = String(odreSite.posteSourceEnedis).trim().toUpperCase();
+    matchedSubstation = CAPARESEAU_SUBSTATIONS.find((s) => {
+      const sName = String(s.name || '').trim().toUpperCase();
+      return sName === targetName || sName.includes(targetName) || targetName.includes(sName);
+    }) || null;
+  }
+
+  if (!matchedSubstation && hasCoords && Array.isArray(CAPARESEAU_SUBSTATIONS)) {
+    for (let i = 0; i < CAPARESEAU_SUBSTATIONS.length; i++) {
+      const s = CAPARESEAU_SUBSTATIONS[i];
+      const dKm = computeHaversineKm(lat, lng, s.lat, s.lng);
+      if (dKm !== null && (minDistanceKm === null || dKm < minDistanceKm)) {
+        minDistanceKm = dKm;
+        matchedSubstation = s;
+      }
+    }
+  } else if (matchedSubstation && hasCoords) {
+    minDistanceKm = computeHaversineKm(lat, lng, matchedSubstation.lat, matchedSubstation.lng);
+  }
+
+  const posteSource =
+    odreSite?.posteSourceEnedis ||
+    p.substation?.name ||
+    matchedSubstation?.name ||
+    'Poste HTA à déterminer';
+
+  const distanceKm =
+    odreSite?.distanceKm != null
+      ? Number(odreSite.distanceKm)
+      : minDistanceKm != null
+        ? Number(minDistanceKm.toFixed(1))
+        : null;
+
+  const capaciteResiduelleMw =
+    odreSite?.capaciteResiduelleOdreMw != null
+      ? Number(odreSite.capaciteResiduelleOdreMw)
+      : matchedSubstation?.capMw != null
+        ? Number(matchedSubstation.capMw)
+        : 0;
+
+  const fileAttenteMw =
+    matchedSubstation?.fileAttenteMw != null
+      ? Number(matchedSubstation.fileAttenteMw)
+      : 0;
+
+  const capaciteReserveeMw =
+    matchedSubstation?.capReserveeMw != null
+      ? Number(matchedSubstation.capReserveeMw)
+      : 0;
+
+  const quotePartEurPerMw =
+    odreSite?.quotePartS3renrEur != null
+      ? Number(odreSite.quotePartS3renrEur)
+      : matchedSubstation?.quotePartEur != null
+        ? Number(matchedSubstation.quotePartEur)
+        : 84130;
+
+  const quotePartUnitaireStr =
+    odreSite?.quotePartS3REnR ||
+    matchedSubstation?.quotePart ||
+    `${(quotePartEurPerMw / 1000).toFixed(2)} k€/MW`;
+
+  const puissanceProjetMw = (Number(vars.puissanceTotaleKw) || 500) / 1000;
+  const quotePart500KwEur = Math.round(quotePartEurPerMw * puissanceProjetMw);
+
+  const isStandardProbable = capaciteResiduelleMw > 0.5;
+  const badgeType = isStandardProbable ? 'standard' : 'oramp';
+  const badgeLabel = isStandardProbable
+    ? 'Raccordement standard probable'
+    : 'Adaptation de réseau / ORA-MP recommandée';
+
+  return {
+    posteSource,
+    codePoste: matchedSubstation?.code || '',
+    tension: odreSite?.tension || matchedSubstation?.voltage || 'HTA 20 kV',
+    distanceKm,
+    capaciteResiduelleMw,
+    fileAttenteMw,
+    capaciteReserveeMw,
+    quotePartUnitaireStr: String(quotePartUnitaireStr).replace(/\s+/g, ' ').trim(),
+    quotePartEurPerMw,
+    quotePart500KwEur,
+    typologieZoneCre: odreSite?.typologieZoneCre || 'Zone S3REnR Enedis',
+    isStandardProbable,
+    badgeType,
+    badgeLabel,
+    latitude: vars.latitude,
+    longitude: vars.longitude,
+    commune: vars.commune,
+    codePostal: vars.codePostal,
+    clientNom: (p.name || p.lastName || p.clientName || odreSite?.siteName || vars.nom || 'PROJET').trim(),
+  };
+}
+
+/**
+ * Construit le texte récapitulatif prêt à coller pour le simulateur Enedis
+ */
+export function buildEnedisSimulatorClipboardPayload(project, enedisData = null) {
+  const p = project || {};
+  const vars = extractProjectEnedisVariables(p);
+  const nomClient = (p.name || p.lastName || p.clientName || 'PROJET').trim();
+  const cp = (enedisData?.siteCodePostal || vars.codePostal || '').trim();
+  const commune = (enedisData?.siteCommune || vars.commune || '').trim();
+  const lat = (enedisData?.siteLatitude || vars.latitude || '').trim();
+  const lng = (enedisData?.siteLongitude || vars.longitude || '').trim();
+  const puissanceKw = enedisData?.puissanceRaccInjectionKw || vars.puissanceTotaleKw || '500';
+
+  const nomPosteClient = [nomClient, cp, commune].filter(Boolean).join(' ');
+  const gpsCoords = (lat && lng) ? `${lat}, ${lng}` : 'Coordonnées GPS à renseigner';
+
+  const text = [
+    `Nom du poste client : ${nomPosteClient}`,
+    `Coordonnées GPS : ${gpsCoords}`,
+    `Type : Production neuve`,
+    `Puissance : ${puissanceKw} kW`,
+  ].join('\n');
+
+  return {
+    nomPosteClient,
+    gpsCoords,
+    type: 'Production neuve',
+    puissance: `${puissanceKw} kW`,
+    text,
+  };
+}
+
+/**
+ * Copie automatiquement les paramètres du projet dans le presse-papiers,
+ * affiche le toast explicite et ouvre le simulateur officiel Enedis dans un nouvel onglet.
+ */
+export async function openEnedisSimulatorWithClipboard(project, enedisData = null, toastFn = null) {
+  const payload = buildEnedisSimulatorClipboardPayload(project, enedisData);
+
+  let copied = false;
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(payload.text);
+      copied = true;
+    } catch (e) {
+      console.warn('Clipboard API fallback:', e);
+    }
+  }
+
+  if (!copied && typeof document !== 'undefined') {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = payload.text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      copied = true;
+    } catch (e) {
+      console.warn('Fallback copy failed:', e);
+    }
+  }
+
+  if (typeof toastFn === 'function') {
+    toastFn({
+      title: 'Paramètres copiés ! Collez les coordonnées dans le simulateur Enedis',
+      description: `${payload.nomPosteClient} • GPS : ${payload.gpsCoords} • Production neuve • ${payload.puissance}`,
+    });
+  }
+
+  if (typeof window !== 'undefined') {
+    window.open(ENEDIS_SIMULATOR_URL, '_blank', 'noopener,noreferrer');
+  }
+
+  return payload;
+}
+
+/**
+ * Récupère la simulation Enedis sauvegardée sur un projet (Firestore ou localStorage)
+ */
+export function getSavedEnedisSimulation(project) {
+  if (!project) return null;
+  if (project.enedisSimulation && typeof project.enedisSimulation === 'object') {
+    return project.enedisSimulation;
+  }
+  if (project.id && typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(`nelson_enedis_sim_${project.id}`);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      // ignore
+    }
+  }
+  return null;
+}
+
+/**
+ * Sauvegarde la simulation Enedis dans localStorage (sans saturer le quota si le PDF est lourd)
+ */
+export function saveEnedisSimulationToStorage(projectId, simData) {
+  if (!projectId || typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(`nelson_enedis_sim_${projectId}`, JSON.stringify(simData));
+  } catch (e) {
+    // Si le DataURL du PDF dépasse le quota localStorage, sauvegarder les métadonnées
+    try {
+      const { fileDataUrl, ...lightData } = simData || {};
+      localStorage.setItem(`nelson_enedis_sim_${projectId}`, JSON.stringify(lightData));
+    } catch (err) {
+      console.warn('Impossible de sauvegarder nelson_enedis_sim en localStorage:', err);
+    }
+  }
+}
+
+/**
+ * Parse un fichier PDF de simulation téléchargé depuis le portail Enedis
+ * (ex: Simulation_7060609_7060610.pdf) et extrait :
+ * - simulationNumber (ex: "7060609")
+ * - reference (ex: "7060609 / 7060610")
+ * - diagnosticReseau (ex: "Adaptation de réseau", "Extension", "Création de départ")
+ * - dateSimulation (JJ/MM/AAAA)
+ */
+export async function parseEnedisSimulationPdf(file) {
+  if (!file) return null;
+
+  const fileName = file.name || 'Simulation_Enedis.pdf';
+  const todayFr = new Date().toLocaleDateString('fr-FR');
+  const fileDateFr = file.lastModified
+    ? new Date(file.lastModified).toLocaleDateString('fr-FR')
+    : todayFr;
+
+  // 1. Extraction depuis le nom de fichier (ex: Simulation_7060609_7060610.pdf)
+  const nameNumbers = fileName.match(/\d{5,10}/g) || [];
+  let simulationNumber = nameNumbers[0] || '';
+  let reference = nameNumbers.length >= 2
+    ? `${nameNumbers[0]} / ${nameNumbers[1]}`
+    : (nameNumbers[0] || '');
+
+  // 2. Lecture du fichier en DataURL (pour archivage/consultation) + ArrayBuffer (pour extraction texte)
+  const readAsDataUrl = (f) =>
+    new Promise((resolve) => {
+      try {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result || null);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(f);
+      } catch {
+        resolve(null);
+      }
+    });
+
+  const fileDataUrl = file.size <= 4 * 1024 * 1024 ? await readAsDataUrl(file) : null;
+
+  // 3. Extraction du texte interne du PDF via pdfjs-dist (avec fallback texte brut du buffer)
+  let extractedText = '';
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    try {
+      const pdfjs = await import('pdfjs-dist');
+      if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.4.530'}/build/pdf.worker.min.mjs`;
+      }
+      const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
+      const pdf = await loadingTask.promise;
+      const maxPages = Math.min(pdf.numPages, 5);
+      for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        extractedText += ' ' + content.items.map(it => it.str).join(' ');
+      }
+    } catch (pdfJsErr) {
+      // Fallback léger : décodage Latin1 du flux PDF si le worker pdfjs échoue
+      const decoder = new TextDecoder('latin1');
+      extractedText = decoder.decode(new Uint8Array(arrayBuffer));
+    }
+  } catch (e) {
+    console.warn('Erreur lecture buffer PDF simulation Enedis:', e);
+  }
+
+  // 4. Recherche des numéros de simulation / référence dans le texte du PDF si non trouvés dans le nom
+  if (extractedText) {
+    const simMatch =
+      extractedText.match(/simulation\s*(?:n[°oº]?\s*|:\s*)?(\d{5,10})/i) ||
+      extractedText.match(/r[ée]f[ée]rence\s*(?:n[°oº]?\s*|:\s*)?(\d{5,10}(?:\s*[\/_-]\s*\d{5,10})?)/i);
+    if (simMatch && !simulationNumber) {
+      const nums = simMatch[1].match(/\d{5,10}/g) || [];
+      if (nums[0]) simulationNumber = nums[0];
+      if (nums.length >= 2) reference = `${nums[0]} / ${nums[1]}`;
+      else if (nums[0] && !reference) reference = nums[0];
+    }
+
+    const pairMatch = extractedText.match(/\b(\d{6,9})\s*[\/_-]\s*(\d{6,9})\b/);
+    if (pairMatch) {
+      if (!simulationNumber) simulationNumber = pairMatch[1];
+      reference = `${pairMatch[1]} / ${pairMatch[2]}`;
+    }
+  }
+
+  // 5. Détection du diagnostic réseau dans le texte du PDF
+  let diagnosticReseau = 'Adaptation de réseau';
+  const lowerText = `${fileName} ${extractedText}`.toLowerCase();
+  if (lowerText.includes('création de départ') || lowerText.includes('creation de depart') || lowerText.includes('nouveau départ')) {
+    diagnosticReseau = 'Création de départ HTA';
+  } else if (lowerText.includes('renforcement') && lowerText.includes('poste source')) {
+    diagnosticReseau = 'Renforcement Poste Source';
+  } else if (lowerText.includes('adaptation de réseau') || lowerText.includes('adaptation de reseau') || lowerText.includes('adaptation réseau')) {
+    diagnosticReseau = 'Adaptation de réseau';
+  } else if (lowerText.includes('extension')) {
+    diagnosticReseau = 'Extension réseau HTA';
+  } else if (lowerText.includes('sans adaptation') || lowerText.includes('raccordement simple') || lowerText.includes('capacité disponible')) {
+    diagnosticReseau = 'Raccordement standard / Sans adaptation';
+  }
+
+  // 6. Détection de la date de simulation (JJ/MM/AAAA)
+  let dateSimulation = fileDateFr;
+  if (extractedText) {
+    const dateMatch = extractedText.match(/\b(0[1-9]|[12]\d|3[01])[\/.-](0[1-9]|1[0-2])[\/.-](202\d)\b/);
+    if (dateMatch) {
+      dateSimulation = `${dateMatch[1]}/${dateMatch[2]}/${dateMatch[3]}`;
+    }
+  }
+
+  return {
+    simulationNumber: simulationNumber || 'À préciser',
+    reference: reference || simulationNumber || 'À préciser',
+    diagnosticReseau,
+    dateSimulation,
+    fileName,
+    fileSize: file.size || 0,
+    importedAt: new Date().toISOString(),
+    fileDataUrl,
+  };
+}
+
 export default {
   ENR_COURTAGE_INFO,
   MANDATAIRE_INFO,
@@ -2269,6 +2658,8 @@ export default {
   INJECTION_TYPES,
   VOLTAGE_LEVELS,
   ENEDIS_CHECKLIST_DOCS,
+  ENEDIS_SIMULATOR_URL,
+  ENEDIS_SIMULATION_DIAGNOSTIC_OPTIONS,
   formatDateFr,
   formatEuro,
   sanitizePdfText,
@@ -2285,4 +2676,10 @@ export default {
   generateEnedisMandatPdf,
   generateConsuelCerfaPdf,
   generateEnedisGlobalZip,
+  computeEnedisNetworkPreDiagnosis,
+  buildEnedisSimulatorClipboardPayload,
+  openEnedisSimulatorWithClipboard,
+  getSavedEnedisSimulation,
+  saveEnedisSimulationToStorage,
+  parseEnedisSimulationPdf,
 };
