@@ -15,6 +15,7 @@ import {
   searchAndSyncDp
 } from '@/services/dpInstructionService';
 import { isCrmProjectAbandoned } from '@/lib/utils';
+import { resolveProjectPortfolio } from '@/data/bessPortfolioData';
 
 export default function DpInstructionDashboardBanner({
   projects = [],
@@ -24,6 +25,8 @@ export default function DpInstructionDashboardBanner({
   onUpdateProject,
 }) {
   const [filter, setFilter] = useState('all'); // 'all' | 'en_cours' | 'accord_tacite' | 'accord_obtenu'
+  const [portfolioFilter, setPortfolioFilter] = useState('all'); // 'all' | 'VOLTA' | 'FARADAY' | 'EDISON'
+  const [progressFilter, setProgressFilter] = useState('all'); // 'all' | '0' | '1_50' | '51_99' | '100'
   const [isExpanded, setIsExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
@@ -108,16 +111,24 @@ export default function DpInstructionDashboardBanner({
         commune: p.city || p.commune || mairie?.commune || norm?.comm3 || '',
         dpt: p.zip ? p.zip.slice(0, 2) : (norm?.dpt2 || ''),
         title: p.name || p.title || `Projet ${p.id || ''}`,
+        portfolio: resolveProjectPortfolio(p),
       };
     }).filter(item => item.isDeposited);
   }, [projects]);
 
-  // Compteurs
+  // Compteurs (statuts DP, portefeuilles et taux de progression)
   const stats = useMemo(() => {
     let all = analyzedProjects.length;
     let enCours = 0;
     let accordTacite = 0;
     let accordObtenu = 0;
+    let volta = 0;
+    let faraday = 0;
+    let edison = 0;
+    let p0 = 0;
+    let p1_50 = 0;
+    let p51_99 = 0;
+    let p100 = 0;
 
     analyzedProjects.forEach(item => {
       const status = item.timeline?.status;
@@ -136,12 +147,29 @@ export default function DpInstructionDashboardBanner({
       } else if (status === 'en_cours') {
         enCours++;
       }
+
+      if (item.portfolio === 'VOLTA') volta++;
+      else if (item.portfolio === 'FARADAY') faraday++;
+      else if (item.portfolio === 'EDISON') edison++;
+
+      const pct = Number(item.timeline?.progressPercent || 0);
+      if (pct <= 0) p0++;
+      else if (pct <= 50) p1_50++;
+      else if (pct < 100) p51_99++;
+      else p100++;
     });
 
-    return { all, enCours, accordTacite, accordObtenu };
+    return {
+      all,
+      enCours,
+      accordTacite,
+      accordObtenu,
+      portfolios: { VOLTA: volta, FARADAY: faraday, EDISON: edison },
+      progress: { p0, p1_50, p51_99, p100 },
+    };
   }, [analyzedProjects]);
 
-  // Filtrage des éléments affichés (Onglet + Recherche texte avec ou sans espace)
+  // Filtrage des éléments affichés (Statut + Portefeuille + Taux de progression + Recherche texte)
   const filteredList = useMemo(() => {
     const qClean = searchQuery.trim().toUpperCase().replace(/[\s\-_.]/g, '');
 
@@ -160,6 +188,16 @@ export default function DpInstructionDashboardBanner({
       if (filter === 'accord_tacite' && (status !== 'accord_tacite' || isObtained)) return false;
       if (filter === 'accord_obtenu' && !isObtained) return false;
 
+      // Filtre portefeuille
+      if (portfolioFilter !== 'all' && item.portfolio !== portfolioFilter) return false;
+
+      // Filtre taux de progression
+      const pct = Number(item.timeline?.progressPercent || 0);
+      if (progressFilter === '0' && pct !== 0) return false;
+      if (progressFilter === '1_50' && (pct < 1 || pct > 50)) return false;
+      if (progressFilter === '51_99' && (pct < 51 || pct >= 100)) return false;
+      if (progressFilter === '100' && pct < 100) return false;
+
       // Filtre recherche textuelle
       if (qClean) {
         const itemDpClean = String(item.dpNum || '').toUpperCase().replace(/[\s\-_.]/g, '');
@@ -173,7 +211,7 @@ export default function DpInstructionDashboardBanner({
 
       return true;
     });
-  }, [analyzedProjects, filter, searchQuery]);
+  }, [analyzedProjects, filter, portfolioFilter, progressFilter, searchQuery]);
 
   // Handler de synchronisation automatique multi-sources (SITADEL & Annuaire Mairie)
   const handleSearchAndSync = async (dpQuery = searchQuery) => {
@@ -492,6 +530,93 @@ export default function DpInstructionDashboardBanner({
         </button>
       </div>
 
+      {/* Filtres secondaires : Portefeuille (VOLTA / FARADAY / EDISON) & Taux de progression */}
+      <div className="px-3 py-2.5 sm:px-6 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        {/* Filtre Portefeuille */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mr-1">Portefeuille :</span>
+          <div className="flex items-center bg-white p-0.5 rounded-xl border border-slate-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setPortfolioFilter('all')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                portfolioFilter === 'all' ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Tous ({stats.all})
+            </button>
+            <button
+              type="button"
+              onClick={() => setPortfolioFilter(portfolioFilter === 'VOLTA' ? 'all' : 'VOLTA')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                portfolioFilter === 'VOLTA' ? 'bg-amber-500 text-white shadow-2xs' : 'text-amber-800 hover:bg-amber-50'
+              }`}
+            >
+              <span>⚡ VOLTA</span>
+              <span className={`text-[10px] px-1 rounded-full ${portfolioFilter === 'VOLTA' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'}`}>
+                {stats.portfolios.VOLTA}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPortfolioFilter(portfolioFilter === 'FARADAY' ? 'all' : 'FARADAY')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                portfolioFilter === 'FARADAY' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-emerald-800 hover:bg-emerald-50'
+              }`}
+            >
+              <span>🔋 FARADAY</span>
+              <span className={`text-[10px] px-1 rounded-full ${portfolioFilter === 'FARADAY' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-900'}`}>
+                {stats.portfolios.FARADAY}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPortfolioFilter(portfolioFilter === 'EDISON' ? 'all' : 'EDISON')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                portfolioFilter === 'EDISON' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-indigo-800 hover:bg-indigo-50'
+              }`}
+            >
+              <span>💡 EDISON</span>
+              <span className={`text-[10px] px-1 rounded-full ${portfolioFilter === 'EDISON' ? 'bg-indigo-700 text-white' : 'bg-indigo-100 text-indigo-900'}`}>
+                {stats.portfolios.EDISON}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Filtre Taux de progression */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mr-1">Progression :</span>
+          <div className="flex items-center bg-white p-0.5 rounded-xl border border-slate-200 shadow-2xs">
+            {[
+              { id: 'all', label: 'Tous', count: stats.all },
+              { id: '0', label: '0%', count: stats.progress.p0 },
+              { id: '1_50', label: '1–50%', count: stats.progress.p1_50 },
+              { id: '51_99', label: '51–99%', count: stats.progress.p51_99 },
+              { id: '100', label: '100%', count: stats.progress.p100 },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setProgressFilter(progressFilter === opt.id && opt.id !== 'all' ? 'all' : opt.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${
+                  progressFilter === opt.id
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <span>{opt.label}</span>
+                {opt.id !== 'all' && (
+                  <span className={`text-[10px] px-1 rounded-full ${progressFilter === opt.id ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                    {opt.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Liste dépliable des dossiers DP */}
       <AnimatePresence>
         {isExpanded && (
@@ -531,7 +656,20 @@ export default function DpInstructionDashboardBanner({
                     >
                       {/* Colonne 1 : Titre + DP + Commune */}
                       <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {item.portfolio && (
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded border shrink-0 ${
+                                item.portfolio === 'VOLTA'
+                                  ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                  : item.portfolio === 'EDISON'
+                                    ? 'bg-indigo-50 text-indigo-900 border-indigo-300'
+                                    : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                              }`}
+                            >
+                              {item.portfolio === 'VOLTA' ? '⚡ VOLTA' : item.portfolio === 'EDISON' ? '💡 EDISON' : '🔋 FARADAY'}
+                            </span>
+                          )}
                           <span className="font-mono font-black text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
                             {item.dpNum || 'DP en attente de numéro'}
                           </span>

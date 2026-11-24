@@ -788,6 +788,81 @@ export function getProjectBessPortfolio(p) {
 }
 
 /**
+ * Résout le portefeuille canonique d'un projet ('VOLTA' | 'FARADAY' | 'EDISON' | null)
+ * pour l'affichage et le filtrage dans la page Développement.
+ */
+export function resolveProjectPortfolio(p) {
+  if (!p) return null;
+  try {
+    const fromBess = getProjectBessPortfolio(p);
+    if (fromBess) {
+      const norm = normalizePortfolioName(fromBess);
+      if (norm.includes('EDISON') || norm === 'SPV C') return 'EDISON';
+      if (norm.includes('FARADAY') || norm.includes('TESLA') || norm === 'SPV B') return 'FARADAY';
+      if (norm.includes('VOLTA') || norm === 'SPV A') return 'VOLTA';
+    }
+  } catch (_) {}
+
+  const direct = p.bess_portfolio ||
+                 p.portfolio_bess ||
+                 p.portefeuille_bess ||
+                 p.bessPortfolio ||
+                 p.portefeuille ||
+                 p.portfolio ||
+                 p.pv_portfolio ||
+                 p.data?.bess_portfolio ||
+                 p.data?.portefeuille ||
+                 p.bp_bess_data?.portfolio ||
+                 p.bpAcamaState?.bess_portfolio ||
+                 '';
+  const s = normalizePortfolioName(direct);
+  if (s.includes('EDISON') || s === 'SPV C') return 'EDISON';
+  if (s.includes('FARADAY') || s.includes('TESLA') || s === 'SPV B') return 'FARADAY';
+  if (s.includes('VOLTA') || s === 'SPV A') return 'VOLTA';
+
+  if (p.spv === 'SPV C') return 'EDISON';
+  if (p.spv === 'SPV B') return 'FARADAY';
+  if (p.spv === 'SPV A') return 'VOLTA';
+
+  const pName = (p.name || '').toUpperCase().trim();
+  const pClient = (p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`).toUpperCase().trim();
+
+  // Exclusion explicite DUPORT, LABEGUERIE, LARDY et CELERIE de VOLTA (ils sont FARADAY)
+  if (pName.includes('DUPORT') || pClient.includes('DUPORT') ||
+      pName.includes('LABEGUERIE') || pClient.includes('LABEGUERIE') ||
+      pName.includes('LARDY') || pClient.includes('LARDY') ||
+      pName.includes('CELERIE') || pClient.includes('CELERIE')) {
+    return 'FARADAY';
+  }
+
+  if (Array.isArray(BESS_PORTFOLIO_SITES)) {
+    const matchSite = BESS_PORTFOLIO_SITES.find(site => {
+      if (p.id && site.id && (p.id === site.id || p.id === `site_${site.id}`)) return true;
+      const sName = (site.name || '').toUpperCase().trim();
+      const sCity = (site.city || '').toUpperCase().trim();
+      const pCity = (p.city || p.commune || '').toUpperCase().trim();
+      if (sName && (pName === sName || pName.includes(sName) || sName.includes(pName))) return true;
+      if (sCity && pCity && sCity === pCity && (pName.includes(sName) || sName.includes(pName))) return true;
+      return false;
+    });
+
+    if (matchSite) {
+      const mPort = normalizePortfolioName(matchSite.bess_portfolio || '');
+      if (mPort.includes('EDISON') || matchSite.spv === 'SPV C') return 'EDISON';
+      if (mPort.includes('FARADAY') || matchSite.spv === 'SPV B') return 'FARADAY';
+      return 'VOLTA';
+    }
+  }
+
+  const comm = (p.devComments || p.description || p.notes || '').toUpperCase();
+  if (comm.includes('EDISON')) return 'EDISON';
+  if (comm.includes('FARADAY')) return 'FARADAY';
+  if (comm.includes('VOLTA')) return 'VOLTA';
+
+  return null;
+}
+
+/**
  * Construit la liste harmonisée des centrales appartenant au portefeuille BESS (VOLTA, FARADAY ou ALL).
  * RÈGLE STRICTE :
  * - Les projets dont la fiche comporte le portefeuille BESS sélectionné apparaissent dans la liste.
