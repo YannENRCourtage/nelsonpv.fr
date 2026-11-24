@@ -48,16 +48,20 @@ export const MANDATAIRE_INFO = {
 
 // Texte réglementaire exact pour l'encadré « INFORMATIONS COMPLÉMENTAIRES » (Page 9/41 du 056E)
 export const DEFAULT_INFO_COMPLEMENTAIRES_056E =
-  'Projet BESS standalone 500 kW. Nous sollicitons en priorité l’étude d’une offre de raccordement alternative à modulation de puissance pour stockage, avec un gabarit d’injection interdisant l’injection pendant les heures de congestion photovoltaïque. Voir note annexée “Demande ORA-MP prioritaire”. Si le réseau ne nécessite pas ces restrictions, nous acceptons l’étude d’une solution sans restriction.';
+  'Projet BESS standalone 500 kW. Nous sollicitons en priorité l\'étude d\'une offre de raccordement alternative à modulation de puissance pour stockage, avec un gabarit d\'injection interdisant l\'injection pendant les heures de congestion photovoltaïque. Voir note annexée "Demande ORA-MP prioritaire". Si le réseau ne nécessite pas ces restrictions, nous acceptons l\'étude d\'une solution sans restriction.';
 
-// Corps par défaut de la Note Complémentaire ORA-MP
-export const DEFAULT_NOTE_ORAMP_CORPS = `Notre projet consiste en une installation de stockage d’électricité autonome (BESS standalone), composée de quatre unités de 125 kW, soit 500 kW au total en injection et en soutirage, sans nouvelle production photovoltaïque associée.
+// Corps officiel complet (6 paragraphes) de la Note Complémentaire ORA-MP Prioritaire (Pièce jointe obligatoire au 056E)
+export const DEFAULT_NOTE_ORAMP_CORPS = `Notre projet consiste en une installation de stockage d'électricité autonome, composée de quatre unités de 125 kW, soit 500 kW au total, sans nouvelle production photovoltaïque associée.
 
-Nous souhaitons que l’étude de raccordement examine en priorité une offre de raccordement alternative à modulation de puissance (ORA-MP) adaptée au stockage, avec un gabarit d’injection tenant compte des contraintes locales de production photovoltaïque, en application de l’article 11 de la procédure Enedis-NMO-RES_030E et de la variante 2A (article 3.7 – Gabarit en injection) figurant dans le modèle de Proposition Technique et Financière Enedis-MOP-RES_046E (pages 20 à 21/29, prévoyant par exemple une interdiction d'injecter de mars à octobre sur la plage horaire de congestion solaire type 10h–18h, à contractualiser selon le poste source).
+Nous souhaitons que l'étude de raccordement examine en priorité une offre de raccordement alternative à modulation de puissance (ORA-MP) adaptée au stockage, avec un gabarit d'injection tenant compte des contraintes locales de production photovoltaïque, en application de l'article 11 de la procédure Enedis-NMO-RES_030E et de la variante 2A (gabarit en injection) figurant dans le modèle Enedis-MOP-RES_046E.
 
-Nous sollicitons l’examen de cette solution dès l’instruction initiale du dossier, afin de ne pas écarter le projet ou lui imposer des travaux de renforcement disproportionnés sur le seul constat d’une saturation du poste source en injection photovoltaïque.
+En particulier, nous proposons, à titre de base d'étude, une interdiction d'injection de 10 h à 18 h, de mars à octobre inclus, afin d'éviter d'aggraver les pointes d'injection photovoltaïque. Les plages horaires définitives sont à fixer en fonction des contraintes identifiées par Enedis.
 
-Si aucune restriction n’est nécessaire sur le départ HTA ou le poste source concerné, nous souhaitons conserver la possibilité d’un raccordement de référence sans limitation horaire.`;
+L'installation sera pilotée pour respecter le gabarit contractuel retenu, sous réserve des dispositifs techniques et de contrôle requis. La recharge sera privilégiée pendant les périodes de forte production photovoltaïque, et l'injection en dehors des périodes de congestion.
+
+Nous sollicitons l'examen de cette solution dès l'instruction initiale du dossier, afin de ne pas écarter le projet sur le seul constat d'une saturation du poste source en injection photovoltaïque.
+
+Si aucune restriction n'est nécessaire, nous souhaitons conserver la possibilité d'un raccordement sans limitation horaire.`;
 
 export const SCHEMAS_COMPTAGE_056E = [
   { id: 'S1', label: 'Schéma S1 — Production / Stockage HTA sans auxiliaires dissociés (Comptage 4 quadrants HTA)' },
@@ -321,29 +325,58 @@ export function extractProjectEnedisVariables(project, cadastreOverride = null) 
   const latitude = !isNaN(latNum) ? latNum.toFixed(6) : String(rawLat || '');
   const longitude = !isNaN(lngNum) ? lngNum.toFixed(6) : String(rawLng || '');
 
-  // Nom de l'installation : {{projet.nom}} (ex: BESS Standalone - {{projet.commune}})
-  const clientClean = (p.name || p.lastName || p.clientName || odreSite?.siteName || '').trim();
+  // Nom de l'installation : BESS Standalone - [Commune] ([Nom Projet/Client])
+  const clientClean = (p.name || p.lastName || p.clientName || p.projectName || odreSite?.siteName || '').trim();
   let nomInstallation = '';
   if (p.nomInstallation) {
     nomInstallation = p.nomInstallation;
+  } else if (commune && clientClean) {
+    nomInstallation = `BESS Standalone - ${commune} (${clientClean})`;
   } else if (commune) {
-    nomInstallation = clientClean && !commune.toLowerCase().includes(clientClean.toLowerCase())
-      ? `BESS Standalone - ${commune} (${clientClean})`
-      : `BESS Standalone - ${commune}`;
+    nomInstallation = `BESS Standalone - ${commune}`;
   } else if (clientClean) {
     nomInstallation = `BESS Standalone - ${clientClean}`;
   } else {
     nomInstallation = 'BESS Standalone - 500 kW';
   }
 
-  const siretSite = (p.siret || ENR_COURTAGE_INFO.siret).trim();
+  // Détection d'une SPV / Client distinct lié au projet
+  const rawSpvName = (p.spvName || p.company || p.societe || p.demandeur?.raisonSociale || '').trim();
+  const hasDistinctSpv = Boolean(
+    (rawSpvName && !rawSpvName.toUpperCase().includes('ENR COURTAGE')) ||
+    (p.siret && String(p.siret).replace(/\s+/g, '') !== ENR_COURTAGE_INFO.siret.replace(/\s+/g, ''))
+  );
+
+  const spvRaisonSociale = rawSpvName || (clientClean ? `SPV / ${clientClean}` : 'SPV / Client Producteur');
+  const spvFormeJuridique = (p.formeJuridique || p.demandeur?.formeJuridique || 'SAS / SCI').trim();
+  const spvSiret = (p.siret && p.siret !== ENR_COURTAGE_INFO.siret) ? String(p.siret).trim() : '';
+  const spvSiren = spvSiret ? spvSiret.replace(/\s+/g, '').slice(0, 9) : (p.siren || '');
+  const spvAdresse = (p.clientAddress || p.demandeur?.adresse || adresse || ENR_COURTAGE_INFO.adresse).trim();
+  const spvCodePostal = (p.clientZip || p.demandeur?.codePostal || codePostal || ENR_COURTAGE_INFO.codePostal).trim();
+  const spvVille = (p.clientCity || p.demandeur?.ville || commune || ENR_COURTAGE_INFO.ville).trim();
+  const spvCpVillePays = `${spvCodePostal} ${spvVille} - France`.trim();
+
+  const siretSite = (hasDistinctSpv && spvSiret ? spvSiret : (p.siret || ENR_COURTAGE_INFO.siret)).trim();
   const posteSource = odreSite?.posteSourceEnedis || p.substation?.name || '';
   const todayStr = new Date().toLocaleDateString('fr-FR');
 
-  // Infos client/SPV du projet (pour le switch "Client/SPV Producteur + ENR COURTAGE Mandataire")
-  const spvRaisonSociale = (p.company || p.societe || p.spvName || `${p.name || ''} ${p.firstName || ''}`).trim() || 'SPV / Client Producteur';
-  const spvSiret = (p.siret && p.siret !== ENR_COURTAGE_INFO.siret) ? p.siret : '';
-  const spvSiren = spvSiret ? spvSiret.replace(/\s+/g, '').slice(0, 9) : '';
+  // Capacité batterie dynamique (ex: 4 × 261 kWh = 1044 kWh ≈ 1,044 MWh, ou 1 MWh / 2 MWh selon config)
+  const nombreUnitesNum = Number(p.battery_quantity || p.batteryQuantity || p.nombreUnites || 4) || 4;
+  const puissanceUnitaireNum = Number(p.puissanceUnitaireKw || 125) || 125;
+  const puissanceTotaleKwNum = Number(p.puissanceKw || p.powerKw || (nombreUnitesNum * puissanceUnitaireNum)) || 500;
+  const capUnitaireKwhNum = Number(p.capaciteUnitaireKwh || p.batteryUnitKwh || 261) || 261;
+  const capTotaleKwhNum = Number(
+    p.capaciteTotaleKwh ||
+    p.batteryCapacityKwh ||
+    p.storageKwh ||
+    p.capacityKwh ||
+    (nombreUnitesNum * capUnitaireKwhNum)
+  ) || 1044;
+  const energieMwhVal = p.energieStockableMwh
+    ? String(p.energieStockableMwh)
+    : (capTotaleKwhNum % 1000 === 0
+      ? String(capTotaleKwhNum / 1000)
+      : (capTotaleKwhNum / 1000).toFixed(3).replace(/0+$/, '').replace(/\.$/, '').replace('.', ','));
 
   return {
     nom: nomInstallation,
@@ -357,27 +390,43 @@ export function extractProjectEnedisVariables(project, cadastreOverride = null) 
     longitude,
     posteSource,
     todayStr,
+    hasDistinctSpv,
     spvRaisonSociale,
+    spvFormeJuridique,
     spvSiret,
     spvSiren,
+    spvAdresse,
+    spvCodePostal,
+    spvVille,
+    spvCpVillePays,
     clientNom: p.name || p.lastName || 'BARBERIS',
     clientPrenom: p.firstName || 'Yann',
+    clientFonction: p.fonction || (hasDistinctSpv ? 'Président / Gérant' : ENR_COURTAGE_INFO.fonction),
     clientTel: p.phone || p.telephone || ENR_COURTAGE_INFO.telephone,
     clientEmail: p.email || ENR_COURTAGE_INFO.email,
+    nombreUnites: String(nombreUnitesNum),
+    puissanceUnitaireKw: String(puissanceUnitaireNum),
+    puissanceTotaleKw: String(puissanceTotaleKwNum),
+    capaciteUnitaireKwh: String(capUnitaireKwhNum),
+    capaciteTotaleKwh: String(capTotaleKwhNum),
+    energieStockableMwh: energieMwhVal,
+    modeleBatterie: p.battery_model || p.modeleBatterie || 'CESC Mercury 261 - LFP',
   };
 }
 
 /**
  * Construit la ligne "Site :" de la Note Complémentaire ORA-MP à partir des données du formulaire
+ * Format officiel : {{site_name}} - Commune : {{commune}} ({{code_postal}}) - Référence parcelle : {{parcelle_ref}}
  */
 export function buildNoteOraMpSiteLine(data) {
   const nom = data?.siteNomInstallation || 'BESS Standalone';
   const commune = data?.siteCommune || 'Commune';
   const cp = data?.siteCodePostal || '';
   const parcelle = data?.siteParcelle || 'À préciser';
-  const lat = data?.siteLatitude || '—';
-  const lng = data?.siteLongitude || '—';
-  return `${nom} — Commune : ${commune}${cp ? ` (${cp})` : ''} — Référence parcelle : ${parcelle} (Coordonnées GPS : ${lat}, ${lng})`;
+  const lat = data?.siteLatitude || '';
+  const lng = data?.siteLongitude || '';
+  const gpsSuffix = (lat && lng) ? ` — GPS WGS84 : (${lat} ; ${lng})` : '';
+  return `${nom} - Commune : ${commune}${cp ? ` (${cp})` : ''} - Référence parcelle : ${parcelle}${gpsSuffix}`;
 }
 
 /**
@@ -469,13 +518,14 @@ export function generateDefaultEnrCourtageStampDataUrl() {
 /**
  * Initialise ou restaure l'état complet `enedisData` (Fiches A, C, E4/T1 & Note ORA-MP) d'un projet
  */
-export function getInitialEnedis056EData(project, cadastreOverride = null) {
+export function getInitialEnedis056EData(project, cadastreOverride = null, options = {}) {
   const p = project || {};
   const vars = extractProjectEnedisVariables(p, cadastreOverride);
+  const forceReload = Boolean(options?.forceReload);
 
   // Vérifier s'il existe déjà des données sauvegardées sur le projet ou dans localStorage
-  let saved = p.enedisData || null;
-  if (!saved && p.id && typeof window !== 'undefined') {
+  let saved = (!forceReload && p.enedisData) ? p.enedisData : null;
+  if (!forceReload && !saved && p.id && typeof window !== 'undefined') {
     try {
       const localRaw = localStorage.getItem(`nelson_enedis_data_${p.id}`);
       if (localRaw) {
@@ -485,7 +535,10 @@ export function getInitialEnedis056EData(project, cadastreOverride = null) {
       console.warn('Erreur lecture localStorage nelson_enedis_data:', e);
     }
   }
-  const s = saved || {};
+  const s = forceReload ? {} : (saved || {});
+
+  const defaultModeRep = s.modeRepresentation || (vars.hasDistinctSpv ? 'client_producteur_enr_mandataire' : 'enr_producteur');
+  const isSpvProd = defaultModeRep === 'client_producteur_enr_mandataire';
 
   const defaultSiteNom = s.siteNomInstallation || vars.nom;
   const defaultSiteCommune = s.siteCommune || vars.commune;
@@ -494,29 +547,41 @@ export function getInitialEnedis056EData(project, cadastreOverride = null) {
   const defaultSiteLat = s.siteLatitude || vars.latitude;
   const defaultSiteLng = s.siteLongitude || vars.longitude;
 
+  // Mise à jour automatique si l'ancien corps de note à 4 paragraphes était sauvegardé
+  const savedCorps = s.noteCorps;
+  const shouldUpgradeNoteCorps = !savedCorps || (
+    savedCorps.includes('BESS standalone), composée de quatre unités') &&
+    !savedCorps.includes('interdiction d\'injection de 10 h à 18 h')
+  );
+
   const initialObj = {
-    // ── ONGLET 1 : FICHE A – DONNÉES GÉNÉRALES & LOCALISATION (Enedis-MOP-RES_056E) ──
-    modeRepresentation: s.modeRepresentation || 'enr_producteur', // 'enr_producteur' | 'client_producteur_enr_mandataire'
+    // ── ONGLET 1 : FICHE A – DONNÉES GÉNÉRALES & LOCALISATION (Pages 4 à 10/41 du 056E) ──
+    modeRepresentation: defaultModeRep, // 'enr_producteur' | 'client_producteur_enr_mandataire'
 
     // Bénéficiaire du raccordement (Producteur)
     beneficiaireType: s.beneficiaireType || ENR_COURTAGE_INFO.type, // 'Société' | 'Particulier' | 'Collectivité'
-    beneficiaireRaisonSociale: s.beneficiaireRaisonSociale || ENR_COURTAGE_INFO.raisonSociale,
-    beneficiaireFormeJuridique: s.beneficiaireFormeJuridique || ENR_COURTAGE_INFO.formeJuridique,
-    beneficiaireSiren: s.beneficiaireSiren || ENR_COURTAGE_INFO.siren,
-    beneficiaireSiret: s.beneficiaireSiret || ENR_COURTAGE_INFO.siret,
-    beneficiaireAdresse: s.beneficiaireAdresse || ENR_COURTAGE_INFO.adresse,
-    beneficiaireCodePostal: s.beneficiaireCodePostal || ENR_COURTAGE_INFO.codePostal,
-    beneficiaireVille: s.beneficiaireVille || ENR_COURTAGE_INFO.ville,
+    beneficiaireRaisonSociale: s.beneficiaireRaisonSociale || (isSpvProd ? vars.spvRaisonSociale : ENR_COURTAGE_INFO.raisonSociale),
+    beneficiaireFormeJuridique: s.beneficiaireFormeJuridique || (isSpvProd ? vars.spvFormeJuridique : ENR_COURTAGE_INFO.formeJuridique),
+    beneficiaireSiren: s.beneficiaireSiren || (isSpvProd && vars.spvSiren ? vars.spvSiren : ENR_COURTAGE_INFO.siren),
+    beneficiaireSiret: s.beneficiaireSiret || (isSpvProd && vars.spvSiret ? vars.spvSiret : ENR_COURTAGE_INFO.siret),
+    beneficiaireAdresse: s.beneficiaireAdresse || (isSpvProd ? vars.spvAdresse : ENR_COURTAGE_INFO.adresse),
+    beneficiaireCodePostal: s.beneficiaireCodePostal || (isSpvProd ? vars.spvCodePostal : ENR_COURTAGE_INFO.codePostal),
+    beneficiaireVille: s.beneficiaireVille || (isSpvProd ? vars.spvVille : ENR_COURTAGE_INFO.ville),
     beneficiairePays: s.beneficiairePays || ENR_COURTAGE_INFO.pays,
-    beneficiaireCpVillePays: s.beneficiaireCpVillePays || ENR_COURTAGE_INFO.cpVillePays,
-    interlocuteurNom: s.interlocuteurNom || ENR_COURTAGE_INFO.interlocuteurNom,
-    interlocuteurPrenom: s.interlocuteurPrenom || ENR_COURTAGE_INFO.interlocuteurPrenom,
-    interlocuteurNomPrenom: s.interlocuteurNomPrenom || ENR_COURTAGE_INFO.interlocuteurNomPrenom,
-    interlocuteurFonction: s.interlocuteurFonction || ENR_COURTAGE_INFO.fonction,
-    interlocuteurTelephone: s.interlocuteurTelephone || ENR_COURTAGE_INFO.telephone,
-    interlocuteurEmail: s.interlocuteurEmail || ENR_COURTAGE_INFO.email,
+    beneficiaireCpVillePays: s.beneficiaireCpVillePays || (isSpvProd ? vars.spvCpVillePays : ENR_COURTAGE_INFO.cpVillePays),
+    interlocuteurNom: s.interlocuteurNom || (isSpvProd ? vars.clientNom : ENR_COURTAGE_INFO.interlocuteurNom),
+    interlocuteurPrenom: s.interlocuteurPrenom || (isSpvProd ? vars.clientPrenom : ENR_COURTAGE_INFO.interlocuteurPrenom),
+    interlocuteurNomPrenom: s.interlocuteurNomPrenom || (isSpvProd ? `${vars.clientNom} ${vars.clientPrenom}`.trim() : ENR_COURTAGE_INFO.interlocuteurNomPrenom),
+    interlocuteurFonction: s.interlocuteurFonction || (isSpvProd ? vars.clientFonction : ENR_COURTAGE_INFO.fonction),
+    interlocuteurTelephone: s.interlocuteurTelephone || (isSpvProd ? vars.clientTel : ENR_COURTAGE_INFO.telephone),
+    interlocuteurEmail: s.interlocuteurEmail || (isSpvProd ? vars.clientEmail : ENR_COURTAGE_INFO.email),
 
-    // Mandataire (toujours pré-rempli avec ENR COURTAGE, éditable)
+    // Mandataire (Page 5/41 — toujours pré-rempli avec ENR COURTAGE, éditable)
+    typeMandatRepresentation: s.typeMandatRepresentation || 'special', // 'special' | 'simple'
+    mandatPouvoirSignerRaccordement: s.mandatPouvoirSignerRaccordement !== undefined ? s.mandatPouvoirSignerRaccordement : true,
+    mandatPouvoirSignerAccesReseau: s.mandatPouvoirSignerAccesReseau !== undefined ? s.mandatPouvoirSignerAccesReseau : true,
+    mandatPouvoirReglementsFinanciers: s.mandatPouvoirReglementsFinanciers !== undefined ? s.mandatPouvoirReglementsFinanciers : true,
+    mandatPouvoirContratMandatL342: s.mandatPouvoirContratMandatL342 !== undefined ? s.mandatPouvoirContratMandatL342 : true,
     mandataireRaisonSociale: s.mandataireRaisonSociale || ENR_COURTAGE_INFO.raisonSociale,
     mandataireFormeJuridique: s.mandataireFormeJuridique || ENR_COURTAGE_INFO.formeJuridique,
     mandataireSiren: s.mandataireSiren || ENR_COURTAGE_INFO.siren,
@@ -528,7 +593,7 @@ export function getInitialEnedis056EData(project, cadastreOverride = null) {
     mandataireTelephone: s.mandataireTelephone || ENR_COURTAGE_INFO.telephone,
     mandataireEmail: s.mandataireEmail || ENR_COURTAGE_INFO.email,
 
-    // Localisation du Site (dynamique selon le projet ouvert)
+    // Localisation du Site (Page 5/41 — dynamique selon le projet ouvert)
     siteNomInstallation: defaultSiteNom,
     siteSiret: s.siteSiret || vars.siret,
     siteAdresse: s.siteAdresse || vars.adresse,
@@ -540,12 +605,21 @@ export function getInitialEnedis056EData(project, cadastreOverride = null) {
     siteLongitude: defaultSiteLng,
     sitePosteSource: s.sitePosteSource || vars.posteSource,
 
-    // Raccordement actuel au réseau
+    // Caractéristiques Générales en Injection & en Soutirage (Pages 6-7/41)
+    bridageStatique: s.bridageStatique || 'non', // 'non' | 'oui'
+    puissanceProductionInstalleeKw: s.puissanceProductionInstalleeKw ?? '500',
+    puissanceRaccInjectionKw: s.puissanceRaccInjectionKw ?? '500',
+    puissanceRaccSoutirageKw: s.puissanceRaccSoutirageKw ?? '500',
+    periodeProductionEnvisagee: s.periodeProductionEnvisagee || 'Toute l\'année (365 j/an — stockage stationnaire BESS)',
+    productibiliteMoyenneAnnuelleKwh: s.productibiliteMoyenneAnnuelleKwh ?? '365 000',
+    soutirageAuxiliairesUniquement: s.soutirageAuxiliairesUniquement || 'non', // 'non' (recharge BESS) | 'oui'
+
+    // Raccordement actuel au réseau (Page 7/41)
     siteDejaRaccordeRpd: s.siteDejaRaccordeRpd || 'non', // 'non' | 'oui'
     sitePrmExistant: s.sitePrmExistant || p.prm || '',
     souhaitDemandeur: s.souhaitDemandeur || 'cas_1', // 'cas_1' | 'cas_2' | 'cas_3'
 
-    // Valorisation & Comptage
+    // Valorisation & Comptage (Pages 8-9/41)
     modaliteValorisation: s.modaliteValorisation || 'Totalité de la production (nette d\'auxiliaires)',
     schemaComptage: s.schemaComptage || 'S1',
     schemaComptageAutre: s.schemaComptageAutre || '',
@@ -555,42 +629,85 @@ export function getInitialEnedis056EData(project, cadastreOverride = null) {
     // Encadré « INFORMATIONS COMPLÉMENTAIRES » (Page 9/41 du 056E)
     informationsComplementaires: s.informationsComplementaires ?? DEFAULT_INFO_COMPLEMENTAIRES_056E,
 
-    // Type de demande
+    // Type de demande (Page 10/41)
     typeDemande: s.typeDemande || 'offre_raccordement_travaux_enedis', // 'offre_raccordement_travaux_enedis' | 'proposition_avant_completude'
 
-    // ── ONGLET 2 : FICHE C – RACCORDEMENT HTA & OPTIONS DE MODULATION (p. 15-17) ──
+    // ── ONGLET 2 : FICHE C – RACCORDEMENT HTA (Pages 14 à 19/41 du 056E) ──
     configPosteLivraison: s.configPosteLivraison || 'reference_domaine_public', // 'reference_domaine_public' | 'autre_configuration'
     distanceDomainePublicM: s.distanceDomainePublicM ?? '0',
-    puissanceRaccInjectionKw: s.puissanceRaccInjectionKw ?? '500',
-    puissanceRaccSoutirageKw: s.puissanceRaccSoutirageKw ?? '500',
+    trancheeFourreauDomainePrive: s.trancheeFourreauDomainePrive || 'non', // 'oui' | 'non'
+    oseAnticipe: s.oseAnticipe || 'non', // 'non' | 'oui' (Page 15/41)
+    miseSousTensionTransfo: s.miseSousTensionTransfo || 'simultanee', // 'echelonnee' | 'simultanee' | 'magnetises'
+    compensationGeneraleCondensateurs: s.compensationGeneraleCondensateurs || 'non', // 'non' | 'oui'
+    qualiteAlimentationSoutirage: s.qualiteAlimentationSoutirage || 'standard', // 'standard' | 'personnalise'
+    alimentationSecoursSoutirage: s.alimentationSecoursSoutirage || 'non', // 'non' | 'oui'
     puissanceReactiveConforme: s.puissanceReactiveConforme || 'oui', // 'oui' | 'non' (Arrêté du 9 juin 2020)
+
+    // Loi de régulation locale de puissance réactive Q = f(U) (Page 16/41)
+    loiRegulationReactiveQfU: s.loiRegulationReactiveQfU || 'oui', // 'oui' | 'non'
+    qMinRatio: s.qMinRatio ?? '-0.35',
+    qMinKvar: s.qMinKvar ?? '-175', // -0,35 × 500 kW = -175 kVAR
+    qMaxRatio: s.qMaxRatio ?? '0.40',
+    qMaxKvar: s.qMaxKvar ?? '200', // 0,40 × 500 kW = 200 kVAR
 
     // Options pour recevoir plusieurs solutions de raccordement (Page 16/41)
     devisDivisionParc: s.devisDivisionParc || 'non', // 'oui' | 'non'
     devisPuissanceInjectionFaible: s.devisPuissanceInjectionFaible || 'non', // 'oui' | 'non'
     puissanceInjectionMinKw: s.puissanceInjectionMinKw ?? '350',
-    devisOffreModulationPuissance: s.devisOffreModulationPuissance !== undefined ? s.devisOffreModulationPuissance : true, // boolean / checkbox
+    devisOffreModulationPuissance: s.devisOffreModulationPuissance !== undefined ? s.devisOffreModulationPuissance : false, // Ne pas substituer le gabarit horaire par l'option générale à 70%
     puissanceGarantieInjectionKw: s.puissanceGarantieInjectionKw ?? '350',
     capaciteAccueil3DepartsHta: s.capaciteAccueil3DepartsHta || 'oui', // 'oui' | 'non'
-    regulationPuissanceActivePf: s.regulationPuissanceActivePf || 'oui', // 'oui' | 'non' (P = f(f))
 
-    // ── ONGLET 3 : FICHES E4 / T1 – CARACTÉRISTIQUES STOCKAGE & BATTERIES ──
+    // Régulation P = f(f) & Déclaration ΔPmax sur 1 minute (Page 17/41)
+    regulationPuissanceActivePf: s.regulationPuissanceActivePf || 'oui', // 'oui' | 'non' (P = f(f))
+    variationsVolontairesPuissanceActive: s.variationsVolontairesPuissanceActive || 'oui', // 'oui' | 'non'
+    deltaPmaxMode: s.deltaPmaxMode || 'defaut_stockage', // 'defaut_stockage' | 'autre'
+    deltaPmaxMwMin: s.deltaPmaxMwMin ?? '0.25', // 0,5 × 500 kW = 0,25 MW/min
+    deltaPmaxKwMin: s.deltaPmaxKwMin ?? '250',  // 250 kW/min
+
+    // ── ONGLET 3 : FICHES E4 / T1 – CARACTÉRISTIQUES TECHNOLOGIQUES & STOCKAGE (Pages 20-22 & 35-36/41) ──
+    // Fiche T1 – Caractéristiques de Production & Stockage (Pages 21-22/41)
+    filiereT1: s.filiereT1 || 'STOCKAGE HORS HYDRAULIQUE',
+    technologieT1: s.technologieT1 || 'BATTERIE',
+    nombreGroupesProductionStockage: s.nombreGroupesProductionStockage ?? vars.nombreUnites ?? '4',
+    comprendMoyenStockage: s.comprendMoyenStockage || 'oui',
+    puissanceMaxChargeKw: s.puissanceMaxChargeKw ?? vars.puissanceTotaleKw ?? '500',
+    puissanceMaxDechargeKw: s.puissanceMaxDechargeKw ?? vars.puissanceTotaleKw ?? '500',
+    energieStockableMwh: s.energieStockableMwh ?? vars.energieStockableMwh ?? '1,044',
+
+    // Fiche E4 – Onduleurs / PCS assurant le transit total de puissance (Pages 35-36/41)
+    onduleurMarqueRef: s.onduleurMarqueRef || 'CESC Mercury 261 — PCS Bidirectionnel 125 kVA (IGBT-MLI)',
+    onduleurDocumentRef: s.onduleurDocumentRef || 'Fiche technique constructeur PCS 125 kVA & Certificat NF EN 50549-2',
+    onduleurNombreUnites: s.onduleurNombreUnites ?? vars.nombreUnites ?? '4',
+    onduleurPuissanceApparenteUnitaireKva: s.onduleurPuissanceApparenteUnitaireKva ?? '125',
+    onduleurPuissanceApparenteTotaleKva: s.onduleurPuissanceApparenteTotaleKva ?? '500',
+    onduleurPuissanceMaximaleUnitaireKva: s.onduleurPuissanceMaximaleUnitaireKva ?? '125',
+    onduleurCourantNominalUnitaireA: s.onduleurCourantNominalUnitaireA ?? '180',
+    onduleurTypeElectronique: s.onduleurTypeElectronique || 'igbt_mli', // 'igbt_mli' (Commutation forcée IGBT-MLI) | 'thyristors'
+    onduleurTensionSortieV: s.onduleurTensionSortieV ?? '400',
+    onduleurTypeConnexion: s.onduleurTypeConnexion || 'triphase', // 'triphase' | 'monophase'
+    onduleurCourtCircuitCote: s.onduleurCourtCircuitCote || 'bt', // 'bt' | 'hta'
+    onduleurIpA: s.onduleurIpA ?? '280',
+    onduleurIkA: s.onduleurIkA ?? '198',
+
+    // Architecture BESS & Batterie
     typeInstallationStockage: s.typeInstallationStockage || 'Stockage stationnaire par batteries autonomes (BESS Stand-alone)',
     nombreUnitesTexte: s.nombreUnitesTexte || '4 armoires de 125 kW',
-    nombreUnites: s.nombreUnites ?? '4',
-    puissanceUnitaireKw: s.puissanceUnitaireKw ?? '125',
-    modeleBatterie: s.modeleBatterie || 'CESC Mercury 261 - LFP',
-    capaciteUnitaireKwh: s.capaciteUnitaireKwh ?? '261',
-    capaciteTotaleKwh: s.capaciteTotaleKwh ?? '1044',
+    nombreUnites: s.nombreUnites ?? vars.nombreUnites ?? '4',
+    puissanceUnitaireKw: s.puissanceUnitaireKw ?? vars.puissanceUnitaireKw ?? '125',
+    modeleBatterie: s.modeleBatterie || vars.modeleBatterie || 'CESC Mercury 261 - LFP',
+    capaciteUnitaireKwh: s.capaciteUnitaireKwh ?? vars.capaciteUnitaireKwh ?? '261',
+    capaciteTotaleKwh: s.capaciteTotaleKwh ?? vars.capaciteTotaleKwh ?? '1044',
     puissanceActiveTotaleInstalleeKw: s.puissanceActiveTotaleInstalleeKw ?? '500',
     puissanceApparenteMaximaleKva: s.puissanceApparenteMaximaleKva ?? '500',
     modeRaccordement: s.modeRaccordement || 'Triphasé HTA (20 kV) via transformateur élévateur BT/HTA.',
     technologieCellules: s.technologieCellules || 'Lithium-Fer-Phosphate (LiFePO4 / LFP) — Refroidissement liquide IP55',
-    onduleursPcsDetail: s.onduleursPcsDetail || '4 × Convertisseurs bidirectionnels (PCS) de 125 kVA / 125 kW (cos φ = 1)',
-    protectionDecouplageDetail: s.protectionDecouplageDetail || 'Relais de protection de découplage HTA conforme NF C 13-100 & Enedis-NOI-RES_43E',
+    onduleursPcsDetail: s.onduleursPcsDetail || '4 × Convertisseurs bidirectionnels (PCS) de 125 kVA / 125 kW — Triphasé — Commutation forcée (IGBT-MLI)',
+    protectionDecouplageDetail: s.protectionDecouplageDetail || 'Relais de protection de découplage HTA conforme NF C 13-100 & NF EN 50549-2',
     conformiteNormative: s.conformiteNormative || 'NF EN 50549-2 / Arrêté du 9 juin 2020 / NF C 13-100 / NF EN 62619',
 
-    // Fiche T1 : Transformateur élévateur BT / HTA
+    // Transformateur élévateur BT / HTA (Page 20/41)
+    transfoMarqueRef: s.transfoMarqueRef || 'Transformateur HTA/BT 630 kVA — Huile / Sec CEI 60076',
     transfoPuissanceNominaleKva: s.transfoPuissanceNominaleKva ?? '630',
     transfoTensionPrimaireHta: s.transfoTensionPrimaireHta || '20 kV (HTA Triphasé 50 Hz)',
     transfoTensionSecondaireBt: s.transfoTensionSecondaireBt || '400 V (BT Triphasé)',
@@ -603,7 +720,7 @@ export function getInitialEnedis056EData(project, cadastreOverride = null) {
     signatureDate: s.signatureDate || vars.todayStr,
 
     // ── ONGLET 4 : NOTE COMPLÉMENTAIRE « DEMANDE PRIORITAIRE D'ORA-MP » ──
-    noteObjet: s.noteObjet || 'Demande prioritaire d’ORA-MP pour stockage autonome — 500 kW',
+    noteObjet: s.noteObjet || 'Demande prioritaire d\'ORA-MP pour stockage autonome 500 kW',
     noteSiteLigne: s.noteSiteLigne || buildNoteOraMpSiteLine({
       siteNomInstallation: defaultSiteNom,
       siteCommune: defaultSiteCommune,
@@ -613,7 +730,7 @@ export function getInitialEnedis056EData(project, cadastreOverride = null) {
       siteLongitude: defaultSiteLng,
     }),
     noteSalutation: s.noteSalutation || 'Madame, Monsieur,',
-    noteCorps: s.noteCorps ?? DEFAULT_NOTE_ORAMP_CORPS,
+    noteCorps: shouldUpgradeNoteCorps ? DEFAULT_NOTE_ORAMP_CORPS : s.noteCorps,
     noteFaitA: s.noteFaitA || 'Mérignac',
     noteDate: s.noteDate || vars.todayStr,
     noteNomQualiteDemandeur: s.noteNomQualiteDemandeur || 'Yann BARBERIS, Président – ENR COURTAGE',
@@ -972,33 +1089,33 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
   );
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(8.8);
   doc.setTextColor(15, 23, 42);
-  doc.text(sanitizePdfText(`Latitude (WGS84) :  ${d.siteLatitude || '—'}`), m + 8, cy + 15);
-  doc.text(sanitizePdfText(`Longitude (WGS84) :  ${d.siteLongitude || '—'}`), m + 96, cy + 15);
+  doc.text(
+    sanitizePdfText(`[Latitude (Décimal) ; Longitude (Décimal)] WGS84 :   ( ${d.siteLatitude || '—'}  ;  ${d.siteLongitude || '—'} )`),
+    m + 8,
+    cy + 14.5
+  );
 
-  // Encart rappel pièces jointes bas de page 1
-  y += 72;
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(m, y, usableW, 20, 1.5, 1.5, 'FD');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.3);
-  doc.setTextColor(15, 43, 92);
-  doc.text('PIÈCES JOINTES OBLIGATOIRES AU DOSSIER ENEDIS-MOP-RES_056E :', m + 4, y + 5.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(51, 65, 85);
-  doc.text(
-    sanitizePdfText('1. Note complémentaire « Demande prioritaire d’ORA-MP pour stockage autonome (500 kW) »   •   2. Plan de situation (1:25000)'),
-    m + 4,
-    y + 11
+  // ── CADRE A3-BIS : CARACTÉRISTIQUES GÉNÉRALES EN INJECTION & EN SOUTIRAGE (PAGES 6-7/41) ──
+  y += 71;
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    24,
+    'A.3-BIS — CARACTÉRISTIQUES GÉNÉRALES EN INJECTION & EN SOUTIRAGE (PAGES 6 & 7/41 DU 056E)',
+    [15, 43, 92]
   );
-  doc.text(
-    sanitizePdfText('3. Plan de masse (1:200 / 1:500) avec PDL   •   4. Schéma unifilaire HTA/BT   •   5. Récépissé / Non-opposition DP   •   6. Certificats NF EN 50549-1/2'),
-    m + 4,
-    y + 16
-  );
+
+  cy = y + 11.5;
+  drawFieldRow(doc, m + 4, cy, 'P_installée (après bridage) :', `${d.puissanceProductionInstalleeKw || d.puissanceActiveTotaleInstalleeKw || '500'} kW (Bridage statique : ${d.bridageStatique === 'oui' ? 'Oui' : 'Non'})`, 44, 52);
+  drawFieldRow(doc, m + 102, cy, 'P_racc_inj (Injection HTA) :', `${d.puissanceRaccInjectionKw || '500'} kW`, 42, 34);
+
+  cy += 7;
+  drawFieldRow(doc, m + 4, cy, 'P_racc_sout (Soutirage HTA) :', `${d.puissanceRaccSoutirageKw || '500'} kW (Recharge BESS)`, 44, 52);
+  drawFieldRow(doc, m + 102, cy, 'Période de fonctionnement :', d.periodeProductionEnvisagee || 'Toute l\'année (365 j/an)', 42, 36);
 
   drawEnedis056EFooter(doc, 1, totalPages, d.siteNomInstallation);
 
@@ -1196,97 +1313,121 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
   drawEnedis056EFooter(doc, 2, totalPages, d.siteNomInstallation);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PAGE 3 : FICHE C — CARACTÉRISTIQUES HTA & OPTIONS DE MODULATION (p. 15-17)
+  // PAGE 3 : FICHE C — CARACTÉRISTIQUES HTA, Q=f(U), OPTIONS & ΔPmax (p. 14-19)
   // ═══════════════════════════════════════════════════════════════════════════
   doc.addPage();
   drawEnedis056EHeader(
     doc,
     'FICHE C',
-    'RACCORDEMENT SUR LE RÉSEAU PUBLIC HTA & OPTIONS DE MODULATION',
-    'Réf. Enedis-MOP-RES_056E — Version 2 — Correspondance Fiche C (Pages 15 à 17/41)'
+    'RACCORDEMENT SUR LE RÉSEAU PUBLIC HTA (20 kV), LOI Q=f(U) & ΔPmax',
+    'Réf. Enedis-MOP-RES_056E — Version 2 — Correspondance Fiche C (Pages 14 à 19/41)'
   );
 
   y = 41;
 
-  // ── CADRE C1 : CONFIGURATION DU POSTE DE LIVRAISON (PAGE 15/41) ──
+  // ── CADRE C1 : EMPLACEMENT DU POSTE DE LIVRAISON & OSE ANTICIPÉ (PAGES 14-15/41) ──
   drawSectionFrame(
     doc,
     m,
     y,
     usableW,
-    38,
-    'C.1 — CONFIGURATION DU POSTE DE LIVRAISON HTA (PAGE 15/41)'
+    36,
+    'C.1 — EMPLACEMENT DU POSTE DE LIVRAISON HTA (PAGE 14/41) & OSE ANTICIPÉ (PAGE 15/41)'
   );
 
-  cy = y + 13;
+  cy = y + 12;
   const isRefDomainePublic = d.configPosteLivraison !== 'autre_configuration';
   drawPdfCheckbox(
     doc,
     m + 6,
     cy,
     isRefDomainePublic,
-    'Raccordement de référence (Poste de livraison HTA accessible directement depuis le domaine public)',
-    { fontSize: 8.2, bold: true }
+    'Raccordement de référence (Poste de livraison HTA en limite de domaine privé, accessible 24h/24)',
+    { fontSize: 8, bold: true }
   );
-  cy += 8.5;
+  cy += 7.5;
   drawPdfCheckbox(
     doc,
     m + 6,
     cy,
     !isRefDomainePublic,
-    `Autre configuration (Poste situé hors limite du domaine public — Distance d = ${d.distanceDomainePublicM || '0'} mètres)`,
-    { fontSize: 8.2 }
+    `Autre configuration (Poste déporté à l'intérieur du site — Distance d = ${d.distanceDomainePublicM || '0'} m)`,
+    { fontSize: 8 }
+  );
+  cy += 7.5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.6);
+  doc.setTextColor(51, 65, 85);
+  doc.text('OSE anticipé souhaité (p. 15/41) :', m + 6, cy);
+  drawPdfCheckbox(doc, m + 54, cy, d.oseAnticipe === 'oui', 'Oui');
+  drawPdfCheckbox(doc, m + 72, cy, d.oseAnticipe !== 'oui', 'Non');
+  doc.text('Mise sous tension transfo :', m + 94, cy);
+  doc.setTextColor(15, 23, 42);
+  doc.text(
+    sanitizePdfText(d.miseSousTensionTransfo === 'echelonnee' ? 'Échelonnée 1 à 1' : 'Simultanée (disjoncteur général)'),
+    m + 132,
+    cy
   );
 
-  y += 42;
+  y += 39.5;
 
-  // ── CADRE C2 : PUISSANCE DE RACCORDEMENT DEMANDÉE & PUISSANCE RÉACTIVE (PAGE 15/41) ──
+  // ── CADRE C2 : PUISSANCES HTA & LOI DE RÉGULATION LOCALE Q = f(U) (PAGES 15-16/41) ──
   drawSectionFrame(
     doc,
     m,
     y,
     usableW,
-    50,
-    'C.2 — PUISSANCES DE RACCORDEMENT DEMANDÉES & PUISSANCE RÉACTIVE (PAGE 15/41)'
+    52,
+    'C.2 — PUISSANCES HTA & LOI DE RÉGULATION LOCALE DE PUISSANCE RÉACTIVE Q = f(U) (PAGES 15-16/41)'
   );
 
-  cy = y + 12;
-  // Deux boîtes visuelles pour Pracc inj et Pracc sout
+  cy = y + 11;
   const boxW = (usableW - 14) / 2;
   doc.setFillColor(239, 246, 255);
   doc.setDrawColor(147, 197, 253);
-  doc.roundedRect(m + 4, cy, boxW, 20, 1.5, 1.5, 'FD');
+  doc.roundedRect(m + 4, cy, boxW, 16, 1.5, 1.5, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
+  doc.setFontSize(7.5);
   doc.setTextColor(30, 58, 138);
-  doc.text('PUISSANCE DEMANDÉE EN INJECTION (Pracc inj) :', m + 8, cy + 6.5);
-  doc.setFontSize(13);
+  doc.text('PUISSANCE DE RACCORDEMENT EN INJECTION (Pracc inj) :', m + 7, cy + 5.8);
+  doc.setFontSize(11.5);
   doc.setTextColor(0, 94, 184);
-  doc.text(`${d.puissanceRaccInjectionKw || '500'} kW`, m + 8, cy + 15.5);
+  doc.text(`${d.puissanceRaccInjectionKw || '500'} kW (HTA 20 kV)`, m + 7, cy + 13);
 
   doc.setFillColor(245, 243, 255);
   doc.setDrawColor(196, 181, 253);
-  doc.roundedRect(m + 10 + boxW, cy, boxW, 20, 1.5, 1.5, 'FD');
+  doc.roundedRect(m + 10 + boxW, cy, boxW, 16, 1.5, 1.5, 'FD');
 
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(88, 28, 135);
+  doc.text('PUISSANCE DE RACCORDEMENT EN SOUTIRAGE (Pracc sout) :', m + 13 + boxW, cy + 5.8);
+  doc.setFontSize(11.5);
+  doc.setTextColor(109, 40, 217);
+  doc.text(`${d.puissanceRaccSoutirageKw || '500'} kW (HTA 20 kV)`, m + 13 + boxW, cy + 13);
+
+  cy += 22.5;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.8);
-  doc.setTextColor(88, 28, 135);
-  doc.text('PUISSANCE DEMANDÉE EN SOUTIRAGE (Pracc sout) :', m + 14 + boxW, cy + 6.5);
-  doc.setFontSize(13);
-  doc.setTextColor(109, 40, 217);
-  doc.text(`${d.puissanceRaccSoutirageKw || '500'} kW`, m + 14 + boxW, cy + 15.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text(sanitizePdfText('Loi de régulation locale de puissance réactive Q = f(U) (Page 16/41) :'), m + 4, cy);
+  const isLoiQfU = d.loiRegulationReactiveQfU !== 'non';
+  drawPdfCheckbox(doc, m + 102, cy, isLoiQfU, 'Oui');
+  drawPdfCheckbox(doc, m + 122, cy, !isLoiQfU, 'Non');
 
-  cy += 28;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(51, 65, 85);
-  doc.text(sanitizePdfText('Puissance réactive conforme aux exigences de l’Arrêté du 9 juin 2020 :'), m + 4, cy);
-  const isReactifOui = d.puissanceReactiveConforme !== 'non';
-  drawPdfCheckbox(doc, m + 112, cy, isReactifOui, 'Oui');
-  drawPdfCheckbox(doc, m + 135, cy, !isReactifOui, 'Non');
+  cy += 7.5;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Capacités constructives Qmin / Qmax :',
+    `Qmin = ${d.qMinRatio || '-0,35'} × Pracc_inj = ${d.qMinKvar || '-175'} kVAR   |   Qmax = ${d.qMaxRatio || '0,40'} × Pracc_inj = +${d.qMaxKvar || '200'} kVAR (Conforme Arrêté 9 juin 2020)`,
+    54,
+    122
+  );
 
-  y += 54;
+  y += 55.5;
 
   // ── CADRE C3 : OPTIONS POUR RECEVOIR PLUSIEURS SOLUTIONS DE RACCORDEMENT (PAGE 16/41) ──
   drawSectionFrame(
@@ -1294,122 +1435,225 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
     m,
     y,
     usableW,
-    92,
+    78,
     'C.3 — OPTIONS POUR RECEVOIR PLUSIEURS SOLUTIONS DE RACCORDEMENT (PAGE 16/41)'
   );
 
-  cy = y + 13;
-  // Option 1 : Division de parc
+  cy = y + 12;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(7.8);
   doc.setTextColor(30, 41, 59);
-  doc.text('1. Devis d’étude pour une division de parc :', m + 4, cy);
+  doc.text('1. Devis d\'étude pour une division de parc :', m + 4, cy);
   const isDivParc = d.devisDivisionParc === 'oui';
   drawPdfCheckbox(doc, m + 105, cy, isDivParc, 'Oui');
   drawPdfCheckbox(doc, m + 128, cy, !isDivParc, 'Non');
 
-  cy += 9;
-  // Option 2 : Puissance d'injection plus faible
+  cy += 7.5;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(7.8);
   doc.setTextColor(30, 41, 59);
-  doc.text('2. Devis d’étude pour une puissance d’injection plus faible :', m + 4, cy);
+  doc.text('2. Devis d\'étude pour une puissance d\'injection plus faible :', m + 4, cy);
   const isPInjFaible = d.devisPuissanceInjectionFaible === 'oui';
   drawPdfCheckbox(doc, m + 105, cy, isPInjFaible, 'Oui');
   drawPdfCheckbox(doc, m + 128, cy, !isPInjFaible, 'Non');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
+  doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
   doc.text(`(Pracc inj min = ${d.puissanceInjectionMinKw || '350'} kW)`, m + 148, cy);
 
-  cy += 9;
-  // Option 3 : Offre à modulation de puissance
+  cy += 7.5;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(7.8);
   doc.setTextColor(30, 41, 59);
-  doc.text('3. Devis d’étude Offre à modulation de puissance :', m + 4, cy);
+  doc.text('3. Option générale Offre à modulation de puissance (>= 70%) :', m + 4, cy);
   const isOraCheckbox = d.devisOffreModulationPuissance === true || d.devisOffreModulationPuissance === 'oui';
   drawPdfCheckbox(doc, m + 105, cy, isOraCheckbox, 'Oui');
   drawPdfCheckbox(doc, m + 128, cy, !isOraCheckbox, 'Non');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
+  doc.setFontSize(7.5);
   doc.setTextColor(0, 94, 184);
-  doc.text(`(Pgar inj = ${d.puissanceGarantieInjectionKw || '350'} kW, soit >= 70 %)`, m + 146, cy);
+  doc.text(`(Pgar inj = ${d.puissanceGarantieInjectionKw || '350'} kW)`, m + 148, cy);
 
-  // Encadré d'alerte réglementaire sur la case générale Pgar inj vs Gabarit Horaire Stockage
-  cy += 5;
+  cy += 4.5;
   doc.setFillColor(254, 243, 199);
   doc.setDrawColor(245, 158, 11);
-  doc.roundedRect(m + 4, cy, usableW - 8, 20, 1.5, 1.5, 'FD');
+  doc.roundedRect(m + 4, cy, usableW - 8, 17, 1.5, 1.5, 'FD');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.3);
-  doc.setTextColor(146, 64, 14);
-  doc.text('NOTE RÉGLEMENTAIRE IMPORTANTE SUR L’OPTION DE MODULATION DE PUISSANCE :', m + 8, cy + 5.5);
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.1);
+  doc.setTextColor(146, 64, 14);
+  doc.text('RENVOI VERS LA NOTE ORA-MP STOCKAGE (ART. 11 NMO-RES_030E & VARIANTE 2A MOP-RES_046E) :', m + 7, cy + 5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.9);
   doc.setTextColor(120, 53, 15);
   const alertLines = doc.splitTextToSize(
     sanitizePdfText(
-      'Attention : cette case générale indique une puissance garantie minimale de 70 %. Elle ne remplace pas la demande spécifique de gabarit horaire pour stockage décrite en page 9/41 (Fiche A) et dans la Note complémentaire ORA-MP jointe (Art. 11 Enedis-NMO-RES_030E & Variante 2A Enedis-MOP-RES_046E).'
+      'L\'option générale à 70 % ne se substitue pas au gabarit horaire de stockage (interdiction d\'injection 10h-18h de mars à octobre) sollicité en Page 9/41 (Fiche A) et dans la Note complémentaire ORA-MP annexée.'
     ),
-    usableW - 16
+    usableW - 14
   );
-  doc.text(alertLines, m + 8, cy + 10.5);
+  doc.text(alertLines, m + 7, cy + 9.5);
 
-  cy += 27;
-  // Option 4 : Capacité d'accueil des 3 départs HTA existants les plus proches
+  cy += 23.5;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(7.8);
   doc.setTextColor(30, 41, 59);
-  doc.text(sanitizePdfText('4. Capacité d’accueil des 3 départs HTA existants les plus proches :'), m + 4, cy);
+  doc.text(sanitizePdfText('4. Capacité d\'accueil des 3 départs HTA existants les plus proches :'), m + 4, cy);
   const isCap3Departs = d.capaciteAccueil3DepartsHta !== 'non';
   drawPdfCheckbox(doc, m + 105, cy, isCap3Departs, 'Oui');
   drawPdfCheckbox(doc, m + 128, cy, !isCap3Departs, 'Non');
 
-  y += 96;
+  y += 81.5;
 
-  // ── CADRE C4 : RÉGULATION DE PUISSANCE ACTIVE P = f(f) (PAGE 17/41) ──
+  // ── CADRE C4 : RÉGULATION P = f(f) & VARIATION MAXIMALE ΔPmax SUR 1 MINUTE (PAGE 17/41) ──
   drawSectionFrame(
     doc,
     m,
     y,
     usableW,
-    30,
-    'C.4 — PARTICIPATION AU RÉGLAGE DE LA FRÉQUENCE (PAGE 17/41)'
+    46,
+    'C.4 — RÉGULATION DE FRÉQUENCE P = f(f) & VARIATION MAXIMALE ΔPmax SUR 1 MINUTE (PAGE 17/41)'
   );
 
-  cy = y + 15;
+  cy = y + 12;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.2);
+  doc.setFontSize(7.8);
   doc.setTextColor(30, 41, 59);
-  doc.text(sanitizePdfText('Régulation de puissance active en fonction de la fréquence P = f(f) :'), m + 4, cy);
+  doc.text(sanitizePdfText('1. Loi de régulation de puissance active en fonction de la fréquence P = f(f) :'), m + 4, cy);
   const isRegulPf = d.regulationPuissanceActivePf !== 'non';
-  drawPdfCheckbox(doc, m + 112, cy, isRegulPf, 'Oui (Conforme Arrêté du 9 juin 2020)');
-  drawPdfCheckbox(doc, m + 165, cy, !isRegulPf, 'Non');
+  drawPdfCheckbox(doc, m + 114, cy, isRegulPf, 'Oui');
+  drawPdfCheckbox(doc, m + 136, cy, !isRegulPf, 'Non');
+
+  cy += 7.5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(sanitizePdfText('2. Variations volontaires de puissance active (systématique pour stockage) :'), m + 4, cy);
+  const isVarVol = d.variationsVolontairesPuissanceActive !== 'non';
+  drawPdfCheckbox(doc, m + 114, cy, isVarVol, 'Oui');
+  drawPdfCheckbox(doc, m + 136, cy, !isVarVol, 'Non');
+
+  cy += 7.5;
+  const isDeltaDefaut = d.deltaPmaxMode !== 'autre';
+  const deltaMwVal = d.deltaPmaxMwMin || '0,25';
+  const deltaKwVal = d.deltaPmaxKwMin || '250';
+  drawPdfCheckbox(
+    doc,
+    m + 4,
+    cy,
+    isDeltaDefaut,
+    `ΔPmax — Valeur par défaut pour installation de stockage : 0,5 × 500 kW = ${deltaMwVal} MW/min (${deltaKwVal} kW/min)`,
+    { fontSize: 7.7, bold: true }
+  );
+  cy += 6.5;
+  drawPdfCheckbox(
+    doc,
+    m + 4,
+    cy,
+    !isDeltaDefaut,
+    `Autre valeur ΔPmax déclarée (<= 8 MW/min) : ${!isDeltaDefaut ? `${deltaMwVal} MW/min` : '—'}`,
+    { fontSize: 7.5 }
+  );
 
   drawEnedis056EFooter(doc, 3, totalPages, d.siteNomInstallation);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PAGE 4 : FICHES E4 & T1 — CARACTÉRISTIQUES STOCKAGE BATTERIES & TRANSFO
+  // PAGE 4 : FICHES T1 & E4 — CARACTÉRISTIQUES TECHNOLOGIQUES, STOCKAGE & ONDULEURS
   // ═══════════════════════════════════════════════════════════════════════════
   doc.addPage();
   drawEnedis056EHeader(
     doc,
-    'E4 / T1',
-    'CARACTÉRISTIQUES TECHNIQUES STOCKAGE BATTERIES & TRANSFORMATEUR HTA/BT',
-    'Réf. Enedis-MOP-RES_056E — Version 2 — Fiche E4 (Stockage) & Fiche T1 (Transformateur HTA/BT)'
+    'T1 / E4',
+    'FICHE T1 (STOCKAGE BATTERIE) & FICHE E4 (ONDULEURS PCS 4×125 kVA & TRANSFO)',
+    'Réf. Enedis-MOP-RES_056E — Version 2 — Fiche T1 (Pages 21-22/41), Page 20/41 & Fiche E4 (Pages 35-36/41)'
   );
 
   y = 41;
 
-  // ── CADRE E4 : CARACTÉRISTIQUES TECHNIQUES BATTERIES (FICHE E4) ──
+  // ── CADRE T1 : CARACTÉRISTIQUES TECHNOLOGIQUES & STOCKAGE (PAGES 21-22/41) ──
   drawSectionFrame(
     doc,
     m,
     y,
     usableW,
-    84,
-    'FICHE E4 — CARACTÉRISTIQUES TECHNIQUES DE L’INSTALLATION DE STOCKAGE & BATTERIES'
+    54,
+    'FICHE T1 — CARACTÉRISTIQUES DE PRODUCTION & COMPLÉMENTAIRES POUR LE STOCKAGE (PAGES 21-22/41)'
+  );
+
+  cy = y + 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Filière (Page 21/41) :', m + 4, cy);
+  drawPdfCheckbox(doc, m + 36, cy, true, d.filiereT1 || 'STOCKAGE HORS HYDRAULIQUE', { bold: true });
+  doc.text('Technologie :', m + 98, cy);
+  drawPdfCheckbox(doc, m + 120, cy, (d.technologieT1 || 'BATTERIE') === 'BATTERIE', 'BATTERIE', { bold: true });
+  drawPdfCheckbox(doc, m + 148, cy, d.technologieT1 === 'HYDROGENE', 'HYDROGÈNE');
+
+  cy += 7.5;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Nombre total de groupes (y compris stockage) :',
+    `${d.nombreGroupesProductionStockage || d.nombreUnites || '4'} groupes (${d.nombreUnitesTexte || '4 unités de 125 kW'})`,
+    68,
+    108
+  );
+
+  cy += 7.5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Cette demande comprend-elle le raccordement d\'un moyen de stockage ? (Page 22/41) :', m + 4, cy);
+  const hasStockage = d.comprendMoyenStockage !== 'non';
+  drawPdfCheckbox(doc, m + 126, cy, hasStockage, 'Oui', { bold: true });
+  drawPdfCheckbox(doc, m + 144, cy, !hasStockage, 'Non');
+
+  cy += 7;
+  // Bandeau des 3 valeurs clés Fiche T1 Page 22/41
+  doc.setFillColor(240, 249, 255);
+  doc.setDrawColor(186, 230, 253);
+  doc.roundedRect(m + 4, cy, usableW - 8, 16, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(3, 105, 161);
+  doc.text(
+    sanitizePdfText(`• Pmax installée en charge : ${d.puissanceMaxChargeKw || '500'} kW`),
+    m + 7,
+    cy + 6.5
+  );
+  doc.text(
+    sanitizePdfText(`• Pmax installée en décharge : ${d.puissanceMaxDechargeKw || '500'} kW`),
+    m + 68,
+    cy + 6.5
+  );
+  doc.text(
+    sanitizePdfText(`• Énergie stockable : ${d.energieStockableMwh || '1,044'} MWh (${d.capaciteTotaleKwh || '1044'} kWh)`),
+    m + 128,
+    cy + 6.5
+  );
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.3);
+  doc.setTextColor(51, 65, 85);
+  doc.text(
+    sanitizePdfText(`Modèle & Cellules : ${d.modeleBatterie || 'CESC Mercury 261 - LFP'} — ${d.technologieCellules || 'LiFePO4 / LFP — Refroidissement liquide IP55'}`),
+    m + 7,
+    cy + 12.8
+  );
+
+  y += 58;
+
+  // ── CADRE E4 : ONDULEURS ASSURANT LE TRANSIT TOTAL DE PUISSANCE (PAGES 35-36/41) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    60,
+    'FICHE E4 — ONDULEURS / PCS ASSURANT LE TRANSIT TOTAL DE PUISSANCE (PAGES 35-36/41 DU 056E)',
+    [15, 43, 92]
   );
 
   cy = y + 12;
@@ -1417,172 +1661,108 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
     doc,
     m + 4,
     cy,
-    'Type d’installation :',
-    d.typeInstallationStockage || 'Stockage stationnaire par batteries autonomes (BESS Stand-alone)',
-    48,
-    126
+    'Marque et référence de l\'onduleur (PCS) :',
+    d.onduleurMarqueRef || 'CESC Mercury 261 — PCS Bidirectionnel 125 kVA (IGBT-MLI)',
+    58,
+    118
   );
 
-  cy += 7.5;
+  cy += 7.2;
   drawFieldRow(
     doc,
     m + 4,
     cy,
-    'Nombre d’unités & Modèle :',
-    `${d.nombreUnitesTexte || '4 armoires de 125 kW'} — Modèle : ${d.modeleBatterie || 'CESC Mercury 261 - LFP'}`,
-    48,
-    126
+    'Réf. document constructeur & Norme :',
+    `${d.onduleurDocumentRef || 'Fiche technique PCS 125 kVA & Certificat NF EN 50549-2'} (${d.conformiteNormative || 'NF EN 50549-2'})`,
+    58,
+    118
   );
 
-  cy += 7.5;
+  cy += 7.2;
   drawFieldRow(
     doc,
     m + 4,
     cy,
-    'Puissance active totale (Pinstallée) :',
-    `${d.puissanceActiveTotaleInstalleeKw || '500'} kW`,
+    'Puissance apparente nominale Sn :',
+    `${d.onduleurNombreUnites || '4'} × ${d.onduleurPuissanceApparenteUnitaireKva || '125'} kVA = ${d.onduleurPuissanceApparenteTotaleKva || '500'} kVA`,
     52,
-    40
+    44
   );
   drawFieldRow(
     doc,
-    m + 98,
+    m + 100,
     cy,
     'Puissance apparente max :',
-    `${d.puissanceApparenteMaximaleKva || '500'} kVA`,
-    44,
+    `${d.onduleurNombreUnites || '4'} × ${d.onduleurPuissanceMaximaleUnitaireKva || '125'} kVA (${d.puissanceApparenteMaximaleKva || '500'} kVA)`,
+    42,
+    38
+  );
+
+  cy += 7.2;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Courant nominal In (400 V BT) :',
+    `${d.onduleurCourantNominalUnitaireA || '180'} A / unité (Total ~722 A)`,
+    52,
+    44
+  );
+  drawFieldRow(
+    doc,
+    m + 100,
+    cy,
+    'Tension sortie assignée :',
+    `${d.onduleurTensionSortieV || '400'} V AC`,
+    42,
     38
   );
 
   cy += 7.5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.6);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Électronique de puissance :', m + 4, cy);
+  const isIgbt = d.onduleurTypeElectronique !== 'thyristors';
+  drawPdfCheckbox(doc, m + 44, cy, isIgbt, 'Commutation forcée (IGBT-MLI)', { fontSize: 7.6, bold: true });
+  doc.text('Connexion :', m + 104, cy);
+  const isTriphase = d.onduleurTypeConnexion !== 'monophase';
+  drawPdfCheckbox(doc, m + 123, cy, isTriphase, 'Triphasé', { fontSize: 7.6, bold: true });
+  drawPdfCheckbox(doc, m + 148, cy, !isTriphase, 'Monophasé', { fontSize: 7.6 });
+
+  cy += 7;
   drawFieldRow(
     doc,
     m + 4,
     cy,
-    'Capacité énergétique totale :',
-    `${d.capaciteTotaleKwh || '1044'} kWh (${d.nombreUnites || '4'} × ${d.capaciteUnitaireKwh || '261'} kWh)`,
-    48,
-    126
+    'Court-circuit sortie onduleur (côté BT) :',
+    `Ip = ${d.onduleurIpA || '280'} A  |  Ik'' = ${d.onduleurIkA || '198'} A par unité — Découplage : ${d.protectionDecouplageDetail || 'Relais HTA NF C 13-100'}`,
+    58,
+    118
   );
 
-  cy += 7.5;
-  drawFieldRow(
-    doc,
-    m + 4,
-    cy,
-    'Mode de raccordement :',
-    d.modeRaccordement || 'Triphasé HTA (20 kV) via transformateur élévateur BT/HTA.',
-    48,
-    126
-  );
+  y += 64;
 
-  cy += 7.5;
-  drawFieldRow(
-    doc,
-    m + 4,
-    cy,
-    'Technologie batteries :',
-    d.technologieCellules || 'Lithium-Fer-Phosphate (LiFePO4 / LFP) — Refroidissement liquide IP55',
-    48,
-    126
-  );
-
-  cy += 7.5;
-  drawFieldRow(
-    doc,
-    m + 4,
-    cy,
-    'Convertisseurs (PCS) :',
-    d.onduleursPcsDetail || '4 × Convertisseurs bidirectionnels (PCS) de 125 kVA / 125 kW (cos phi = 1)',
-    48,
-    126
-  );
-
-  cy += 7.5;
-  drawFieldRow(
-    doc,
-    m + 4,
-    cy,
-    'Découplage & Normes :',
-    `${d.protectionDecouplageDetail || 'Relais HTA NF C 13-100 / Enedis-NOI-RES_43E'} (${d.conformiteNormative || 'NF EN 50549-2'})`,
-    48,
-    126
-  );
-
-  y += 88;
-
-  // ── CADRE T1 : CARACTÉRISTIQUES DU TRANSFORMATEUR ÉLÉVATEUR BT/HTA (FICHE T1) ──
+  // ── CADRE TRANSFO : TRANSFORMATEUR ÉLÉVATEUR BT/HTA (PAGE 20/41) ──
   drawSectionFrame(
     doc,
     m,
     y,
     usableW,
-    46,
-    'FICHE T1 — CARACTÉRISTIQUES DU TRANSFORMATEUR DE PUISSANCE HTA / BT',
-    [15, 43, 92]
+    30,
+    'TRANSFORMATEUR DE DÉBIT DES UNITÉS DE STOCKAGE HTA / BT (PAGE 20/41 DU 056E)',
+    [0, 94, 184]
   );
 
-  cy = y + 13;
-  drawFieldRow(
-    doc,
-    m + 4,
-    cy,
-    'Puissance apparente nominale :',
-    `${d.transfoPuissanceNominaleKva || '630'} kVA`,
-    50,
-    42
-  );
-  drawFieldRow(
-    doc,
-    m + 98,
-    cy,
-    'Couplage des enroulements :',
-    d.transfoCouplage || 'Dyn11',
-    46,
-    36
-  );
+  cy = y + 12;
+  drawFieldRow(doc, m + 4, cy, 'Puissance nominale Sn :', `${d.transfoPuissanceNominaleKva || '630'} kVA`, 40, 48);
+  drawFieldRow(doc, m + 98, cy, 'Couplage & Ucc :', `${d.transfoCouplage || 'Dyn11'} — Ucc = ${d.transfoUccPercent || '4.0'} %`, 36, 44);
 
-  cy += 8;
-  drawFieldRow(
-    doc,
-    m + 4,
-    cy,
-    'Tension primaire (côté Réseau) :',
-    d.transfoTensionPrimaireHta || '20 kV (HTA Triphasé 50 Hz)',
-    50,
-    44
-  );
-  drawFieldRow(
-    doc,
-    m + 98,
-    cy,
-    'Tension secondaire (côté BESS) :',
-    d.transfoTensionSecondaireBt || '400 V (BT Triphasé)',
-    46,
-    36
-  );
+  cy += 7.2;
+  drawFieldRow(doc, m + 4, cy, 'Tension Primaire (HTA) :', d.transfoTensionPrimaireHta || '20 kV (HTA 50 Hz)', 40, 50);
+  drawFieldRow(doc, m + 98, cy, 'Tension Secondaire (BT) :', d.transfoTensionSecondaireBt || '400 V (BT Triphasé)', 40, 42);
 
-  cy += 8;
-  drawFieldRow(
-    doc,
-    m + 4,
-    cy,
-    'Tension de court-circuit (Ucc) :',
-    `${d.transfoUccPercent || '4.0'} %`,
-    50,
-    44
-  );
-  drawFieldRow(
-    doc,
-    m + 98,
-    cy,
-    'Mode d’exploitation :',
-    'Élévateur BT/HTA bidirectionnel',
-    46,
-    36
-  );
-
-  y += 50;
+  y += 34;
 
   // ── CADRE CERTIFICATION DES DONNÉES & SIGNATURE (BAS DE PAGE 4) ──
   drawSectionFrame(
@@ -1590,38 +1770,38 @@ export async function generateEnedis056EPdf(project, enedisDataInput, options = 
     m,
     y,
     usableW,
-    66,
+    58,
     'CERTIFICATION DES DONNÉES & SIGNATURE DU DEMANDEUR (Enedis-MOP-RES_056E)',
     [0, 94, 184]
   );
 
-  cy = y + 12;
+  cy = y + 11;
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7.6);
+  doc.setFontSize(7.4);
   doc.setTextColor(51, 65, 85);
   doc.text(
     sanitizePdfText(
-      'Je soussigné(e) certifie sur l’honneur l’exactitude des renseignements techniques et administratifs déclarés dans les présentes Fiches de Collecte Enedis-MOP-RES_056E (Version 2) ainsi que dans la Note complémentaire ORA-MP annexée.'
+      'Je soussigné(e) certifie sur l\'honneur l\'exactitude des renseignements techniques et administratifs déclarés dans les présentes Fiches de Collecte Enedis-MOP-RES_056E (Version 2) ainsi que dans la Note complémentaire ORA-MP annexée.'
     ),
     m + 4,
     cy,
     { maxWidth: usableW - 8 }
   );
 
-  cy += 11;
+  cy += 9.5;
   drawFieldRow(doc, m + 4, cy, 'Nom - Prénom du signataire :', d.signataireNomPrenom || 'Yann BARBERIS', 46, 55);
-  cy += 7;
+  cy += 6.5;
   drawFieldRow(doc, m + 4, cy, 'Qualité / Société :', `${d.interlocuteurFonction || 'Président'} - ${d.beneficiaireRaisonSociale || 'ENR COURTAGE'}`, 46, 55);
-  cy += 7;
+  cy += 6.5;
   drawFieldRow(doc, m + 4, cy, 'Fait à :', d.signatureLieu || 'Mérignac', 46, 55);
-  cy += 7;
+  cy += 6.5;
   drawFieldRow(doc, m + 4, cy, 'Date :', formatDateFr(d.signatureDate), 46, 55);
 
   // Encadré Cachet & Signature à droite
   const sigBoxX = m + 104;
-  const sigBoxY = y + 20;
+  const sigBoxY = y + 17;
   const sigBoxW = usableW - 108;
-  const sigBoxH = 42;
+  const sigBoxH = 38;
 
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(148, 163, 184);
@@ -1790,17 +1970,17 @@ export async function generateOraMpNotePdf(project, enedisDataInput, options = {
   doc.setTextColor(30, 41, 59);
   doc.text(siteLinesSplit, m + 20, y + 14.5);
 
-  y += objBoxH + 9;
+  y += objBoxH + 7;
 
   // ── 3. CORPS DE LA NOTE COMPLÉMENTAIRE ORA-MP ──
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.8);
+  doc.setFontSize(9.4);
   doc.setTextColor(15, 23, 42);
   doc.text(sanitizePdfText(d.noteSalutation || 'Madame, Monsieur,'), m, y);
 
-  y += 7.5;
+  y += 6;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
+  doc.setFontSize(9.1);
   doc.setTextColor(30, 41, 59);
 
   const rawBody = sanitizePdfText(d.noteCorps || DEFAULT_NOTE_ORAMP_CORPS);
@@ -1809,63 +1989,63 @@ export async function generateOraMpNotePdf(project, enedisDataInput, options = {
   paragraphs.forEach((para) => {
     const lines = doc.splitTextToSize(para, usableW);
     doc.text(lines, m, y);
-    y += lines.length * 4.8 + 4.5;
+    y += lines.length * 4.3 + 3.4;
   });
 
   // ── 4. ENCADRÉ SYNTHÉTIQUE DES RÉFÉRENCES RÉGLEMENTAIRES & PARAMÈTRES TECHNIQUES ──
-  y += 2;
+  y += 1.5;
   doc.setFillColor(240, 249, 255);
   doc.setDrawColor(186, 230, 253);
   doc.setLineWidth(0.35);
-  doc.roundedRect(m, y, usableW, 27, 1.8, 1.8, 'FD');
+  doc.roundedRect(m, y, usableW, 25, 1.8, 1.8, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
+  doc.setFontSize(7.6);
   doc.setTextColor(3, 105, 161);
   doc.text(
     'SYNTHÈSE DES PARAMÈTRES TECHNIQUES & RÉFÉRENCES RÉGLEMENTAIRES DE LA DEMANDE ORA-MP :',
     m + 4,
-    y + 5.8
+    y + 5.5
   );
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.6);
+  doc.setFontSize(7.4);
   doc.setTextColor(15, 23, 42);
   doc.text(
     sanitizePdfText(
-      `• Architecture BESS : ${d.nombreUnitesTexte || '4 armoires de 125 kW'} (${d.modeleBatterie || 'CESC Mercury 261 - LFP'}) — Raccordement HTA 20 kV`
+      `• Architecture BESS : ${d.nombreUnitesTexte || '4 armoires de 125 kW'} (${d.modeleBatterie || 'CESC Mercury 261 - LFP'}) — Capacité : ${d.energieStockableMwh || '1,044'} MWh (${d.capaciteTotaleKwh || '1044'} kWh)`
     ),
     m + 4,
-    y + 11.2
+    y + 10.6
   );
   doc.text(
     sanitizePdfText(
-      `• Puissances sollicitées : Pracc inj = ${d.puissanceRaccInjectionKw || '500'} kW en injection  |  Pracc sout = ${d.puissanceRaccSoutirageKw || '500'} kW en soutirage`
+      `• Puissances HTA 20 kV : Pracc inj = ${d.puissanceRaccInjectionKw || '500'} kW | Pracc sout = ${d.puissanceRaccSoutirageKw || '500'} kW | ΔPmax = ${d.deltaPmaxMwMin || '0,25'} MW/min (${d.deltaPmaxKwMin || '250'} kW/min)`
     ),
     m + 4,
-    y + 16.4
+    y + 15.4
   );
   doc.text(
     sanitizePdfText(
       '• Cadre réglementaire Enedis : Article 11 de la procédure Enedis-NMO-RES_030E & Variante 2A (Article 3.7 – Gabarit en injection,'
     ),
     m + 4,
-    y + 21.4
+    y + 20.1
   );
   doc.text(
     sanitizePdfText(
-      '  pages 20 à 21/29) du modèle de Proposition Technique et Financière Enedis-MOP-RES_046E.'
+      '  pages 20 à 21/29, interdiction d\'injection 10 h à 18 h de mars à octobre inclus) du modèle Enedis-MOP-RES_046E.'
     ),
     m + 4,
-    y + 25.2
+    y + 23.6
   );
 
   // ── 5. BLOC DATE, LIEU, QUALITÉ & SIGNATURE EN BAS DE PAGE ──
-  y = Math.max(y + 33, 224);
+  y = Math.min(Math.max(y + 29, 224), 233);
 
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(m, y, usableW, 50, 2, 2, 'FD');
+  doc.roundedRect(m, y, usableW, 48, 2, 2, 'FD');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.2);

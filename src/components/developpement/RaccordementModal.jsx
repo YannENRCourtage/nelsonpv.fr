@@ -25,6 +25,29 @@ import {
   generateEnedisCompletePackZip,
 } from '@/services/raccordementDocumentService';
 
+const PCS_CONSTRUCTOR_PRESETS = [
+  {
+    label: 'CESC Mercury 261 (125 kVA)',
+    marqueRef: 'CESC Mercury 261 — PCS Bidirectionnel 125 kVA (IGBT-MLI)',
+    modeleBatterie: 'CESC Mercury 261 - LFP',
+  },
+  {
+    label: 'Kehua BCS125K (125 kVA)',
+    marqueRef: 'Kehua Tech BCS125K-B-HUD — PCS 125 kVA Triphasé (IGBT-MLI)',
+    modeleBatterie: 'CESC / CATL LFP + PCS Kehua 125 kVA',
+  },
+  {
+    label: 'Sungrow SC125CX (125 kVA)',
+    marqueRef: 'Sungrow SC125CX — PCS Bidirectionnel 125 kVA (IGBT-MLI)',
+    modeleBatterie: 'Sungrow PowerStack / LFP 125 kW',
+  },
+  {
+    label: 'Huawei LUNA2000 (125 kVA)',
+    marqueRef: 'Huawei LUNA2000-125KTL-M0 — PCS Smart 125 kVA (IGBT-MLI)',
+    modeleBatterie: 'Huawei LUNA2000 Smart String ESS',
+  },
+];
+
 export default function RaccordementModal({ isOpen, onClose, project, onSave }) {
   const [activeTab, setActiveTab] = useState('fiche_a');
   const [formData, setFormData] = useState(() => getInitialEnedis056EData(project));
@@ -45,6 +68,72 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
     if (url) setDefaultStampUrl(url);
   }, []);
 
+  // Résolution asynchrone Cadastre / Code INSEE
+  const resolveCadastreAndInseeAsync = async (initialData) => {
+    const lat = parseFloat(initialData.siteLatitude);
+    const lng = parseFloat(initialData.siteLongitude);
+    const cp = initialData.siteCodePostal;
+
+    if (!initialData.siteCodeInsee || !initialData.siteParcelle || initialData.siteParcelle === 'À préciser') {
+      let resolvedInsee = initialData.siteCodeInsee;
+      let resolvedParcelle = initialData.siteParcelle;
+      let resolvedCommune = initialData.siteCommune;
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        try {
+          const cad = await cadastreService.getParcelle(lat, lng);
+          if (cad) {
+            if (!resolvedInsee && cad.code_departement && cad.code_commune) {
+              resolvedInsee = `${cad.code_departement}${cad.code_commune}`;
+            }
+            if ((!resolvedParcelle || resolvedParcelle === 'À préciser') && cad.section && cad.numero) {
+              resolvedParcelle = `Section ${cad.section} n° ${cad.numero}`;
+            }
+            if ((!resolvedCommune || resolvedCommune === 'Commune') && cad.nom_commune) {
+              resolvedCommune = cad.nom_commune;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (!resolvedInsee) {
+        try {
+          const geoUrl = (!isNaN(lat) && !isNaN(lng))
+            ? `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lng}&fields=nom,code,codesPostaux`
+            : (cp ? `https://geo.api.gouv.fr/communes?codePostal=${encodeURIComponent(cp)}&fields=nom,code,codesPostaux` : null);
+          if (geoUrl) {
+            const res = await fetch(geoUrl);
+            if (res.ok) {
+              const list = await res.json();
+              if (Array.isArray(list) && list.length > 0) {
+                const match = list.find(c => resolvedCommune && c.nom.toLowerCase() === resolvedCommune.toLowerCase()) || list[0];
+                if (match?.code) {
+                  resolvedInsee = match.code;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (resolvedInsee !== initialData.siteCodeInsee || resolvedParcelle !== initialData.siteParcelle) {
+        setFormData(prev => {
+          const next = {
+            ...prev,
+            siteCodeInsee: prev.siteCodeInsee || resolvedInsee,
+            siteParcelle: (!prev.siteParcelle || prev.siteParcelle === 'À préciser') ? resolvedParcelle : prev.siteParcelle,
+          };
+          next.noteSiteLigne = buildNoteOraMpSiteLine(next);
+          return next;
+        });
+      }
+    }
+  };
+
   // Initialisation à l'ouverture de la modale ou au changement de projet
   useEffect(() => {
     if (project && isOpen) {
@@ -52,74 +141,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
       setFormData(initial);
       setNoteSiteManuallyEdited(false);
       loadedProjectIdRef.current = project.id;
-
-      // Auto-résolution asynchrone du Code INSEE et/ou de la parcelle si manquants
-      const lat = parseFloat(initial.siteLatitude);
-      const lng = parseFloat(initial.siteLongitude);
-      const cp = initial.siteCodePostal;
-
-      if (!initial.siteCodeInsee || !initial.siteParcelle || initial.siteParcelle === 'À préciser') {
-        (async () => {
-          let resolvedInsee = initial.siteCodeInsee;
-          let resolvedParcelle = initial.siteParcelle;
-          let resolvedCommune = initial.siteCommune;
-
-          // 1. Essai via API Cadastre IGN si coordonnées GPS valides
-          if (!isNaN(lat) && !isNaN(lng)) {
-            try {
-              const cad = await cadastreService.getParcelle(lat, lng);
-              if (cad) {
-                if (!resolvedInsee && cad.code_departement && cad.code_commune) {
-                  resolvedInsee = `${cad.code_departement}${cad.code_commune}`;
-                }
-                if ((!resolvedParcelle || resolvedParcelle === 'À préciser') && cad.section && cad.numero) {
-                  resolvedParcelle = `Section ${cad.section} n° ${cad.numero}`;
-                }
-                if ((!resolvedCommune || resolvedCommune === 'Commune') && cad.nom_commune) {
-                  resolvedCommune = cad.nom_commune;
-                }
-              }
-            } catch (e) {
-              // Ignorer silencieusement
-            }
-          }
-
-          // 2. Essai via geo.api.gouv.fr si le code INSEE est toujours manquant
-          if (!resolvedInsee) {
-            try {
-              const geoUrl = (!isNaN(lat) && !isNaN(lng))
-                ? `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lng}&fields=nom,code,codesPostaux`
-                : (cp ? `https://geo.api.gouv.fr/communes?codePostal=${encodeURIComponent(cp)}&fields=nom,code,codesPostaux` : null);
-              if (geoUrl) {
-                const res = await fetch(geoUrl);
-                if (res.ok) {
-                  const list = await res.json();
-                  if (Array.isArray(list) && list.length > 0) {
-                    const match = list.find(c => resolvedCommune && c.nom.toLowerCase() === resolvedCommune.toLowerCase()) || list[0];
-                    if (match?.code) {
-                      resolvedInsee = match.code;
-                    }
-                  }
-                }
-              }
-            } catch (e) {
-              // Ignorer silencieusement
-            }
-          }
-
-          if (resolvedInsee !== initial.siteCodeInsee || resolvedParcelle !== initial.siteParcelle) {
-            setFormData(prev => {
-              const next = {
-                ...prev,
-                siteCodeInsee: prev.siteCodeInsee || resolvedInsee,
-                siteParcelle: (!prev.siteParcelle || prev.siteParcelle === 'À préciser') ? resolvedParcelle : prev.siteParcelle,
-              };
-              next.noteSiteLigne = buildNoteOraMpSiteLine(next);
-              return next;
-            });
-          }
-        })();
-      }
+      resolveCadastreAndInseeAsync(initial);
     }
   }, [project?.id, isOpen]);
 
@@ -178,10 +200,50 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
     }
   };
 
+  // Action globale : Recharger tous les champs depuis le projet actif
+  const handleReloadFromProject = () => {
+    if (!project) return;
+    const freshData = getInitialEnedis056EData(project, null, { forceReload: true });
+    setFormData(freshData);
+    setNoteSiteManuallyEdited(false);
+    persistEnedisData(freshData, false);
+    resolveCadastreAndInseeAsync(freshData);
+    toast({
+      title: 'Dossier rechargé depuis le projet ✓',
+      description: 'Les 4 onglets (Fiche A, Fiche C, Fiche E4/T1 et Note ORA-MP) ont été ré-hydratés avec les données du projet actif.',
+    });
+  };
+
   // Handler générique de modification de champ
   const handleFieldChange = (name, value) => {
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
+
+      // Si Pracc_inj change, recalculer automatiquement Qmin (-0,35 × Pracc_inj), Qmax (0,40 × Pracc_inj) et ΔPmax défaut (0,5 × Pracc_inj)
+      if (name === 'puissanceRaccInjectionKw' || name === 'puissanceProductionInstalleeKw') {
+        const pKw = parseFloat(value);
+        if (!isNaN(pKw) && pKw > 0) {
+          const qMinR = parseFloat(updated.qMinRatio) || -0.35;
+          const qMaxR = parseFloat(updated.qMaxRatio) || 0.4;
+          updated.qMinKvar = String(Math.round(qMinR * pKw));
+          updated.qMaxKvar = String(Math.round(qMaxR * pKw));
+          if (updated.deltaPmaxMode !== 'autre') {
+            const dKw = Math.round(0.5 * pKw);
+            updated.deltaPmaxKwMin = String(dKw);
+            updated.deltaPmaxMwMin = String((dKw / 1000).toFixed(2));
+          }
+        }
+      }
+
+      // Synchroniser capacité kWh <-> Énergie stockable MWh
+      if (name === 'capaciteTotaleKwh') {
+        const kwh = parseFloat(value);
+        if (!isNaN(kwh) && kwh > 0) {
+          updated.energieStockableMwh = kwh % 1000 === 0
+            ? String(kwh / 1000)
+            : (kwh / 1000).toFixed(3).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
+        }
+      }
 
       // Synchroniser automatiquement la ligne "Site :" de la Note ORA-MP si un champ de localisation Fiche A change
       if (
@@ -195,7 +257,6 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
         setNoteSiteManuallyEdited(true);
       }
 
-      // Persistance immédiate en localStorage + debounce vers le parent / Firestore
       try {
         if (project?.id) {
           localStorage.setItem(`nelson_enedis_data_${project.id}`, JSON.stringify(updated));
@@ -234,11 +295,14 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
           beneficiaireSiren: ENR_COURTAGE_INFO.siren,
           beneficiaireSiret: ENR_COURTAGE_INFO.siret,
           beneficiaireAdresse: ENR_COURTAGE_INFO.adresse,
+          beneficiaireCodePostal: ENR_COURTAGE_INFO.codePostal,
+          beneficiaireVille: ENR_COURTAGE_INFO.ville,
           beneficiaireCpVillePays: ENR_COURTAGE_INFO.cpVillePays,
           interlocuteurNomPrenom: ENR_COURTAGE_INFO.interlocuteurNomPrenom,
           interlocuteurFonction: ENR_COURTAGE_INFO.fonction,
           interlocuteurTelephone: ENR_COURTAGE_INFO.telephone,
           interlocuteurEmail: ENR_COURTAGE_INFO.email,
+          siteSiret: ENR_COURTAGE_INFO.siret,
         };
       } else {
         updated = {
@@ -246,16 +310,20 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
           modeRepresentation: 'client_producteur_enr_mandataire',
           beneficiaireType: 'Société',
           beneficiaireRaisonSociale: vars.spvRaisonSociale || 'SPV / Client Producteur',
-          beneficiaireFormeJuridique: 'SAS / SCI',
+          beneficiaireFormeJuridique: vars.spvFormeJuridique || 'SAS / SCI',
           beneficiaireSiren: vars.spvSiren || ENR_COURTAGE_INFO.siren,
           beneficiaireSiret: vars.spvSiret || ENR_COURTAGE_INFO.siret,
-          beneficiaireAdresse: vars.adresse || ENR_COURTAGE_INFO.adresse,
-          beneficiaireCpVillePays: `${vars.codePostal || '33700'} ${vars.commune || 'Mérignac'} - France`,
+          beneficiaireAdresse: vars.spvAdresse || vars.adresse || ENR_COURTAGE_INFO.adresse,
+          beneficiaireCodePostal: vars.spvCodePostal || vars.codePostal || ENR_COURTAGE_INFO.codePostal,
+          beneficiaireVille: vars.spvVille || vars.commune || ENR_COURTAGE_INFO.ville,
+          beneficiaireCpVillePays: vars.spvCpVillePays || `${vars.codePostal || '33700'} ${vars.commune || 'Mérignac'} - France`,
           interlocuteurNomPrenom: `${vars.clientNom} ${vars.clientPrenom}`.trim() || ENR_COURTAGE_INFO.interlocuteurNomPrenom,
-          interlocuteurFonction: 'Président / Gérant',
+          interlocuteurFonction: vars.clientFonction || 'Président / Gérant',
           interlocuteurTelephone: vars.clientTel || ENR_COURTAGE_INFO.telephone,
           interlocuteurEmail: vars.clientEmail || ENR_COURTAGE_INFO.email,
+          siteSiret: vars.spvSiret || prev.siteSiret || ENR_COURTAGE_INFO.siret,
           // Mandataire = ENR COURTAGE
+          typeMandatRepresentation: 'special',
           mandataireRaisonSociale: ENR_COURTAGE_INFO.raisonSociale,
           mandataireFormeJuridique: ENR_COURTAGE_INFO.formeJuridique,
           mandataireSiren: ENR_COURTAGE_INFO.siren,
@@ -307,7 +375,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
     reader.readAsDataURL(file);
   };
 
-  // Action : Enregistrer explicitement les modifications + synchroniser Date de dernière intervention
+  // Action : Enregistrer explicitement les modifications
   const handleSaveModifications = () => {
     setIsSaving(true);
     try {
@@ -416,7 +484,6 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
 
   if (!isOpen) return null;
 
-  // Statut actuel de l'étape Raccordement sur la carte Développement
   const stepStatus = project?.devWorkflow?.raccordement?.status || 'in_progress';
   const statusBadgeMap = {
     pending: { label: 'En attente', cls: 'bg-slate-500/30 text-slate-200 border-slate-400/30' },
@@ -433,48 +500,51 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
       badge: 'Onglet 1',
       shortCode: 'Fiche A',
       title: 'Fiche A – Données Générales & Localisation',
-      subtitle: 'Enedis-MOP-RES_056E (p. 3 à 10/41)',
+      subtitle: 'Enedis-MOP-RES_056E (Pages 4 à 10/41)',
       icon: Building2,
     },
     {
       id: 'fiche_c',
       badge: 'Onglet 2',
       shortCode: 'Fiche C',
-      title: 'Fiche C – Raccordement HTA & Options de Modulation',
-      subtitle: 'Enedis-MOP-RES_056E (p. 15 à 17/41)',
+      title: 'Fiche C – Raccordement HTA, Q=f(U) & ΔPmax',
+      subtitle: 'Enedis-MOP-RES_056E (Pages 14 à 19/41)',
       icon: Zap,
     },
     {
       id: 'fiche_e4_t1',
       badge: 'Onglet 3',
       shortCode: 'Fiche E4 / T1',
-      title: 'Fiche E4 / T1 – Caractéristiques Stockage & Batteries',
-      subtitle: 'Enedis-MOP-RES_056E (BESS 4×125 kW)',
+      title: 'Fiche E4 / T1 – Stockage Batterie & Onduleurs PCS',
+      subtitle: 'Enedis-MOP-RES_056E (Pages 20-22 & 35-36/41)',
       icon: BatteryCharging,
     },
     {
       id: 'note_oramp',
       badge: 'Onglet 4',
       shortCode: 'Note ORA-MP',
-      title: 'Note Complémentaire ORA-MP',
+      title: 'Note Complémentaire ORA-MP Prioritaire',
       subtitle: 'Art. 11 NMO-RES_030E & Variante 2A 046E',
       icon: FileText,
     },
   ];
 
   const activeStampSrc = formData.signatureImageBase64 || defaultStampUrl;
+  const previewParagraphs = String(formData.noteCorps || DEFAULT_NOTE_ORAMP_CORPS)
+    .split(/\n\s*\n/)
+    .map(p => p.trim())
+    .filter(Boolean);
 
   return (
-    <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-2 md:p-5 overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-2 md:p-4 overflow-hidden">
       <motion.div
-        initial={{ scale: 0.96, opacity: 0, y: 15 }}
+        initial={{ scale: 0.97, opacity: 0, y: 12 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.96, opacity: 0, y: 15 }}
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col border border-slate-200"
-        style={{ height: '94vh', maxHeight: '900px' }}
+        exit={{ scale: 0.97, opacity: 0, y: 12 }}
+        className="bg-white rounded-3xl shadow-2xl w-[95vw] max-w-7xl h-[92vh] max-h-[92vh] overflow-hidden flex flex-col border border-slate-200"
       >
         {/* ═══════════════════════════════════════════════════════════════════
-            1. EN-TÊTE DE LA MODALE (Nom du projet, Commune, Statut)
+            1. EN-TÊTE FIXE DE LA MODALE (Nom du projet, Commune, Statut, Recharger)
         ═══════════════════════════════════════════════════════════════════ */}
         <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 px-5 py-3.5 text-white border-b border-white/10 flex-shrink-0">
           <div className="flex items-center justify-between gap-3">
@@ -485,10 +555,10 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="font-extrabold text-sm md:text-base tracking-tight truncate">
-                    {formData.siteNomInstallation || project?.name || 'Demande de Raccordement Enedis'}
+                    {formData.siteNomInstallation || project?.name || 'Demande de Raccordement Enedis BESS 500 kW'}
                   </h2>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
-                    Enedis-MOP-RES_056E (V2) + Note ORA-MP
+                    Enedis-MOP-RES_056E (V2) + Note ORA-MP Prioritaire
                   </span>
                   <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold border ${currentStatusBadge.cls}`}>
                     Statut : {currentStatusBadge.label}
@@ -508,7 +578,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                   )}
                   <span>•</span>
                   <span className="text-amber-300 font-bold">
-                    HTA 20 kV — {formData.puissanceRaccInjectionKw || 500} kW Inj. / {formData.puissanceRaccSoutirageKw || 500} kW Sout.
+                    BESS 4 × 125 kW — HTA 20 kV — {formData.puissanceRaccInjectionKw || 500} kW Inj. / {formData.puissanceRaccSoutirageKw || 500} kW Sout.
                   </span>
                   {lastSavedAt && (
                     <>
@@ -522,21 +592,33 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
               </div>
             </div>
 
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0 cursor-pointer"
-              title="Fermer la modale"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={handleReloadFromProject}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-white/10 hover:bg-white/20 text-cyan-200 border border-white/15 transition-colors cursor-pointer"
+                title="Ré-hydrater automatiquement tous les champs des 4 onglets depuis les données du projet actif"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Recharger depuis le projet</span>
+              </button>
+
+              <button
+                onClick={onClose}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0 cursor-pointer"
+                title="Fermer la modale"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            2. BARRE DES 4 ONGLETS D'ÉDITION
+            2. BARRE FIXE DES 4 ONGLETS D'ÉDITION
         ═══════════════════════════════════════════════════════════════════ */}
-        <div className="bg-slate-100/90 border-b border-slate-200 px-3 md:px-5 py-2 flex-shrink-0">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="bg-slate-100/90 border-b border-slate-200 px-4 md:px-6 py-2 flex-shrink-0">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
             {TABS.map((tab) => {
               const TabIcon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -576,12 +658,12 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            3. CORPS DE LA MODALE — CONTENU DES 4 ONGLETS
+            3. CORPS SCROLLABLE DE LA MODALE — CONTENU DES 4 ONGLETS
         ═══════════════════════════════════════════════════════════════════ */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-5 bg-slate-50/60 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/60 space-y-5">
           <AnimatePresence mode="wait">
             {/* ─────────────────────────────────────────────────────────────
-                ONGLET 1 : FICHE A – DONNÉES GÉNÉRALES & LOCALISATION
+                ONGLET 1 : FICHE A – DONNÉES GÉNÉRALES (Pages 4 à 10/41 du 056E)
             ───────────────────────────────────────────────────────────── */}
             {activeTab === 'fiche_a' && (
               <motion.div
@@ -590,68 +672,70 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.15 }}
-                className="space-y-5"
+                className="space-y-4"
               >
-                {/* A.1 Bénéficiaire du raccordement (Producteur) & Mandataire */}
+                {/* A.1 Bénéficiaire du raccordement (Producteur) & Mandataire (Pages 4-5/41) */}
                 <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                     <div>
                       <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                        Fiche A — Enedis-MOP-RES_056E (Version 2)
+                        Fiche A — Pages 4 &amp; 5/41 du 056E
                       </span>
                       <h3 className="text-sm font-black text-slate-900 mt-1">
                         1. Bénéficiaire du raccordement (Producteur) &amp; Mandataire
                       </h3>
                     </div>
 
-                    {/* Switch rapide Producteur / Mandataire */}
-                    <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 self-start md:self-auto">
-                      <button
-                        type="button"
-                        onClick={() => handleSwitchRepresentationMode('enr_producteur')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
-                          formData.modeRepresentation === 'enr_producteur'
-                            ? 'bg-blue-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        ENR COURTAGE en tant que Producteur
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSwitchRepresentationMode('client_producteur_enr_mandataire')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
-                          formData.modeRepresentation === 'client_producteur_enr_mandataire'
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        Client/SPV Producteur + ENR COURTAGE Mandataire
-                      </button>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                        <span className="text-[11px] font-extrabold text-slate-700">Type :</span>
+                        {['Société', 'Particulier', 'Collectivité'].map((tOption) => (
+                          <label key={tOption} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="beneficiaireType"
+                              value={tOption}
+                              checked={formData.beneficiaireType === tOption}
+                              onChange={handleInputChange}
+                              className="w-3.5 h-3.5 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span>{tOption}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      {/* Switch rapide Producteur / Mandataire */}
+                      <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchRepresentationMode('enr_producteur')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                            formData.modeRepresentation === 'enr_producteur'
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          ENR COURTAGE en tant que Producteur
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchRepresentationMode('client_producteur_enr_mandataire')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                            formData.modeRepresentation === 'client_producteur_enr_mandataire'
+                              ? 'bg-indigo-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Client/SPV Producteur + ENR COURTAGE Mandataire
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Type : Société (coché par défaut) */}
-                  <div className="flex flex-wrap items-center gap-4 bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200/80">
-                    <span className="text-xs font-extrabold text-slate-700">Type de Bénéficiaire :</span>
-                    {['Société', 'Particulier', 'Collectivité'].map((tOption) => (
-                      <label key={tOption} className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="beneficiaireType"
-                          value={tOption}
-                          checked={formData.beneficiaireType === tOption}
-                          onChange={handleInputChange}
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span>{tOption}</span>
-                      </label>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                  {/* Grille sur 4 colonnes pour exploiter max-w-7xl */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Nom / Raison sociale</label>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Nom / Raison sociale *</label>
                       <input
                         type="text"
                         name="beneficiaireRaisonSociale"
@@ -662,42 +746,41 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Forme juridique</label>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Forme juridique *</label>
                       <input
                         type="text"
                         name="beneficiaireFormeJuridique"
                         value={formData.beneficiaireFormeJuridique}
                         onChange={handleInputChange}
-                        placeholder="SASU (ou SAS au capital de 5 000 €)"
+                        placeholder="SASU (SAS au capital de 5 000 €)"
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">SIREN</label>
-                        <input
-                          type="text"
-                          name="beneficiaireSiren"
-                          value={formData.beneficiaireSiren}
-                          onChange={handleInputChange}
-                          className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">SIRET</label>
-                        <input
-                          type="text"
-                          name="beneficiaireSiret"
-                          value={formData.beneficiaireSiret}
-                          onChange={handleInputChange}
-                          className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">N° SIREN *</label>
+                      <input
+                        type="text"
+                        name="beneficiaireSiren"
+                        value={formData.beneficiaireSiren}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Adresse du siège social</label>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">N° SIRET *</label>
+                      <input
+                        type="text"
+                        name="beneficiaireSiret"
+                        value={formData.beneficiaireSiret}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Adresse (du siège social) *</label>
                       <input
                         type="text"
                         name="beneficiaireAdresse"
@@ -707,8 +790,8 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                       />
                     </div>
 
-                    <div className="md:col-span-2">
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Code Postal – Ville – Pays</label>
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Code Postal – Ville – Pays *</label>
                       <input
                         type="text"
                         name="beneficiaireCpVillePays"
@@ -719,7 +802,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Interlocuteur (Nom, Prénom)</label>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Interlocuteur (Nom, Prénom) *</label>
                       <input
                         type="text"
                         name="interlocuteurNomPrenom"
@@ -730,7 +813,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Fonction du représentant</label>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Fonction du représentant *</label>
                       <input
                         type="text"
                         name="interlocuteurFonction"
@@ -741,7 +824,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Téléphone</label>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Téléphone *</label>
                       <input
                         type="text"
                         name="interlocuteurTelephone"
@@ -751,25 +834,16 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                       />
                     </div>
 
-                    <div className="md:col-span-3">
+                    <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[11px] font-bold text-slate-600">E-mail de contact</label>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleFieldChange('interlocuteurEmail', 'y.barberis@enr-courtage.fr')}
-                            className="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-blue-700 font-bold border border-slate-200 cursor-pointer"
-                          >
-                            y.barberis@enr-courtage.fr
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleFieldChange('interlocuteurEmail', 'contact@enr-courtage.fr')}
-                            className="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-blue-700 font-bold border border-slate-200 cursor-pointer"
-                          >
-                            contact@enr-courtage.fr
-                          </button>
-                        </div>
+                        <label className="block text-[11px] font-bold text-slate-600">E-mail *</label>
+                        <button
+                          type="button"
+                          onClick={() => handleFieldChange('interlocuteurEmail', 'y.barberis@enr-courtage.fr')}
+                          className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 hover:bg-blue-50 text-blue-700 font-bold border border-slate-200 cursor-pointer"
+                        >
+                          y.barberis@
+                        </button>
                       </div>
                       <input
                         type="email"
@@ -781,18 +855,39 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                     </div>
                   </div>
 
-                  {/* Si mode Client/SPV Producteur + ENR COURTAGE Mandataire : afficher l'encart Mandataire */}
+                  {/* Si mode Client/SPV Producteur + ENR COURTAGE Mandataire : afficher l'encart Mandataire (Page 5/41) */}
                   {formData.modeRepresentation === 'client_producteur_enr_mandataire' && (
-                    <div className="mt-3 p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-200 space-y-2.5">
-                      <div className="flex items-center justify-between">
+                    <div className="mt-2 p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="text-xs font-extrabold text-indigo-950">
-                          Mandataire désigné (ENR COURTAGE)
+                          LE MANDATAIRE (Page 5/41 du 056E — ENR COURTAGE tiers habilité)
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
-                          Mandat de représentation Enedis
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <label className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-900 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="typeMandatRepresentation"
+                              value="special"
+                              checked={formData.typeMandatRepresentation !== 'simple'}
+                              onChange={handleInputChange}
+                              className="w-3.5 h-3.5 text-indigo-600"
+                            />
+                            <span>Mandat Spécial de représentation</span>
+                          </label>
+                          <label className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-800 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="typeMandatRepresentation"
+                              value="simple"
+                              checked={formData.typeMandatRepresentation === 'simple'}
+                              onChange={handleInputChange}
+                              className="w-3.5 h-3.5 text-indigo-600"
+                            />
+                            <span>Mandat Simple</span>
+                          </label>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                         <div>
                           <label className="block text-[10px] font-bold text-indigo-800 mb-0.5">Raison sociale Mandataire</label>
                           <input
@@ -814,7 +909,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-indigo-800 mb-0.5">Interlocuteur Mandataire</label>
+                          <label className="block text-[10px] font-bold text-indigo-800 mb-0.5">Nom du représentant</label>
                           <input
                             type="text"
                             name="mandataireInterlocuteur"
@@ -838,40 +933,20 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                   )}
                 </div>
 
-                {/* A.2 Localisation du Site (dynamique selon le projet ouvert) */}
+                {/* A.2 Localisation du Site (Dynamique, Page 5/41) */}
                 <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                     <div>
                       <h3 className="text-sm font-black text-slate-900">
-                        2. Localisation du Site (Dynamique selon le projet actif)
+                        2. Localisation du Site (Page 5/41 — Auto-hydraté depuis le projet BESS actif)
                       </h3>
                       <p className="text-[11px] text-slate-500">
-                        Pré-rempli depuis le dossier projet et modifiable librement avant génération du 056E.
+                        Format officiel : BESS Standalone - [Commune] ([Nom Projet/Client]) • Coordonnées GPS WGS84 Décimal.
                       </p>
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        const vars = extractProjectEnedisVariables(project);
-                        setFormData(prev => {
-                          const next = {
-                            ...prev,
-                            siteNomInstallation: vars.nom,
-                            siteSiret: vars.siret,
-                            siteAdresse: vars.adresse,
-                            siteCodePostal: vars.codePostal,
-                            siteCommune: vars.commune,
-                            siteCodeInsee: vars.codeInsee || prev.siteCodeInsee,
-                            siteParcelle: vars.parcelle,
-                            siteLatitude: vars.latitude,
-                            siteLongitude: vars.longitude,
-                          };
-                          next.noteSiteLigne = buildNoteOraMpSiteLine(next);
-                          persistEnedisData(next, false);
-                          return next;
-                        });
-                        toast({ title: 'Données du site réinitialisées', description: 'Les coordonnées du projet actif ont été rechargées.' });
-                      }}
+                      onClick={handleReloadFromProject}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                     >
                       <RefreshCw className="w-3 h-3" />
@@ -879,10 +954,10 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                    <div className="md:col-span-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div className="sm:col-span-2">
                       <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                        Nom de l’Installation (ex: BESS Standalone - Commune)
+                        Nom de l’Installation * (BESS Standalone - [Commune] ([Nom Projet/Client]))
                       </label>
                       <input
                         type="text"
@@ -894,24 +969,13 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">SIRET du site</label>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">SIRET du site (entité porteuse)</label>
                       <input
                         type="text"
                         name="siteSiret"
                         value={formData.siteSiret}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Adresse du site</label>
-                      <input
-                        type="text"
-                        name="siteAdresse"
-                        value={formData.siteAdresse}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
                       />
                     </div>
 
@@ -926,19 +990,43 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Code Postal</label>
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Adresse du site *</label>
                       <input
                         type="text"
-                        name="siteCodePostal"
-                        value={formData.siteCodePostal}
+                        name="siteAdresse"
+                        value={formData.siteAdresse}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
                       />
                     </div>
 
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Code Postal *</label>
+                        <input
+                          type="text"
+                          name="siteCodePostal"
+                          value={formData.siteCodePostal}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Code INSEE *</label>
+                        <input
+                          type="text"
+                          name="siteCodeInsee"
+                          value={formData.siteCodeInsee}
+                          onChange={handleInputChange}
+                          placeholder="Ex: 33281"
+                          className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-blue-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Ville / Commune</label>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Ville / Commune *</label>
                       <input
                         type="text"
                         name="siteCommune"
@@ -948,22 +1036,10 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Code INSEE Commune</label>
-                      <input
-                        type="text"
-                        name="siteCodeInsee"
-                        value={formData.siteCodeInsee}
-                        onChange={handleInputChange}
-                        placeholder="Ex: 33281"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-blue-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div className="md:col-span-3 bg-blue-50/60 p-3 rounded-xl border border-blue-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2 lg:col-span-4 bg-blue-50/70 p-3 rounded-xl border border-blue-200/80 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                       <div>
                         <label className="block text-[11px] font-extrabold text-blue-900 mb-1">
-                          Coordonnées GPS du Point de Raccordement — Latitude (WGS84 Décimal)
+                          Latitude (Décimal WGS84) *
                         </label>
                         <input
                           type="text"
@@ -976,7 +1052,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                       </div>
                       <div>
                         <label className="block text-[11px] font-extrabold text-blue-900 mb-1">
-                          Coordonnées GPS du Point de Raccordement — Longitude (WGS84 Décimal)
+                          Longitude (Décimal WGS84) *
                         </label>
                         <input
                           type="text"
@@ -987,84 +1063,156 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                           className="w-full px-3 py-2 rounded-lg border border-blue-200 bg-white text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                       </div>
+                      <div className="px-3 py-2 rounded-lg bg-white border border-blue-200 text-xs font-mono font-extrabold text-blue-950 flex items-center justify-between">
+                        <span className="text-[10px] font-sans font-bold text-blue-600 uppercase">Format 056E :</span>
+                        <span>({formData.siteLatitude || '—'} ; {formData.siteLongitude || '—'})</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* A.3 Raccordement actuel au réseau & Valorisation / Comptage */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Raccordement actuel au réseau */}
-                  <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
-                    <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
-                      3. Raccordement actuel au réseau (RPD)
-                    </h3>
+                {/* A.3 Caractéristiques Injection / Soutirage, Raccordement Actuel & Comptage (Pages 6 à 9/41) */}
+                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900">
+                        3. Caractéristiques Injection / Soutirage, Raccordement Actuel &amp; Comptage (Pages 6 à 9/41)
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        P_installée = 500 kW • P_racc_inj = 500 kW • P_racc_sout = 500 kW • Cas 1 : Nouveau Point de Raccordement dédié.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      P_installée &ge; 250 kVA &rarr; Raccordement HTA (Fiche C)
+                    </span>
+                  </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold text-slate-700">Site déjà raccordé au RPD ?</label>
-                      <div className="flex items-center gap-5">
-                        <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="siteDejaRaccordeRpd"
-                            value="non"
-                            checked={formData.siteDejaRaccordeRpd === 'non'}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>Non (par défaut)</span>
-                        </label>
-                        <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="siteDejaRaccordeRpd"
-                            value="oui"
-                            checked={formData.siteDejaRaccordeRpd === 'oui'}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>Oui</span>
-                        </label>
+                  {/* Ligne 1 : Puissances Injection / Soutirage (4 colonnes) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-200">
+                      <label className="block text-[11px] font-extrabold text-blue-950 mb-1">
+                        P<sub>installée</sub> (Page 6/41) *
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          name="puissanceProductionInstalleeKw"
+                          value={formData.puissanceProductionInstalleeKw}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-blue-300 bg-white text-xs font-black text-blue-900"
+                        />
+                        <span className="text-xs font-black text-blue-800">kW</span>
+                      </div>
+                      <span className="text-[10px] text-blue-700 font-semibold mt-1 block">Bridage statique : Non</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-200">
+                      <label className="block text-[11px] font-extrabold text-blue-950 mb-1">
+                        P<sub>racc_inj</sub> Injection (Page 6/41) *
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          name="puissanceRaccInjectionKw"
+                          value={formData.puissanceRaccInjectionKw}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-blue-300 bg-white text-xs font-black text-blue-900"
+                        />
+                        <span className="text-xs font-black text-blue-800">kW</span>
+                      </div>
+                      <span className="text-[10px] text-blue-700 font-semibold mt-1 block">4 × 125 kW = 500 kW</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200">
+                      <label className="block text-[11px] font-extrabold text-purple-950 mb-1">
+                        P<sub>racc_sout</sub> Soutirage (Page 7/41) *
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          name="puissanceRaccSoutirageKw"
+                          value={formData.puissanceRaccSoutirageKw}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-purple-300 bg-white text-xs font-black text-purple-900"
+                        />
+                        <span className="text-xs font-black text-purple-800">kW</span>
+                      </div>
+                      <span className="text-[10px] text-purple-700 font-semibold mt-1 block">Recharge BESS sur réseau HTA</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Période de fonctionnement (p. 7/41)
+                      </label>
+                      <input
+                        type="text"
+                        name="periodeProductionEnvisagee"
+                        value={formData.periodeProductionEnvisagee}
+                        onChange={handleInputChange}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-900"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">Stockage stationnaire 365 j/an</span>
+                    </div>
+                  </div>
+
+                  {/* Ligne 2 : Raccordement actuel, Cas 1, Valorisation, Comptage (2 colonnes) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1">
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-slate-800">Site déjà raccordé au RPD ? (Page 7/41) :</span>
+                        <div className="flex items-center gap-4">
+                          <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="siteDejaRaccordeRpd"
+                              value="non"
+                              checked={formData.siteDejaRaccordeRpd === 'non'}
+                              onChange={handleInputChange}
+                              className="w-3.5 h-3.5 text-blue-600"
+                            />
+                            <span>Non (par défaut)</span>
+                          </label>
+                          <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="siteDejaRaccordeRpd"
+                              value="oui"
+                              checked={formData.siteDejaRaccordeRpd === 'oui'}
+                              onChange={handleInputChange}
+                              className="w-3.5 h-3.5 text-blue-600"
+                            />
+                            <span>Oui</span>
+                          </label>
+                        </div>
                       </div>
 
                       {formData.siteDejaRaccordeRpd === 'oui' && (
-                        <div className="pt-1">
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">N° PDL / PRM existant (14 chiffres)</label>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-0.5">N° PDL / PRM existant (14 chiffres)</label>
                           <input
                             type="text"
                             name="sitePrmExistant"
                             value={formData.sitePrmExistant}
                             onChange={handleInputChange}
                             maxLength={14}
-                            placeholder="Ex: 14253698741236"
-                            className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-mono font-bold"
+                            className="w-full px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-mono font-bold"
                           />
                         </div>
                       )}
-                    </div>
 
-                    <div className="space-y-2 pt-1">
-                      <label className="block text-xs font-bold text-slate-700">Souhait du Demandeur :</label>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5 pt-1">
+                        <span className="block text-[11px] font-extrabold text-slate-700">Souhait du Demandeur * :</span>
                         {[
-                          {
-                            id: 'cas_1',
-                            label: "Cas 1 : la création d'un nouveau Point de Raccordement dédié à la présente demande",
-                          },
-                          {
-                            id: 'cas_2',
-                            label: "Cas 2 : le raccordement sur un Point de Livraison (PDL) existant",
-                          },
-                          {
-                            id: 'cas_3',
-                            label: "Cas 3 : la modification d'une installation de production ou de stockage existante",
-                          },
+                          { id: 'cas_1', label: "Cas 1 : la création d'un nouveau Point de Raccordement dédié à la présente demande" },
+                          { id: 'cas_2', label: "Cas 2 : le raccordement sur le Point de Raccordement existant (même entité juridique)" },
+                          { id: 'cas_3', label: "Cas 3 : le raccordement indirect sur le Point de Raccordement existant (autre entité)" },
                         ].map((cas) => (
                           <label
                             key={cas.id}
-                            className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                            className={`flex items-start gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-all ${
                               formData.souhaitDemandeur === cas.id
-                                ? 'bg-blue-50/70 border-blue-400 font-bold text-blue-950'
-                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                                ? 'bg-blue-50 border-blue-400 font-bold text-blue-950'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                             }`}
                           >
                             <input
@@ -1073,211 +1221,205 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                               value={cas.id}
                               checked={formData.souhaitDemandeur === cas.id}
                               onChange={handleInputChange}
-                              className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"
+                              className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0"
                             />
                             <span className="leading-snug">{cas.label}</span>
                           </label>
                         ))}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Valorisation & Comptage */}
-                  <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
-                    <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
-                      4. Valorisation &amp; Comptage
-                    </h3>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Modalité de valorisation</label>
-                      <input
-                        type="text"
-                        name="modaliteValorisation"
-                        value={formData.modaliteValorisation}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Schéma de comptage (S1 à S9 ou Autre)</label>
-                      <select
-                        name="schemaComptage"
-                        value={formData.schemaComptage}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-                      >
-                        {SCHEMAS_COMPTAGE_056E.map((sc) => (
-                          <option key={sc.id} value={sc.id}>{sc.label}</option>
-                        ))}
-                      </select>
-                      {formData.schemaComptage === 'Autre' && (
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Modalité de la valorisation souhaitée (Page 8/41) *
+                        </label>
                         <input
                           type="text"
-                          name="schemaComptageAutre"
-                          value={formData.schemaComptageAutre}
+                          name="modaliteValorisation"
+                          value={formData.modaliteValorisation}
                           onChange={handleInputChange}
-                          placeholder="Précisez le schéma de comptage..."
-                          className="mt-2 w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs"
+                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-900"
                         />
-                      )}
-                    </div>
-
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-                      <label className="block text-xs font-bold text-slate-800">
-                        Attestation d’absence d’autre projet sur le même code INSEE (Art. L.336-4) :
-                      </label>
-                      <div className="flex items-center gap-4">
-                        <label className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="attestationAbsenceAutreProjetInsee"
-                            value="oui"
-                            checked={formData.attestationAbsenceAutreProjetInsee === 'oui'}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 text-emerald-600"
-                          />
-                          <span>Oui (aucun autre projet)</span>
-                        </label>
-                        <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="attestationAbsenceAutreProjetInsee"
-                            value="non"
-                            checked={formData.attestationAbsenceAutreProjetInsee === 'non'}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>Non</span>
-                        </label>
                       </div>
-                    </div>
 
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-                      <label className="block text-xs font-bold text-slate-800">Projets groupés en injection :</label>
-                      <div className="flex items-center gap-4">
-                        <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="projetsGroupesInjection"
-                            value="non"
-                            checked={formData.projetsGroupesInjection === 'non'}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>Non (coché par défaut)</span>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Schéma de référence pour le dispositif de comptage (Page 8/41) *
                         </label>
-                        <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="projetsGroupesInjection"
-                            value="oui"
-                            checked={formData.projetsGroupesInjection === 'oui'}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>Oui</span>
-                        </label>
+                        <select
+                          name="schemaComptage"
+                          value={formData.schemaComptage}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-900 bg-white"
+                        >
+                          {SCHEMAS_COMPTAGE_056E.map((sc) => (
+                            <option key={sc.id} value={sc.id}>{sc.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                          <span className="block text-[10.5px] font-bold text-slate-700 mb-1">
+                            Aucun autre projet même INSEE (Art. L.336-4, p. 9/41) :
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <label className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="attestationAbsenceAutreProjetInsee"
+                                value="oui"
+                                checked={formData.attestationAbsenceAutreProjetInsee === 'oui'}
+                                onChange={handleInputChange}
+                                className="w-3.5 h-3.5 text-emerald-600"
+                              />
+                              <span>Oui (aucun autre)</span>
+                            </label>
+                            <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="attestationAbsenceAutreProjetInsee"
+                                value="non"
+                                checked={formData.attestationAbsenceAutreProjetInsee === 'non'}
+                                onChange={handleInputChange}
+                                className="w-3.5 h-3.5 text-blue-600"
+                              />
+                              <span>Non</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                          <span className="block text-[10.5px] font-bold text-slate-700 mb-1">
+                            Demande de raccordement groupée (p. 9/41) :
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="projetsGroupesInjection"
+                                value="non"
+                                checked={formData.projetsGroupesInjection === 'non'}
+                                onChange={handleInputChange}
+                                className="w-3.5 h-3.5 text-blue-600"
+                              />
+                              <span>Non (défaut)</span>
+                            </label>
+                            <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="projetsGroupesInjection"
+                                value="oui"
+                                checked={formData.projetsGroupesInjection === 'oui'}
+                                onChange={handleInputChange}
+                                className="w-3.5 h-3.5 text-blue-600"
+                              />
+                              <span>Oui</span>
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* A.4 Encadré « INFORMATIONS COMPLÉMENTAIRES » (Page 9/41 du 056E) — TRÈS IMPORTANT */}
-                <div className="bg-amber-50/90 p-4 md:p-5 rounded-2xl border-2 border-amber-400 shadow-xs space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-600 text-white">
-                        Page 9/41 du 056E — TRÈS IMPORTANT
+                {/* A.4 Encadré « INFORMATIONS COMPLÉMENTAIRES » (Page 9/41 du 056E) — TEXTE OBLIGATOIRE */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  <div className="lg:col-span-8 bg-amber-50/90 p-4 md:p-5 rounded-2xl border-2 border-amber-400 shadow-xs space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-600 text-white">
+                          Page 9/41 du 056E — OBLIGATOIRE
+                        </span>
+                        <h3 className="text-sm font-black text-amber-950">
+                          4. Encadré « INFORMATIONS COMPLÉMENTAIRES » (Demande ORA-MP Prioritaire)
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleFieldChange('informationsComplementaires', DEFAULT_INFO_COMPLEMENTAIRES_056E)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Restaurer le texte réglementaire exact
+                      </button>
+                    </div>
+
+                    <textarea
+                      name="informationsComplementaires"
+                      value={formData.informationsComplementaires}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="w-full p-3 rounded-xl border border-amber-300 bg-white text-xs font-bold text-slate-900 leading-relaxed focus:ring-2 focus:ring-amber-500 outline-none shadow-2xs"
+                    />
+
+                    <p className="text-[11px] text-amber-900 font-medium flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
+                      <span>
+                        Texte auto-injecté en Page 9/41 du formulaire Enedis-MOP-RES_056E V2 et renvoyant à la Note annexée « Demande ORA-MP prioritaire ».
                       </span>
-                      <h3 className="text-sm font-black text-amber-950">
-                        5. Encadré « INFORMATIONS COMPLÉMENTAIRES » (Demande prioritaire ORA-MP)
-                      </h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleFieldChange('informationsComplementaires', DEFAULT_INFO_COMPLEMENTAIRES_056E)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 transition-colors cursor-pointer self-start sm:self-auto"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      Restaurer le texte réglementaire exact
-                    </button>
+                    </p>
                   </div>
 
-                  <textarea
-                    name="informationsComplementaires"
-                    value={formData.informationsComplementaires}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full p-3.5 rounded-xl border border-amber-300 bg-white text-xs font-bold text-slate-900 leading-relaxed focus:ring-2 focus:ring-amber-500 outline-none shadow-2xs"
-                  />
+                  {/* A.5 Type de demande (Page 10/41) */}
+                  <div className="lg:col-span-4 bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-2.5">
+                    <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
+                      5. Type de demande (Page 10/41)
+                    </h3>
+                    <div className="space-y-2 flex-1 flex flex-col justify-center">
+                      <label
+                        className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                          formData.typeDemande === 'offre_raccordement_travaux_enedis'
+                            ? 'bg-blue-50/80 border-blue-500 text-blue-950 font-bold shadow-2xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="typeDemande"
+                          value="offre_raccordement_travaux_enedis"
+                          checked={formData.typeDemande === 'offre_raccordement_travaux_enedis'}
+                          onChange={handleInputChange}
+                          className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"
+                        />
+                        <div>
+                          <span className="text-xs block leading-snug">
+                            Offre de Raccordement avec travaux réalisés par Enedis
+                          </span>
+                          <span className="text-[10px] text-blue-700 font-semibold">Coché automatiquement</span>
+                        </div>
+                      </label>
 
-                  <p className="text-[11px] text-amber-900 font-medium flex items-center gap-1.5">
-                    <Info className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
-                    <span>
-                      Ce texte réglementaire est injecté dans l’encadré « Informations complémentaires » (Page 9/41 du formulaire Enedis-MOP-RES_056E) et renvoie à la Note ORA-MP annexée.
-                    </span>
-                  </p>
-                </div>
-
-                {/* A.5 Type de demande */}
-                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                  <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
-                    6. Type de demande (Page 10/41 du 056E)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <label
-                      className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                        formData.typeDemande === 'offre_raccordement_travaux_enedis'
-                          ? 'bg-blue-50/70 border-blue-500 text-blue-950 font-bold shadow-2xs'
-                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="typeDemande"
-                        value="offre_raccordement_travaux_enedis"
-                        checked={formData.typeDemande === 'offre_raccordement_travaux_enedis'}
-                        onChange={handleInputChange}
-                        className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"
-                      />
-                      <div>
-                        <span className="text-xs block">
-                          Offre de Raccordement avec travaux sur les ouvrages dédiés réalisés par Enedis
-                        </span>
-                        <span className="text-[10px] text-blue-700 font-semibold">Recommandé — Coché par défaut</span>
-                      </div>
-                    </label>
-
-                    <label
-                      className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                        formData.typeDemande === 'proposition_avant_completude'
-                          ? 'bg-blue-50/70 border-blue-500 text-blue-950 font-bold shadow-2xs'
-                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="typeDemande"
-                        value="proposition_avant_completude"
-                        checked={formData.typeDemande === 'proposition_avant_completude'}
-                        onChange={handleInputChange}
-                        className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"
-                      />
-                      <div>
-                        <span className="text-xs block">
-                          Proposition de raccordement avant complétude du dossier
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-normal">Instruction préliminaire avant complétude</span>
-                      </div>
-                    </label>
+                      <label
+                        className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                          formData.typeDemande === 'proposition_avant_completude'
+                            ? 'bg-blue-50/80 border-blue-500 text-blue-950 font-bold shadow-2xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="typeDemande"
+                          value="proposition_avant_completude"
+                          checked={formData.typeDemande === 'proposition_avant_completude'}
+                          onChange={handleInputChange}
+                          className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"
+                        />
+                        <div>
+                          <span className="text-xs block leading-snug">
+                            Proposition de raccordement avant complétude du dossier
+                          </span>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </motion.div>
             )}
 
             {/* ─────────────────────────────────────────────────────────────
-                ONGLET 2 : FICHE C – CARACTÉRISTIQUES HTA & OPTIONS
+                ONGLET 2 : FICHE C – RACCORDEMENT HTA (Pages 14 à 19/41 du 056E)
             ───────────────────────────────────────────────────────────── */}
             {activeTab === 'fiche_c' && (
               <motion.div
@@ -1286,20 +1428,22 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.15 }}
-                className="space-y-5"
+                className="space-y-4"
               >
-                {/* C.1 Configuration du Poste de Livraison */}
+                {/* C.1 Emplacement du Poste de Livraison (Page 14/41) & OSE anticipé (Page 15/41) */}
                 <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                      Fiche C — Enedis-MOP-RES_056E (Pages 15 à 17/41)
-                    </span>
-                    <h3 className="text-sm font-black text-slate-900 mt-1">
-                      1. Configuration du Poste de Livraison HTA (Page 15/41)
-                    </h3>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                        Fiche C — Pages 14 à 19/41 du 056E (HTA 20 kV)
+                      </span>
+                      <h3 className="text-sm font-black text-slate-900 mt-1">
+                        1. Emplacement du Poste de Livraison HTA (Page 14/41) &amp; Réseau Intérieur (Page 15/41)
+                      </h3>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
                     <label
                       className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                         formData.configPosteLivraison === 'reference_domaine_public'
@@ -1317,9 +1461,9 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                       />
                       <div>
                         <span className="text-xs block">
-                          Raccordement de référence (accessible depuis le domaine public)
+                          Raccordement de référence (limite domaine privé accessible 24h/24)
                         </span>
-                        <span className="text-[10px] text-blue-700 font-semibold">Coché par défaut</span>
+                        <span className="text-[10px] text-blue-700 font-semibold">Coché par défaut — Réfaction tarifaire applicable</span>
                       </div>
                     </label>
 
@@ -1341,88 +1485,250 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                         />
                         <div className="flex-1">
                           <span className="text-xs font-bold block">
-                            Autre configuration (Poste distant du domaine public)
+                            Autre configuration (Déport du poste à l’intérieur du site)
                           </span>
                           <div className="flex items-center gap-2 mt-2">
-                            <span className="text-[11px] font-semibold">Distance d (en mètres) :</span>
+                            <span className="text-[11px] font-semibold">Distance d :</span>
                             <input
                               type="number"
                               name="distanceDomainePublicM"
                               value={formData.distanceDomainePublicM}
                               onChange={handleInputChange}
-                              className="w-24 px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-xs font-bold"
+                              className="w-20 px-2 py-1 rounded-lg border border-slate-300 bg-white text-xs font-bold"
                             />
-                            <span className="text-xs font-bold">m</span>
+                            <span className="text-xs font-bold">mètres</span>
                           </div>
                         </div>
                       </label>
                     </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800">OSE anticipé (Page 15/41) :</span>
+                        <div className="flex items-center gap-3">
+                          <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="oseAnticipe"
+                              value="oui"
+                              checked={formData.oseAnticipe === 'oui'}
+                              onChange={handleInputChange}
+                              className="w-3.5 h-3.5 text-blue-600"
+                            />
+                            <span>Oui</span>
+                          </label>
+                          <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="oseAnticipe"
+                              value="non"
+                              checked={formData.oseAnticipe !== 'oui'}
+                              onChange={handleInputChange}
+                              className="w-3.5 h-3.5 text-blue-600"
+                            />
+                            <span>Non (défaut)</span>
+                          </label>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-600 mb-0.5">Mise sous tension transfo (p. 15/41)</label>
+                        <select
+                          name="miseSousTensionTransfo"
+                          value={formData.miseSousTensionTransfo}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-900"
+                        >
+                          <option value="simultanee">Simultanée par fermeture du disjoncteur général</option>
+                          <option value="echelonnee">Échelonnée 1 à 1</option>
+                          <option value="magnetises">Transformateurs magnétisés par les machines</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* C.2 Puissances de raccordement demandées & Puissance réactive */}
-                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
-                    2. Puissance de raccordement demandée &amp; Puissance réactive
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200">
-                      <label className="block text-xs font-extrabold text-blue-950 mb-1">
-                        En injection (P<sub>racc inj</sub>)
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          name="puissanceRaccInjectionKw"
-                          value={formData.puissanceRaccInjectionKw}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 rounded-xl border border-blue-300 bg-white text-sm font-black text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                        <span className="text-xs font-black text-blue-800">kW</span>
+                {/* C.2 Loi de régulation locale de puissance réactive Q = f(U) (Pages 15-16/41) & ΔPmax (Page 17/41) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Loi de régulation locale Q = f(U) (Page 16/41) */}
+                  <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">
+                          2. Loi de régulation locale de puissance réactive Q = f(U) (Page 16/41)
+                        </h3>
+                        <p className="text-[11px] text-slate-500">
+                          Valeurs par défaut Enedis : Qmin = -0,35 × Pracc_inj et Qmax = 0,40 × Pracc_inj
+                        </p>
                       </div>
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Arrêté 9 juin 2020
+                      </span>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200">
-                      <label className="block text-xs font-extrabold text-purple-950 mb-1">
-                        En soutirage (P<sub>racc sout</sub>)
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          name="puissanceRaccSoutirageKw"
-                          value={formData.puissanceRaccSoutirageKw}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 rounded-xl border border-purple-300 bg-white text-sm font-black text-purple-900 focus:ring-2 focus:ring-purple-500 outline-none"
-                        />
-                        <span className="text-xs font-black text-purple-800">kW</span>
-                      </div>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-                      <label className="block text-xs font-extrabold text-slate-800">
-                        Puissance réactive (Arrêté du 9 juin 2020)
-                      </label>
-                      <div className="flex items-center gap-5 pt-2">
-                        <label className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 cursor-pointer">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50/60 border border-blue-200">
+                      <span className="text-xs font-extrabold text-blue-950">
+                        Étude avec loi de régulation locale Q = f(U) * :
+                      </span>
+                      <div className="flex items-center gap-4">
+                        <label className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-800 cursor-pointer">
                           <input
                             type="radio"
-                            name="puissanceReactiveConforme"
+                            name="loiRegulationReactiveQfU"
                             value="oui"
-                            checked={formData.puissanceReactiveConforme === 'oui'}
+                            checked={formData.loiRegulationReactiveQfU !== 'non'}
                             onChange={handleInputChange}
                             className="w-4 h-4 text-emerald-600"
                           />
-                          <span>Oui (par défaut)</span>
+                          <span>Oui (coché par défaut)</span>
                         </label>
-                        <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
                           <input
                             type="radio"
-                            name="puissanceReactiveConforme"
+                            name="loiRegulationReactiveQfU"
                             value="non"
-                            checked={formData.puissanceReactiveConforme === 'non'}
+                            checked={formData.loiRegulationReactiveQfU === 'non'}
                             onChange={handleInputChange}
                             className="w-4 h-4 text-blue-600"
+                          />
+                          <span>Non</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
+                          Q<sub>min</sub> (-0,35 × P<sub>racc_inj</sub>)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            name="qMinKvar"
+                            value={formData.qMinKvar}
+                            onChange={handleInputChange}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono font-black text-slate-900"
+                          />
+                          <span className="text-xs font-bold text-slate-700">kVAR</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 mt-1 block">Ratio Qmin / Pracc_inj = {formData.qMinRatio || '-0,35'}</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
+                          Q<sub>max</sub> (+0,40 × P<sub>racc_inj</sub>)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            name="qMaxKvar"
+                            value={formData.qMaxKvar}
+                            onChange={handleInputChange}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono font-black text-slate-900"
+                          />
+                          <span className="text-xs font-bold text-slate-700">kVAR</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 mt-1 block">Ratio Qmax / Pracc_inj = {formData.qMaxRatio || '0,40'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Déclaration ΔPmax sur 1 minute & Régulation P = f(f) (Page 17/41) */}
+                  <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">
+                          3. Variation maximale ΔP<sub>max</sub> sur 1 min &amp; P = f(f) (Page 17/41)
+                        </h3>
+                        <p className="text-[11px] text-slate-500">
+                          Valeur par défaut stockage : 0,5 × 500 kW = 0,25 MW/min (250 kW/min)
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                        Page 17/41
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                          formData.deltaPmaxMode !== 'autre'
+                            ? 'bg-emerald-50/70 border-emerald-500 text-emerald-950 font-bold'
+                            : 'bg-slate-50 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="deltaPmaxMode"
+                          value="defaut_stockage"
+                          checked={formData.deltaPmaxMode !== 'autre'}
+                          onChange={() => {
+                            const pKw = parseFloat(formData.puissanceRaccInjectionKw) || 500;
+                            const dKw = Math.round(0.5 * pKw);
+                            handleFieldChange('deltaPmaxMode', 'defaut_stockage');
+                            handleFieldChange('deltaPmaxKwMin', String(dKw));
+                            handleFieldChange('deltaPmaxMwMin', String((dKw / 1000).toFixed(2)));
+                          }}
+                          className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0"
+                        />
+                        <div>
+                          <span className="text-xs block">
+                            Valeur par défaut pour installation de stockage (coché automatiquement)
+                          </span>
+                          <span className="text-[11px] text-emerald-800 font-extrabold block mt-0.5">
+                            ΔP<sub>max</sub> = 0,5 × {formData.puissanceRaccInjectionKw || 500} kW = {formData.deltaPmaxMwMin || '0,25'} MW/min ({formData.deltaPmaxKwMin || '250'} kW/min)
+                          </span>
+                        </div>
+                      </label>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="deltaPmaxMode"
+                            value="autre"
+                            checked={formData.deltaPmaxMode === 'autre'}
+                            onChange={handleInputChange}
+                            className="w-4 h-4 text-blue-600"
+                          />
+                          <span>Autre valeur ΔP<sub>max</sub> (&le; 8 MW/min) :</span>
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            name="deltaPmaxMwMin"
+                            value={formData.deltaPmaxMwMin}
+                            onChange={handleInputChange}
+                            className="w-20 px-2 py-1 rounded-lg border border-slate-300 bg-white text-xs font-mono font-bold text-center"
+                          />
+                          <span className="text-xs font-bold text-slate-700">MW / min</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-xs font-bold text-slate-800">
+                        Régulation de puissance active P = f(f) (Page 17/41) :
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="regulationPuissanceActivePf"
+                            value="oui"
+                            checked={formData.regulationPuissanceActivePf !== 'non'}
+                            onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-emerald-600"
+                          />
+                          <span>Oui (défaut)</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="regulationPuissanceActivePf"
+                            value="non"
+                            checked={formData.regulationPuissanceActivePf === 'non'}
+                            onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-blue-600"
                           />
                           <span>Non</span>
                         </label>
@@ -1432,72 +1738,129 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                 </div>
 
                 {/* C.3 Options pour recevoir plusieurs solutions de raccordement (Page 16/41) */}
-                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <h3 className="text-sm font-black text-slate-900">
-                      3. Options pour recevoir plusieurs solutions de raccordement (Page 16/41)
+                      4. Options pour recevoir plusieurs solutions de raccordement (Page 16/41)
                     </h3>
                     <span className="text-[11px] font-bold text-slate-500">Enedis-MOP-RES_056E p. 16/41</span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Option 1 : Devis d'étude division de parc */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <span className="text-xs font-bold text-slate-800">
-                        Devis d’étude division de parc :
-                      </span>
-                      <div className="flex items-center gap-4">
-                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-xs font-bold text-slate-800">Division de parc :</span>
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 cursor-pointer">
                           <input
                             type="radio"
                             name="devisDivisionParc"
                             value="oui"
                             checked={formData.devisDivisionParc === 'oui'}
                             onChange={handleInputChange}
-                            className="w-4 h-4 text-blue-600"
+                            className="w-3.5 h-3.5 text-blue-600"
                           />
                           <span>Oui</span>
                         </label>
-                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 cursor-pointer">
+                        <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 cursor-pointer">
                           <input
                             type="radio"
                             name="devisDivisionParc"
                             value="non"
                             checked={formData.devisDivisionParc === 'non'}
                             onChange={handleInputChange}
-                            className="w-4 h-4 text-blue-600"
+                            className="w-3.5 h-3.5 text-blue-600"
                           />
-                          <span>Non (par défaut)</span>
+                          <span>Non</span>
                         </label>
                       </div>
                     </div>
 
-                    {/* Option 2 : Devis d'étude puissance d'injection plus faible */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className="text-xs font-bold text-slate-800">
-                          Devis d’étude puissance d’injection plus faible :
-                        </span>
-                        <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                          <span className="text-[11px] font-bold text-slate-600">P<sub>racc inj min</sub> =</span>
-                          <input
-                            type="number"
-                            name="puissanceInjectionMinKw"
-                            value={formData.puissanceInjectionMinKw}
-                            onChange={handleInputChange}
-                            className="w-16 text-xs font-black text-slate-900 outline-none text-center border-b border-slate-300"
-                          />
-                          <span className="text-[11px] font-bold text-slate-700">kW</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                    {/* Option 2 : Puissance d'injection plus faible */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-xs font-bold text-slate-800">P<sub>inj</sub> plus faible (&ge; 70%) :</span>
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 cursor-pointer">
                           <input
                             type="radio"
                             name="devisPuissanceInjectionFaible"
                             value="oui"
                             checked={formData.devisPuissanceInjectionFaible === 'oui'}
                             onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-blue-600"
+                          />
+                          <span>Oui</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="devisPuissanceInjectionFaible"
+                            value="non"
+                            checked={formData.devisPuissanceInjectionFaible === 'non'}
+                            onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-blue-600"
+                          />
+                          <span>Non</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Option 4 : Capacité d'accueil des 3 départs HTA existants */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-xs font-bold text-slate-800">Capacité 3 départs HTA proches :</span>
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="capaciteAccueil3DepartsHta"
+                            value="oui"
+                            checked={formData.capaciteAccueil3DepartsHta === 'oui'}
+                            onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-emerald-600"
+                          />
+                          <span>Oui (défaut)</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="capaciteAccueil3DepartsHta"
+                            value="non"
+                            checked={formData.capaciteAccueil3DepartsHta === 'non'}
+                            onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-blue-600"
+                          />
+                          <span>Non</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Option 3 : Offre à modulation de puissance générale 70% vs Gabarit Horaire Stockage */}
+                  <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-300 space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="text-xs font-black text-slate-900">
+                          Case générale « Offre à modulation de puissance (P<sub>gar inj</sub> &ge; 70 % Pracc_inj) » :
+                        </span>
+                        <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-amber-300">
+                          <span className="text-[11px] font-bold text-slate-700">P<sub>gar inj</sub> =</span>
+                          <input
+                            type="number"
+                            name="puissanceGarantieInjectionKw"
+                            value={formData.puissanceGarantieInjectionKw}
+                            onChange={handleInputChange}
+                            className="w-16 text-xs font-black text-blue-800 outline-none text-center border-b border-amber-300"
+                          />
+                          <span className="text-[11px] font-bold text-slate-700">kW</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
+                          <input
+                            type="radio"
+                            checked={Boolean(formData.devisOffreModulationPuissance) === true}
+                            onChange={() => handleFieldChange('devisOffreModulationPuissance', true)}
                             className="w-4 h-4 text-blue-600"
                           />
                           <span>Oui</span>
@@ -1505,161 +1868,28 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                         <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 cursor-pointer">
                           <input
                             type="radio"
-                            name="devisPuissanceInjectionFaible"
-                            value="non"
-                            checked={formData.devisPuissanceInjectionFaible === 'non'}
-                            onChange={handleInputChange}
+                            checked={Boolean(formData.devisOffreModulationPuissance) === false}
+                            onChange={() => handleFieldChange('devisOffreModulationPuissance', false)}
                             className="w-4 h-4 text-blue-600"
                           />
-                          <span>Non (par défaut)</span>
+                          <span>Non (ne pas substituer au gabarit horaire)</span>
                         </label>
                       </div>
                     </div>
 
-                    {/* Option 3 : Devis d'étude Offre à modulation de puissance + Pgar inj + Infobulle d'alerte */}
-                    <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-300 space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2.5">
-                          <label className="inline-flex items-center gap-2 text-xs font-black text-slate-900 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              name="devisOffreModulationPuissance"
-                              checked={Boolean(formData.devisOffreModulationPuissance)}
-                              onChange={handleInputChange}
-                              className="w-4 h-4 rounded text-blue-600"
-                            />
-                            <span>Devis d’étude Offre à modulation de puissance (Oui / Non)</span>
-                          </label>
-
-                          <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-amber-300">
-                            <span className="text-[11px] font-bold text-slate-700">P<sub>gar inj</sub> =</span>
-                            <input
-                              type="number"
-                              name="puissanceGarantieInjectionKw"
-                              value={formData.puissanceGarantieInjectionKw}
-                              onChange={handleInputChange}
-                              className="w-16 text-xs font-black text-blue-800 outline-none text-center border-b border-amber-300"
-                            />
-                            <span className="text-[11px] font-bold text-slate-700">kW (soit &ge; 70 %)</span>
-                          </div>
-
-                          {/* Bouton Infobulle d'alerte */}
-                          <button
-                            type="button"
-                            onClick={() => setShowOraTooltip(prev => !prev)}
-                            onMouseEnter={() => setShowOraTooltip(true)}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200/80 text-amber-950 hover:bg-amber-300 transition-colors cursor-pointer"
-                            title="Attention : cette case générale indique une puissance garantie minimale de 70 %. Elle ne remplace pas la demande spécifique de gabarit horaire pour stockage décrite en page 9 et dans la note jointe."
-                          >
-                            <AlertTriangle className="w-3 h-3 text-amber-700" />
-                            Infobulle d’alerte réglementaire
-                          </button>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
-                            <input
-                              type="radio"
-                              checked={Boolean(formData.devisOffreModulationPuissance) === true}
-                              onChange={() => handleFieldChange('devisOffreModulationPuissance', true)}
-                              className="w-4 h-4 text-blue-600"
-                            />
-                            <span>Oui</span>
-                          </label>
-                          <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
-                            <input
-                              type="radio"
-                              checked={Boolean(formData.devisOffreModulationPuissance) === false}
-                              onChange={() => handleFieldChange('devisOffreModulationPuissance', false)}
-                              className="w-4 h-4 text-blue-600"
-                            />
-                            <span>Non</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Infobulle d'alerte permanente / déployable */}
-                      <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-amber-100/90 border border-amber-300 text-amber-950 text-xs">
-                        <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-                        <p className="font-semibold leading-snug">
-                          <strong>Attention :</strong> cette case générale indique une puissance garantie minimale de 70 %. Elle ne remplace pas la demande spécifique de gabarit horaire pour stockage décrite en page 9 et dans la note jointe.
-                        </p>
-                      </div>
+                    <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-amber-100/90 border border-amber-300 text-amber-950 text-xs">
+                      <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                      <p className="font-semibold leading-snug">
+                        <strong>Règle Enedis BESS 500 kW :</strong> cette case générale d’offre à modulation indique une puissance garantie minimale de 70 %. Elle <strong>n’est pas un substitut</strong> à la demande spécifique de gabarit horaire pour stockage (interdiction d’injection 10 h – 18 h de mars à octobre) inscrite en Page 9/41 (Fiche A) et dans la Note complémentaire ORA-MP jointe (Art. 11 Enedis-NMO-RES_030E &amp; Variante 2A Enedis-MOP-RES_046E).
+                      </p>
                     </div>
-
-                    {/* Option 4 : Capacité d'accueil des 3 départs HTA existants les plus proches */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <span className="text-xs font-bold text-slate-800">
-                        Capacité d’accueil des 3 départs HTA existants les plus proches :
-                      </span>
-                      <div className="flex items-center gap-4">
-                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="capaciteAccueil3DepartsHta"
-                            value="oui"
-                            checked={formData.capaciteAccueil3DepartsHta === 'oui'}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 text-emerald-600"
-                          />
-                          <span>Oui (coché par défaut)</span>
-                        </label>
-                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="capaciteAccueil3DepartsHta"
-                            value="non"
-                            checked={formData.capaciteAccueil3DepartsHta === 'non'}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>Non</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* C.4 Régulation de puissance active P = f(f) */}
-                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">
-                      4. Régulation de puissance active P = f(f) (Page 17/41)
-                    </h3>
-                    <p className="text-[11px] text-slate-500">
-                      Participation du système de stockage au réglage de la fréquence réseau (Arrêté du 9 juin 2020)
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
-                    <label className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="regulationPuissanceActivePf"
-                        value="oui"
-                        checked={formData.regulationPuissanceActivePf === 'oui'}
-                        onChange={handleInputChange}
-                        className="w-4 h-4 text-emerald-600"
-                      />
-                      <span>Oui (coché par défaut)</span>
-                    </label>
-                    <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="regulationPuissanceActivePf"
-                        value="non"
-                        checked={formData.regulationPuissanceActivePf === 'non'}
-                        onChange={handleInputChange}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <span>Non</span>
-                    </label>
                   </div>
                 </div>
               </motion.div>
             )}
 
             {/* ─────────────────────────────────────────────────────────────
-                ONGLET 3 : FICHES E4 / T1 – CARACTÉRISTIQUES STOCKAGE & BATTERIES
+                ONGLET 3 : FICHES E4 / T1 – CARACTÉRISTIQUES TECHNOLOGIQUES & STOCKAGE
             ───────────────────────────────────────────────────────────── */}
             {activeTab === 'fiche_e4_t1' && (
               <motion.div
@@ -1668,231 +1898,499 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.15 }}
-                className="space-y-5"
+                className="space-y-4"
               >
-                {/* E4.1 Architecture par défaut (modifiable) */}
+                {/* 1. FICHE T1 — CARACTÉRISTIQUES DE PRODUCTION & STOCKAGE (Pages 21-22/41 du 056E) */}
                 <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <div className="border-b border-slate-100 pb-2.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                      Fiches E4 &amp; T1 — Enedis-MOP-RES_056E (Version 2)
-                    </span>
-                    <h3 className="text-sm font-black text-slate-900 mt-1">
-                      1. Architecture Technique Stockage &amp; Batteries (Fiche E4)
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                        Fiche T1 — Pages 21 &amp; 22/41 du 056E
+                      </span>
+                      <h3 className="text-sm font-black text-slate-900 mt-1">
+                        1. Fiche T1 – Caractéristiques Technologiques &amp; Complémentaires pour le Stockage
+                      </h3>
+                    </div>
+
+                    {/* Boutons sélection rapide Énergie Stockable (1 MWh / 1,044 MWh / 2 MWh) */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 mr-1">Configuration capacité :</span>
+                      {[
+                        { label: '1 MWh (1000 kWh)', mwh: '1', kwh: '1000', unitKwh: '250' },
+                        { label: '1,044 MWh (4×261 kWh)', mwh: '1,044', kwh: '1044', unitKwh: '261' },
+                        { label: '2 MWh (2000 kWh)', mwh: '2', kwh: '2000', unitKwh: '500' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.mwh}
+                          type="button"
+                          onClick={() => {
+                            handleFieldChange('energieStockableMwh', preset.mwh);
+                            handleFieldChange('capaciteTotaleKwh', preset.kwh);
+                            handleFieldChange('capaciteUnitaireKwh', preset.unitKwh);
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold border transition-all cursor-pointer ${
+                            String(formData.energieStockableMwh) === preset.mwh
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200">
+                      <label className="block text-[11px] font-extrabold text-blue-950 mb-1">
+                        Filière (Page 21/41) *
+                      </label>
+                      <input
+                        type="text"
+                        name="filiereT1"
+                        value={formData.filiereT1}
+                        onChange={handleInputChange}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-blue-300 bg-white text-xs font-black text-blue-950"
+                      />
+                      <span className="text-[10px] text-blue-700 font-semibold mt-1 block">Coché : STOCKAGE HORS HYDRAULIQUE</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200">
+                      <label className="block text-[11px] font-extrabold text-blue-950 mb-1">
+                        Technologie (Page 21/41) *
+                      </label>
+                      <select
+                        name="technologieT1"
+                        value={formData.technologieT1}
+                        onChange={handleInputChange}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-blue-300 bg-white text-xs font-black text-blue-950"
+                      >
+                        <option value="BATTERIE">BATTERIE (Coché par défaut)</option>
+                        <option value="HYDROGENE">HYDROGÈNE</option>
+                        <option value="VOLANT_INERTIE">VOLANT D’INERTIE</option>
+                      </select>
+                      <span className="text-[10px] text-blue-700 font-semibold mt-1 block">Cellules LFP (LiFePO4)</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <label className="block text-[11px] font-extrabold text-slate-800 mb-1">
+                        Nb total de groupes (Page 21/41) *
+                      </label>
+                      <input
+                        type="number"
+                        name="nombreGroupesProductionStockage"
+                        value={formData.nombreGroupesProductionStockage}
+                        onChange={(e) => {
+                          handleFieldChange('nombreGroupesProductionStockage', e.target.value);
+                          handleFieldChange('nombreUnites', e.target.value);
+                          handleFieldChange('onduleurNombreUnites', e.target.value);
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-black text-slate-900"
+                      />
+                      <span className="text-[10px] text-slate-500 font-semibold mt-1 block">4 unités de 125 kW = 500 kW</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                      <label className="block text-[11px] font-extrabold text-emerald-950 mb-1">
+                        Moyen de stockage (Page 22/41) *
+                      </label>
+                      <div className="flex items-center gap-4 pt-1">
+                        <label className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-900 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="comprendMoyenStockage"
+                            value="oui"
+                            checked={formData.comprendMoyenStockage !== 'non'}
+                            onChange={handleInputChange}
+                            className="w-4 h-4 text-emerald-600"
+                          />
+                          <span>Oui (coché)</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="comprendMoyenStockage"
+                            value="non"
+                            checked={formData.comprendMoyenStockage === 'non'}
+                            onChange={handleInputChange}
+                            className="w-4 h-4 text-slate-600"
+                          />
+                          <span>Non</span>
+                        </label>
+                      </div>
+                      <span className="text-[10px] text-emerald-700 font-semibold mt-1.5 block">Stockage autonome HTA</span>
+                    </div>
+
+                    {/* Ligne 2 de Fiche T1 (Page 22/41) : Charge, Décharge, Énergie stockable MWh, Capacité kWh */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Puissance active max en charge (kW) *
+                      </label>
+                      <input
+                        type="number"
+                        name="puissanceMaxChargeKw"
+                        value={formData.puissanceMaxChargeKw}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-blue-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Puissance active max en décharge (kW) *
+                      </label>
+                      <input
+                        type="number"
+                        name="puissanceMaxDechargeKw"
+                        value={formData.puissanceMaxDechargeKw}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-blue-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-purple-900 mb-1">
+                        Énergie stockable (MWh — Page 22/41) *
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          name="energieStockableMwh"
+                          value={formData.energieStockableMwh}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 rounded-xl border border-purple-300 bg-purple-50/40 text-xs font-black text-purple-950"
+                        />
+                        <span className="text-xs font-black text-purple-800">MWh</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Capacité énergétique totale (kWh)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          name="capaciteTotaleKwh"
+                          value={formData.capaciteTotaleKwh}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900"
+                        />
+                        <span className="text-xs font-bold text-slate-700">kWh</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. FICHE E4 — ONDULEUR ASSURANT LE TRANSIT TOTAL DE PUISSANCE (Pages 35-36/41 du 056E) */}
+                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                        Fiche E4 — Pages 35 &amp; 36/41 du 056E
+                      </span>
+                      <h3 className="text-sm font-black text-slate-900 mt-1">
+                        2. Fiche E4 – Onduleurs / PCS assurant le transit total de puissance (4 × 125 kVA = 500 kVA)
+                      </h3>
+                    </div>
+
+                    {/* Sélection rapide marque / référence constructeur PCS */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 mr-1">Constructeur PCS :</span>
+                      {PCS_CONSTRUCTOR_PRESETS.map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => {
+                            handleFieldChange('onduleurMarqueRef', preset.marqueRef);
+                            handleFieldChange('modeleBatterie', preset.modeleBatterie);
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[10.5px] font-bold border transition-all cursor-pointer ${
+                            formData.onduleurMarqueRef === preset.marqueRef
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
+                              : 'bg-slate-100 hover:bg-purple-50 text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Marque et référence de l’onduleur / PCS (Page 35/41) *
+                      </label>
+                      <input
+                        type="text"
+                        name="onduleurMarqueRef"
+                        value={formData.onduleurMarqueRef}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 rounded-xl border border-purple-200 bg-purple-50/30 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Référence du document constructeur &amp; Certificat NF EN 50549-2 *
+                      </label>
+                      <input
+                        type="text"
+                        name="onduleurDocumentRef"
+                        value={formData.onduleurDocumentRef}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Puissance apparente nominale unitaire (kVA) *
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          name="onduleurPuissanceApparenteUnitaireKva"
+                          value={formData.onduleurPuissanceApparenteUnitaireKva}
+                          onChange={(e) => {
+                            const unitKva = parseFloat(e.target.value) || 125;
+                            const qty = parseFloat(formData.onduleurNombreUnites) || 4;
+                            handleFieldChange('onduleurPuissanceApparenteUnitaireKva', e.target.value);
+                            handleFieldChange('onduleurPuissanceMaximaleUnitaireKva', e.target.value);
+                            handleFieldChange('onduleurPuissanceApparenteTotaleKva', String(Math.round(unitKva * qty)));
+                            handleFieldChange('puissanceApparenteMaximaleKva', String(Math.round(unitKva * qty)));
+                          }}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-900"
+                        />
+                        <span className="text-xs font-bold text-slate-600">kVA (×{formData.onduleurNombreUnites || 4})</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Puissance apparente totale (4 PCS) *
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          name="onduleurPuissanceApparenteTotaleKva"
+                          value={formData.onduleurPuissanceApparenteTotaleKva}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 rounded-xl border border-blue-200 bg-blue-50/40 text-xs font-black text-blue-900"
+                        />
+                        <span className="text-xs font-black text-blue-800">kVA</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Courant nominal In par unité (A) *
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          name="onduleurCourantNominalUnitaireA"
+                          value={formData.onduleurCourantNominalUnitaireA}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900"
+                        />
+                        <span className="text-xs font-bold text-slate-600">A</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Tension de sortie assignée (V) *
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          name="onduleurTensionSortieV"
+                          value={formData.onduleurTensionSortieV}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900"
+                        />
+                        <span className="text-xs font-bold text-slate-600">V AC</span>
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-2 p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-slate-800">Type d’électronique de puissance * :</span>
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-1.5 text-xs font-black text-blue-900 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="onduleurTypeElectronique"
+                            value="igbt_mli"
+                            checked={formData.onduleurTypeElectronique !== 'thyristors'}
+                            onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-blue-600"
+                          />
+                          <span>Commutation forcée (IGBT-MLI)</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="onduleurTypeElectronique"
+                            value="thyristors"
+                            checked={formData.onduleurTypeElectronique === 'thyristors'}
+                            onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-slate-600"
+                          />
+                          <span>Thyristors</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-slate-800">Type de connexion * :</span>
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-1 text-xs font-black text-blue-900 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="onduleurTypeConnexion"
+                            value="triphase"
+                            checked={formData.onduleurTypeConnexion !== 'monophase'}
+                            onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-blue-600"
+                          />
+                          <span>Triphasé</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="onduleurTypeConnexion"
+                            value="monophase"
+                            checked={formData.onduleurTypeConnexion === 'monophase'}
+                            onChange={handleInputChange}
+                            className="w-3.5 h-3.5 text-slate-600"
+                          />
+                          <span>Mono</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600">Court-circuit Ip (A)</label>
+                        <input
+                          type="text"
+                          name="onduleurIpA"
+                          value={formData.onduleurIpA}
+                          onChange={handleInputChange}
+                          className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-xs font-mono font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600">Ik&apos;&apos; (A / unité)</label>
+                        <input
+                          type="text"
+                          name="onduleurIkA"
+                          value={formData.onduleurIkA}
+                          onChange={handleInputChange}
+                          className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-xs font-mono font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Transformateur élévateur BT/HTA (Page 20/41) & Certification des données */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  <div className="lg:col-span-7 bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
+                      3. Transformateur Élévateur BT / HTA 20 kV (Page 20/41 du 056E)
                     </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                    <div className="md:col-span-2">
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Type d’installation</label>
-                      <input
-                        type="text"
-                        name="typeInstallationStockage"
-                        value={formData.typeInstallationStockage}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Modèle des unités</label>
-                      <input
-                        type="text"
-                        name="modeleBatterie"
-                        value={formData.modeleBatterie}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-purple-900 bg-purple-50/40 focus:ring-2 focus:ring-purple-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Nombre d’unités (Texte descriptif)</label>
-                      <input
-                        type="text"
-                        name="nombreUnitesTexte"
-                        value={formData.nombreUnitesTexte}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                        Puissance active totale installée (P<sub>installée</sub> kW)
-                      </label>
-                      <input
-                        type="number"
-                        name="puissanceActiveTotaleInstalleeKw"
-                        value={formData.puissanceActiveTotaleInstalleeKw}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                        Puissance apparente maximale (kVA)
-                      </label>
-                      <input
-                        type="number"
-                        name="puissanceApparenteMaximaleKva"
-                        value={formData.puissanceApparenteMaximaleKva}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Mode de raccordement</label>
-                      <input
-                        type="text"
-                        name="modeRaccordement"
-                        value={formData.modeRaccordement}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Capacité totale installée (kWh)</label>
-                      <input
-                        type="number"
-                        name="capaciteTotaleKwh"
-                        value={formData.capaciteTotaleKwh}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Convertisseurs / Onduleurs (PCS)</label>
-                      <input
-                        type="text"
-                        name="onduleursPcsDetail"
-                        value={formData.onduleursPcsDetail}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Protection de découplage HTA</label>
-                      <input
-                        type="text"
-                        name="protectionDecouplageDetail"
-                        value={formData.protectionDecouplageDetail}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Conformité normative</label>
-                      <input
-                        type="text"
-                        name="conformiteNormative"
-                        value={formData.conformiteNormative}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-600 mb-1">Sn (kVA)</label>
+                        <input
+                          type="text"
+                          name="transfoPuissanceNominaleKva"
+                          value={formData.transfoPuissanceNominaleKva}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-600 mb-1">Primaire HTA</label>
+                        <input
+                          type="text"
+                          name="transfoTensionPrimaireHta"
+                          value={formData.transfoTensionPrimaireHta}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-600 mb-1">Secondaire BT</label>
+                        <input
+                          type="text"
+                          name="transfoTensionSecondaireBt"
+                          value={formData.transfoTensionSecondaireBt}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-600 mb-1">Couplage</label>
+                        <input
+                          type="text"
+                          name="transfoCouplage"
+                          value={formData.transfoCouplage}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-600 mb-1">Ucc (%)</label>
+                        <input
+                          type="text"
+                          name="transfoUccPercent"
+                          value={formData.transfoUccPercent}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-900"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* T1 : Caractéristiques du Transformateur élévateur BT/HTA */}
-                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
-                    2. Caractéristiques du Transformateur Élévateur BT / HTA (Fiche T1)
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Puissance nominale (kVA)</label>
-                      <input
-                        type="text"
-                        name="transfoPuissanceNominaleKva"
-                        value={formData.transfoPuissanceNominaleKva}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Tension Primaire HTA</label>
-                      <input
-                        type="text"
-                        name="transfoTensionPrimaireHta"
-                        value={formData.transfoTensionPrimaireHta}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Tension Secondaire BT</label>
-                      <input
-                        type="text"
-                        name="transfoTensionSecondaireBt"
-                        value={formData.transfoTensionSecondaireBt}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Couplage</label>
-                      <input
-                        type="text"
-                        name="transfoCouplage"
-                        value={formData.transfoCouplage}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Tension court-circuit Ucc (%)</label>
-                      <input
-                        type="text"
-                        name="transfoUccPercent"
-                        value={formData.transfoUccPercent}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Certification des données */}
-                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
-                    3. Certification des données (Signature du formulaire 056E)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Nom – Prénom du signataire</label>
-                      <input
-                        type="text"
-                        name="signataireNomPrenom"
-                        value={formData.signataireNomPrenom}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Lieu</label>
-                      <input
-                        type="text"
-                        name="signatureLieu"
-                        value={formData.signatureLieu}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Date (JJ/MM/AAAA)</label>
-                      <input
-                        type="text"
-                        name="signatureDate"
-                        value={formData.signatureDate}
-                        onChange={handleInputChange}
-                        placeholder="JJ/MM/AAAA"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
+                  <div className="lg:col-span-5 bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
+                      4. Certification des données (Signature 056E)
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-600 mb-1">Signataire</label>
+                        <input
+                          type="text"
+                          name="signataireNomPrenom"
+                          value={formData.signataireNomPrenom}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-600 mb-1">Lieu</label>
+                        <input
+                          type="text"
+                          name="signatureLieu"
+                          value={formData.signatureLieu}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-600 mb-1">Date</label>
+                        <input
+                          type="text"
+                          name="signatureDate"
+                          value={formData.signatureDate}
+                          onChange={handleInputChange}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-900"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1909,77 +2407,85 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.15 }}
-                className="space-y-5"
+                className="space-y-4"
               >
                 {/* Bandeau d'explication réglementaire */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900 text-white border border-blue-800/50 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-                  <div className="space-y-1">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900 text-white border border-blue-800/50 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
-                        Annexe obligatoire au 056E
+                        Pièce jointe obligatoire au 056E
                       </span>
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                        Art. 11 Enedis-NMO-RES_030E &amp; Variante 2A Enedis-MOP-RES_046E
+                        Art. 11 Enedis-NMO-RES_030E &amp; Variante 2A Enedis-MOP-RES_046E (Gabarit 10h–18h Mars à Octobre)
                       </span>
                     </div>
                     <h3 className="text-sm font-black">
-                      Note complémentaire — Demande prioritaire d’ORA-MP pour stockage autonome (500 kW)
+                      Note complémentaire — Demande prioritaire d’ORA-MP pour stockage autonome 500 kW
                     </h3>
-                    <p className="text-xs text-slate-300">
-                      Toutes les variables du projet ont été injectées automatiquement. Vous pouvez modifier librement chaque paragraphe avant l’export PDF 1 page.
-                    </p>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNoteSiteManuallyEdited(false);
-                        setFormData(prev => {
-                          const next = {
-                            ...prev,
-                            noteObjet: 'Demande prioritaire d’ORA-MP pour stockage autonome — 500 kW',
-                            noteSiteLigne: buildNoteOraMpSiteLine(prev),
-                            noteSalutation: 'Madame, Monsieur,',
-                            noteCorps: DEFAULT_NOTE_ORAMP_CORPS,
-                            noteFaitA: 'Mérignac',
-                            noteDate: new Date().toLocaleDateString('fr-FR'),
-                            noteNomQualiteDemandeur: 'Yann BARBERIS, Président – ENR COURTAGE',
-                          };
-                          persistEnedisData(next, false);
-                          return next;
-                        });
-                        toast({
-                          title: 'Note ORA-MP réinitialisée',
-                          description: 'Le modèle réglementaire officiel avec les variables du projet a été restauré.',
-                        });
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-colors cursor-pointer"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      Réinitialiser le modèle ORA-MP
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNoteSiteManuallyEdited(false);
+                      setFormData(prev => {
+                        const next = {
+                          ...prev,
+                          noteObjet: 'Demande prioritaire d\'ORA-MP pour stockage autonome 500 kW',
+                          noteSiteLigne: buildNoteOraMpSiteLine(prev),
+                          noteSalutation: 'Madame, Monsieur,',
+                          noteCorps: DEFAULT_NOTE_ORAMP_CORPS,
+                          noteFaitA: 'Mérignac',
+                          noteDate: new Date().toLocaleDateString('fr-FR'),
+                          noteNomQualiteDemandeur: 'Yann BARBERIS, Président – ENR COURTAGE',
+                        };
+                        persistEnedisData(next, false);
+                        return next;
+                      });
+                      toast({
+                        title: 'Note ORA-MP réinitialisée',
+                        description: 'Le modèle officiel complet (6 paragraphes) avec les variables du projet a été restauré.',
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-colors cursor-pointer flex-shrink-0"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Restaurer le modèle officiel ORA-MP
+                  </button>
                 </div>
 
-                {/* Éditeur structuré + Aperçu */}
-                <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                  <div className="grid grid-cols-1 gap-3.5">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Objet de la note</label>
-                      <input
-                        type="text"
-                        name="noteObjet"
-                        value={formData.noteObjet}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-blue-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
+                {/* Vue Côte-à-Côte Desktop : Éditeur à gauche (7 col) + Prévisualisation A4 en direct à droite (5 col) */}
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+                  {/* Colonne Gauche : Éditeur structuré */}
+                  <div className="xl:col-span-7 bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Objet de la note</label>
+                        <input
+                          type="text"
+                          name="noteObjet"
+                          value={formData.noteObjet}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-blue-950 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Salutation</label>
+                        <input
+                          type="text"
+                          name="noteSalutation"
+                          value={formData.noteSalutation}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
                     </div>
 
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="block text-[11px] font-bold text-slate-600">
-                          Identification du Site (Nom, Commune, CP, Parcelle, Coordonnées GPS)
+                          Ligne Site (Site : [nom du site] - Commune : [commune] ([CP]) - Référence parcelle : [référence])
                         </label>
                         <button
                           type="button"
@@ -1990,7 +2496,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                           className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                         >
                           <RefreshCw className="w-3 h-3" />
-                          Synchroniser depuis l’Onglet 1 (Fiche A)
+                          Synchroniser depuis Fiche A
                         </button>
                       </div>
                       <input
@@ -2003,30 +2509,19 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Civilité / Salutation</label>
-                      <input
-                        type="text"
-                        name="noteSalutation"
-                        value={formData.noteSalutation}
-                        onChange={handleInputChange}
-                        className="w-full sm:w-64 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
                       <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                        Corps de la Note Complémentaire ORA-MP (100 % éditable)
+                        Corps de la Note Complémentaire ORA-MP (6 paragraphes officiels — 100 % modifiable)
                       </label>
                       <textarea
                         name="noteCorps"
                         value={formData.noteCorps}
                         onChange={handleInputChange}
-                        rows={11}
+                        rows={12}
                         className="w-full p-3.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none font-sans"
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="block text-[11px] font-bold text-slate-600 mb-1">Fait à</label>
                         <input
@@ -2061,25 +2556,20 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                       </div>
                     </div>
 
-                    {/* Bloc Cachet & Signature d'ENR COURTAGE */}
-                    <div className="mt-2 p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                      <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2.5">
-                          <label className="inline-flex items-center gap-2 text-xs font-black text-slate-900 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              name="inclureCachetSignature"
-                              checked={Boolean(formData.inclureCachetSignature)}
-                              onChange={handleInputChange}
-                              className="w-4 h-4 rounded text-blue-600"
-                            />
-                            <span>Insérer l’image du cachet / signature d’ENR COURTAGE en bas de page</span>
-                          </label>
-                        </div>
-                        <p className="text-[11px] text-slate-500">
-                          Un cachet officiel ENR COURTAGE (7 Rue Gutenberg 33700 Mérignac, SIREN 881 890 982) avec signature est pré-intégré. Vous pouvez aussi importer votre propre image PNG/JPG.
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {/* Bloc Cachet & Signature */}
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                      <div className="space-y-1.5">
+                        <label className="inline-flex items-center gap-2 text-xs font-black text-slate-900 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="inclureCachetSignature"
+                            checked={Boolean(formData.inclureCachetSignature)}
+                            onChange={handleInputChange}
+                            className="w-4 h-4 rounded text-blue-600"
+                          />
+                          <span>Apposer le cachet et la signature d’ENR COURTAGE sur les PDF</span>
+                        </label>
+                        <div className="flex flex-wrap items-center gap-2">
                           <input
                             ref={fileInputRef}
                             type="file"
@@ -2090,35 +2580,96 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
                           <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer"
                           >
-                            <Upload className="w-3.5 h-3.5" />
-                            Importer une image de cachet / signature
+                            <Upload className="w-3 h-3" />
+                            Importer un cachet personnalisé
                           </button>
-
                           {formData.signatureImageBase64 && (
                             <button
                               type="button"
                               onClick={() => handleFieldChange('signatureImageBase64', null)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200/70 hover:bg-slate-300 text-slate-700 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer"
                             >
-                              Utiliser le cachet officiel ENR COURTAGE par défaut
+                              Cachet par défaut
                             </button>
                           )}
                         </div>
                       </div>
 
-                      {/* Aperçu miniature du cachet & signature */}
                       {formData.inclureCachetSignature && activeStampSrc && (
-                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs flex flex-col items-center flex-shrink-0">
-                          <span className="text-[10px] font-bold text-slate-400 mb-1">Aperçu Cachet &amp; Signature</span>
+                        <img
+                          src={activeStampSrc}
+                          alt="Cachet ENR COURTAGE"
+                          className="h-14 w-auto object-contain bg-white p-1 rounded-lg border border-slate-200"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Colonne Droite : Prévisualisation A4 en direct de la Note ORA-MP */}
+                  <div className="xl:col-span-5 bg-white rounded-2xl border-2 border-blue-900/20 shadow-md overflow-hidden">
+                    <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 text-cyan-300">
+                        <Eye className="w-3.5 h-3.5" />
+                        Aperçu en direct — Note à joindre au 056E (PDF A4)
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-300">ENR COURTAGE</span>
+                    </div>
+
+                    <div className="p-5 space-y-3.5 text-[11.5px] leading-relaxed text-slate-800 bg-white">
+                      {/* En-tête aperçu */}
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-3">
+                        <div>
+                          <p className="font-black text-xs text-slate-950">{formData.beneficiaireRaisonSociale || 'ENR COURTAGE'}</p>
+                          <p className="text-[10px] text-slate-600">{formData.beneficiaireAdresse} — {formData.beneficiaireCpVillePays}</p>
+                          <p className="text-[10px] font-mono font-bold text-blue-900">SIREN : {formData.beneficiaireSiren} | SIRET : {formData.beneficiaireSiret}</p>
+                        </div>
+                        <div className="text-right bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 text-[9.5px] font-bold text-blue-950">
+                          <div>ANNEXE AU 056E (V2)</div>
+                          <div className="text-blue-700">Art. 11 NMO-RES_030E</div>
+                          <div className="text-blue-700">Variante 2A MOP-RES_046E</div>
+                        </div>
+                      </div>
+
+                      {/* Encadré Objet & Site */}
+                      <div className="p-3 rounded-xl bg-slate-50 border-l-4 border-blue-600 space-y-1">
+                        <p className="font-black text-slate-950 text-xs">
+                          <span className="text-blue-700">Objet :</span> {formData.noteObjet}
+                        </p>
+                        <p className="font-bold text-slate-800 text-[11px]">
+                          <span className="text-blue-700">Site :</span> {formData.noteSiteLigne}
+                        </p>
+                      </div>
+
+                      {/* Corps de la note */}
+                      <div className="space-y-2 text-slate-800">
+                        <p className="font-bold text-slate-950">{formData.noteSalutation}</p>
+                        {previewParagraphs.map((para, idx) => (
+                          <p key={idx} className="text-[11px] leading-snug text-justify">
+                            {para}
+                          </p>
+                        ))}
+                      </div>
+
+                      {/* Pied de note / Signature */}
+                      <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-3">
+                        <div className="text-[11px] space-y-0.5">
+                          <p className="font-bold text-slate-900">
+                            Fait à : {formData.noteFaitA} — Le : {formData.noteDate}
+                          </p>
+                          <p className="font-extrabold text-blue-950">
+                            {formData.noteNomQualiteDemandeur}
+                          </p>
+                        </div>
+                        {formData.inclureCachetSignature && activeStampSrc && (
                           <img
                             src={activeStampSrc}
-                            alt="Cachet et signature ENR COURTAGE"
-                            className="h-20 w-auto object-contain"
+                            alt="Signature"
+                            className="h-14 w-auto object-contain"
                           />
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2127,14 +2678,14 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
           </AnimatePresence>
 
           {/* ═══════════════════════════════════════════════════════════════════
-              ENCART RÉCAPITULATIF PERMANENT : CHECKLIST DES PIÈCES À JOINDRE
+              ENCART RÉCAPITULATIF : CHECKLIST DES PIÈCES À JOINDRE
           ═══════════════════════════════════════════════════════════════════ */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
               <div className="flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-emerald-600" />
                 <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                  Checklist des pièces à déposer sur le portail Enedis avec les 2 PDF générés
+                  Checklist des pièces à déposer sur le portail Enedis avec les 2 PDF générés (056E V2 + Note ORA-MP)
                 </h4>
               </div>
               <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
@@ -2172,7 +2723,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            4. PIED DE MODALE (FOOTER) — BARRE D'ACTIONS
+            4. PIED DE MODALE FIXE (FOOTER) — BARRE D'ACTIONS
         ═══════════════════════════════════════════════════════════════════ */}
         <div className="px-4 md:px-6 py-3.5 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-2.5 flex-shrink-0">
           {/* Bouton 1 : Enregistrer les modifications */}
@@ -2218,7 +2769,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
               Générer la Note ORA-MP (PDF)
             </button>
 
-            {/* Bouton 4 (Principal) : Télécharger le Pack Complet Enedis (PDF fusionné + option ZIP) */}
+            {/* Bouton 4 : Télécharger le Pack Complet Enedis (PDF / ZIP) */}
             <div className="inline-flex items-center rounded-xl shadow-sm overflow-hidden border border-emerald-700">
               <button
                 type="button"
