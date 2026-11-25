@@ -34,18 +34,88 @@ function simplifyAddress(label) {
 }
 
 
+class GeoportailProvider {
+  constructor() {
+    this.osmFallback = new OpenStreetMapProvider({
+      params: {
+        'accept-language': 'fr',
+        countrycodes: 'fr',
+      },
+    });
+  }
+
+  async search({ query }) {
+    const q = (query || '').trim();
+    if (q.length < 2) return [];
+
+    try {
+      const url = `https://data.geopf.fr/geocodage/completion/?text=${encodeURIComponent(q)}&type=StreetAddress,PositionOfInterest&maximumResponses=10`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data?.results) && data.results.length > 0) {
+          return data.results
+            .filter((item) => Number.isFinite(Number(item.x)) && Number.isFinite(Number(item.y)))
+            .map((item) => {
+              const x = Number(item.x);
+              const y = Number(item.y);
+              const label =
+                item.fulltext ||
+                [item.street, item.zipcode, item.city].filter(Boolean).join(', ');
+              return {
+                x,
+                y,
+                label,
+                bounds: [
+                  [y - 0.002, x - 0.002],
+                  [y + 0.002, x + 0.002],
+                ],
+                raw: item,
+              };
+            });
+        }
+      }
+    } catch (err) {
+      console.warn('[SearchField] Erreur API Géoportail completion:', err);
+    }
+
+    // Fallback geocodage IGN si completion vide
+    try {
+      const searchUrl = `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q)}&limit=6`;
+      const res = await fetch(searchUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data?.features) && data.features.length > 0) {
+          return data.features.map((f) => {
+            const [x, y] = f.geometry?.coordinates || [0, 0];
+            return {
+              x: Number(x),
+              y: Number(y),
+              label: f.properties?.label || q,
+              bounds: [
+                [Number(y) - 0.002, Number(x) - 0.002],
+                [Number(y) + 0.002, Number(x) + 0.002],
+              ],
+              raw: f,
+            };
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[SearchField] Erreur API Géoportail search:', err);
+    }
+
+    return this.osmFallback.search({ query: q });
+  }
+}
+
 export default function SearchField({ onAddressFound }) {
   const map = useMap();
 
   useEffect(() => {
     if (!map) return;
 
-    const provider = new OpenStreetMapProvider({
-      params: {
-        'accept-language': 'fr',
-        countrycodes: 'fr',
-      },
-    });
+    const provider = new GeoportailProvider();
 
     const searchControl = new GeoSearchControl({
       provider,
