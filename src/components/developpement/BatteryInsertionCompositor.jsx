@@ -180,7 +180,7 @@ export default function BatteryInsertionCompositor({
     if (isMove) {
       // DÉPLACEMENT FLUIDE (X / Y) SUR L'INTÉGRALITÉ DE L'IMAGE
       // Facteur d'échelle adapté à la profondeur Z et au champ de vision
-      const factor = 0.032 * (1 + (transform.posZ || 0) * 0.02);
+      const factor = 0.032 * Math.max(0.25, 1 + (transform.posZ || 0) * 0.02);
       setTransform(prev => ({
         ...prev,
         posX: prev.posX + dx * factor,
@@ -568,7 +568,7 @@ export default function BatteryInsertionCompositor({
                   <span className="text-purple-400 font-bold">{transform.posZ.toFixed(1)} m</span>
                 </div>
                 <input
-                  type="range" min="-25" max="35" step="0.5"
+                  type="range" min="-50" max="35" step="0.5"
                   value={transform.posZ}
                   onChange={e => setTransform(t => ({ ...t, posZ: parseFloat(e.target.value) }))}
                   className="w-full accent-purple-500 cursor-pointer"
