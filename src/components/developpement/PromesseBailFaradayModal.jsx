@@ -1334,7 +1334,7 @@ export default function PromesseBailFaradayModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 mb-1">
                   Fait à (Page 21 — laisser vide pour pointillés)
@@ -1359,19 +1359,198 @@ export default function PromesseBailFaradayModal({
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                  Mention sous « Pour le Bailleur » (Page 21)
-                </label>
-                <input
-                  type="text"
-                  value={formData.mentionSignataireBailleur || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, mentionSignataireBailleur: e.target.value }))
+            </div>
+
+            {/* Zone signature multi-signataires (Page 21) */}
+            <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Côté Bailleur */}
+              <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[11px] font-bold text-slate-700">
+                    Signataires sous « Pour le Bailleur » (Page 21)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const list =
+                        formData.bailleurType === 'societe'
+                          ? getRepresentantsList(formData.societe).map((r) =>
+                              [r.civilite || 'Monsieur', r.prenom, r.nom].filter(Boolean).join(' ').trim()
+                            )
+                          : (formData.signataires || []).map((s) =>
+                              s.nomCompletOrdre === 'prenom_nom'
+                                ? [s.civilite || 'Monsieur', s.prenom, s.nom].filter(Boolean).join(' ').trim()
+                                : [s.civilite || 'Monsieur', s.nom, s.prenom].filter(Boolean).join(' ').trim()
+                            );
+                      const cleaned = list.filter(Boolean);
+                      setFormData((prev) => ({
+                        ...prev,
+                        mentionsSignatairesBailleur: cleaned.length > 0 ? cleaned : [''],
+                        mentionSignataireBailleur: cleaned[0] || ''
+                      }));
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline shrink-0"
+                    title="Remplir automatiquement avec les signataires ou représentants légaux saisis en Page 1"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Reprendre Page 1
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  {(Array.isArray(formData.mentionsSignatairesBailleur) && formData.mentionsSignatairesBailleur.length > 0
+                    ? formData.mentionsSignatairesBailleur
+                    : [formData.mentionSignataireBailleur || '']
+                  ).map((mention, idx, arr) => (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={mention}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData((prev) => {
+                            const current =
+                              Array.isArray(prev.mentionsSignatairesBailleur) && prev.mentionsSignatairesBailleur.length > 0
+                                ? [...prev.mentionsSignatairesBailleur]
+                                : [prev.mentionSignataireBailleur || ''];
+                            current[idx] = val;
+                            return {
+                              ...prev,
+                              mentionsSignatairesBailleur: current,
+                              mentionSignataireBailleur: current[0] || ''
+                            };
+                          });
+                        }}
+                        placeholder={
+                          idx === 0
+                            ? 'Optionnel (ex: Madame Catherine DESCHASEAUX)'
+                            : `Signataire #${idx + 1} (ex: Madame Virginie HUGUENIN)`
+                        }
+                        className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                      />
+                      {(arr.length > 1 || mention) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => {
+                              const current =
+                                Array.isArray(prev.mentionsSignatairesBailleur) && prev.mentionsSignatairesBailleur.length > 0
+                                  ? [...prev.mentionsSignatairesBailleur]
+                                  : [prev.mentionSignataireBailleur || ''];
+                              const next = current.length > 1 ? current.filter((_, i) => i !== idx) : [''];
+                              return {
+                                ...prev,
+                                mentionsSignatairesBailleur: next,
+                                mentionSignataireBailleur: next[0] || ''
+                              };
+                            });
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Supprimer ce signataire"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => {
+                      const current =
+                        Array.isArray(prev.mentionsSignatairesBailleur) && prev.mentionsSignatairesBailleur.length > 0
+                          ? prev.mentionsSignatairesBailleur
+                          : [prev.mentionSignataireBailleur || ''];
+                      return {
+                        ...prev,
+                        mentionsSignatairesBailleur: [...current, '']
+                      };
+                    })
                   }
-                  placeholder="Optionnel (ex: Monsieur Philippe ROBY)"
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
-                />
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 hover:text-indigo-900 pt-0.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Ajouter un signataire Bailleur
+                </button>
+              </div>
+
+              {/* Côté Preneur */}
+              <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-2">
+                <label className="block text-[11px] font-bold text-slate-700">
+                  Signataires sous « Pour le Preneur » (Page 21)
+                </label>
+
+                <div className="space-y-1.5">
+                  {(Array.isArray(formData.mentionsSignatairesPreneur) && formData.mentionsSignatairesPreneur.length > 0
+                    ? formData.mentionsSignatairesPreneur
+                    : ['']
+                  ).map((mention, idx, arr) => (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={mention}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData((prev) => {
+                            const current =
+                              Array.isArray(prev.mentionsSignatairesPreneur) && prev.mentionsSignatairesPreneur.length > 0
+                                ? [...prev.mentionsSignatairesPreneur]
+                                : [''];
+                            current[idx] = val;
+                            return { ...prev, mentionsSignatairesPreneur: current };
+                          });
+                        }}
+                        placeholder={
+                          idx === 0
+                            ? 'Optionnel (ex: Monsieur Yann BARBERIS)'
+                            : `Signataire Preneur #${idx + 1}`
+                        }
+                        className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                      />
+                      {(arr.length > 1 || mention) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => {
+                              const current =
+                                Array.isArray(prev.mentionsSignatairesPreneur) && prev.mentionsSignatairesPreneur.length > 0
+                                  ? [...prev.mentionsSignatairesPreneur]
+                                  : [''];
+                              const next = current.length > 1 ? current.filter((_, i) => i !== idx) : [''];
+                              return { ...prev, mentionsSignatairesPreneur: next };
+                            });
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Supprimer ce signataire"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => {
+                      const current =
+                        Array.isArray(prev.mentionsSignatairesPreneur) && prev.mentionsSignatairesPreneur.length > 0
+                          ? prev.mentionsSignatairesPreneur
+                          : [''];
+                      return {
+                        ...prev,
+                        mentionsSignatairesPreneur: [...current, '']
+                      };
+                    })
+                  }
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 hover:text-indigo-900 pt-0.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Ajouter un signataire Preneur
+                </button>
               </div>
             </div>
 

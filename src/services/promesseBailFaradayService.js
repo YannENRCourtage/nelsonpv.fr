@@ -302,6 +302,14 @@ export function extractDefaultPromesseFaradayData(project = {}) {
     faitA: saved.faitA || '',
     faitLe: saved.faitLe || '',
     mentionSignataireBailleur: saved.mentionSignataireBailleur || '',
+    mentionsSignatairesBailleur:
+      Array.isArray(saved.mentionsSignatairesBailleur) && saved.mentionsSignatairesBailleur.length > 0
+        ? saved.mentionsSignatairesBailleur
+        : (saved.mentionSignataireBailleur ? [saved.mentionSignataireBailleur] : ['']),
+    mentionsSignatairesPreneur:
+      Array.isArray(saved.mentionsSignatairesPreneur) && saved.mentionsSignatairesPreneur.length > 0
+        ? saved.mentionsSignatairesPreneur
+        : [''],
     planImageUrl: saved.planImageUrl || (availableCaptures[0]?.url || ''),
     stampCartoucheSurface: false,
     cartoucheAltitude: saved.cartoucheAltitude || '125.0 m',
@@ -877,11 +885,41 @@ export async function generatePromesseBailFaradayDocx(formData, options = {}) {
     docXml = docXml.replace(/<w:p w14:paraId="3D3EB8C5"[\s\S]*?<\/w:p>/, faitParaXml);
   }
 
-  if (formData.mentionSignataireBailleur && formData.mentionSignataireBailleur.trim()) {
-    const sigMentionXml =
-      `<w:p w14:paraId="5071C2E0" w14:textId="68B306AF"><w:pPr><w:jc w:val="center"/></w:pPr>` +
-      `<w:r><w:t xml:space="preserve">${escapeXml(formData.mentionSignataireBailleur.trim())}</w:t></w:r></w:p>`;
-    docXml = docXml.replace(/<w:p w14:paraId="5071C2E0"[\s\S]*?<\/w:p>/, sigMentionXml);
+  const buildSignatureMentionsXml = (mentions) =>
+    mentions
+      .map(
+        (m) =>
+          `<w:p><w:pPr><w:spacing w:before="140" w:after="420"/><w:jc w:val="center"/><w:rPr><w:rFonts w:eastAsia="Calibri" w:cstheme="minorHAnsi"/></w:rPr></w:pPr>` +
+          `<w:r><w:rPr><w:rFonts w:eastAsia="Calibri" w:cstheme="minorHAnsi"/></w:rPr><w:t xml:space="preserve">${escapeXml(m)}</w:t></w:r></w:p>`
+      )
+      .join('');
+
+  const bailleurMentions = (
+    Array.isArray(formData.mentionsSignatairesBailleur) && formData.mentionsSignatairesBailleur.length > 0
+      ? formData.mentionsSignatairesBailleur
+      : (formData.mentionSignataireBailleur ? [formData.mentionSignataireBailleur] : [])
+  )
+    .map((m) => (m || '').trim())
+    .filter(Boolean);
+
+  if (bailleurMentions.length > 0) {
+    docXml = docXml.replace(
+      /<w:p w14:paraId="5071C2E0"[\s\S]*?<\/w:p>/,
+      buildSignatureMentionsXml(bailleurMentions)
+    );
+  }
+
+  const preneurMentions = (
+    Array.isArray(formData.mentionsSignatairesPreneur) ? formData.mentionsSignatairesPreneur : []
+  )
+    .map((m) => (m || '').trim())
+    .filter(Boolean);
+
+  if (preneurMentions.length > 0) {
+    docXml = docXml.replace(
+      /<w:p w14:paraId="42FA79AB"[\s\S]*?<\/w:p>[\s\S]*?<w:p w14:paraId="1E1A7628"[\s\S]*?<\/w:p>/,
+      buildSignatureMentionsXml(preneurMentions)
+    );
   }
 
   // 8. Injection de l'image du plan d'implantation centrée en Annexe 2 (Page 23) sans ajout du cadre flottant
