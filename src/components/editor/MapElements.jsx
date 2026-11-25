@@ -6023,7 +6023,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
   return (
     <div 
       ref={containerRef}
-      className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg border border-gray-200 text-xs min-w-[230px] max-w-[330px] z-[1000]"
+      className="bg-white/90 backdrop-blur-sm p-2.5 rounded-lg shadow-lg border border-gray-200 text-xs w-max min-w-[290px] max-w-[420px] z-[1000]"
     >
       <div className="flex justify-between items-center mb-1">
         <span className="font-bold text-blue-600 cursor-pointer hover:bg-blue-50 p-1 rounded transition-colors flex items-center gap-1" onClick={copyCoords} title="Copier les coordonnées">
@@ -6048,7 +6048,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
         <Copy size={12} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
       </div>
 
-      <div className="flex justify-between items-center border-t pt-1 text-gray-600 gap-2">
+      <div className="flex flex-wrap justify-between items-center border-t pt-1 text-gray-600 gap-x-3 gap-y-1">
         <span className="flex items-center gap-1 shrink-0" title="Altitude">⛰️ {info.alt}</span>
         <div className="flex items-center gap-2 ml-auto">
           {(() => {
