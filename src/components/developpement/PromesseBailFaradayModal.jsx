@@ -297,6 +297,100 @@ export default function PromesseBailFaradayModal({
     }));
   };
 
+  // Gestion des représentants légaux de la société
+  const getRepresentantsList = (soc = {}) => (
+    Array.isArray(soc.representants) && soc.representants.length > 0
+      ? soc.representants
+      : [{
+          civilite: soc.repCivilite || 'Monsieur',
+          prenom: soc.repPrenom || '',
+          nom: soc.repNom || '',
+          adresse: soc.repAdresse || '',
+          lieuNaissance: soc.repLieuNaissance || '',
+          dateNaissance: soc.repDateNaissance || '',
+          nationalite: soc.repNationalite || 'française'
+        }]
+  );
+
+  const updateRepresentant = (index, field, value) => {
+    setFormData((prev) => {
+      const soc = prev.societe || {};
+      const list = [...getRepresentantsList(soc)];
+      const current = list[index] || {};
+      const next = { ...current, [field]: value };
+      if (field === 'civilite') {
+        next.civiliteManual = true;
+      } else if (field === 'prenom' && !current.civiliteManual && value.trim()) {
+        next.civilite = guessCiviliteFromFirstName(value);
+      }
+      list[index] = next;
+      const first = list[0] || {};
+      return {
+        ...prev,
+        societe: {
+          ...soc,
+          representants: list,
+          repCivilite: first.civilite || 'Monsieur',
+          repPrenom: first.prenom || '',
+          repNom: first.nom || '',
+          repAdresse: first.adresse || '',
+          repLieuNaissance: first.lieuNaissance || '',
+          repDateNaissance: first.dateNaissance || '',
+          repNationalite: first.nationalite || 'française'
+        }
+      };
+    });
+  };
+
+  const addRepresentant = () => {
+    setFormData((prev) => {
+      const soc = prev.societe || {};
+      const currentList = getRepresentantsList(soc);
+      return {
+        ...prev,
+        societe: {
+          ...soc,
+          representants: [
+            ...currentList,
+            {
+              civilite: 'Monsieur',
+              prenom: '',
+              nom: '',
+              adresse: soc.siegeSocial || currentList[0]?.adresse || '',
+              lieuNaissance: '',
+              dateNaissance: '',
+              nationalite: 'française'
+            }
+          ]
+        }
+      };
+    });
+  };
+
+  const removeRepresentant = (index) => {
+    setFormData((prev) => {
+      const soc = prev.societe || {};
+      const list = getRepresentantsList(soc);
+      if (list.length <= 1) return prev;
+      const nextList = list.filter((_, idx) => idx !== index);
+      const first = nextList[0] || {};
+      return {
+        ...prev,
+        societe: {
+          ...soc,
+          representants: nextList,
+          repCivilite: first.civilite || 'Monsieur',
+          repPrenom: first.prenom || '',
+          repNom: first.nom || '',
+          repAdresse: first.adresse || '',
+          repLieuNaissance: first.lieuNaissance || '',
+          repDateNaissance: first.dateNaissance || '',
+          repNationalite: first.nationalite || 'française'
+        }
+      };
+    });
+  };
+
   // Gestion des parcelles (Article 4)
   const updateParcelle = (index, field, value) => {
     setFormData((prev) => {
@@ -776,91 +870,125 @@ export default function PromesseBailFaradayModal({
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-200">
-                  <span className="block text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2.5">
-                    Représentant légal de la société
+                <div className="pt-3 border-t border-slate-200 space-y-3">
+                  <span className="block text-xs font-bold text-indigo-700 uppercase tracking-wider">
+                    Représentant(s) légal(aux) de la société
                   </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Civilité</label>
-                      <select
-                        value={formData.societe?.repCivilite || 'Monsieur'}
-                        onChange={(e) => updateSociete('repCivilite', e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                      >
-                        <option value="Monsieur">Monsieur</option>
-                        <option value="Madame">Madame</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Prénom</label>
-                      <input
-                        type="text"
-                        value={formData.societe?.repPrenom || ''}
-                        onChange={(e) => updateSociete('repPrenom', e.target.value)}
-                        placeholder="Ex: Philippe"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Nom</label>
-                      <input
-                        type="text"
-                        value={formData.societe?.repNom || ''}
-                        onChange={(e) => updateSociete('repNom', e.target.value)}
-                        placeholder="Ex: ROBY"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Nationalité</label>
-                      <input
-                        type="text"
-                        value={formData.societe?.repNationalite || 'française'}
-                        onChange={(e) => updateSociete('repNationalite', e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                        Adresse du représentant
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.societe?.repAdresse || ''}
-                        onChange={(e) => updateSociete('repAdresse', e.target.value)}
-                        placeholder="Ex: 525 Route de L'Etang 24340 MAREUIL EN PERIGORD"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
+                  {getRepresentantsList(formData.societe).map((rep, idx, arr) => (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-xl bg-white border border-slate-200 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">
+                          {idx === 0
+                            ? 'Représentant légal principal'
+                            : `Co-représentant légal #${idx + 1} (précédé de « Et par »)`}
+                        </span>
+                        {arr.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeRepresentant(idx)}
+                            className="text-xs text-red-600 hover:text-red-800 font-semibold flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Supprimer
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Civilité</label>
+                          <select
+                            value={rep.civilite || 'Monsieur'}
+                            onChange={(e) => updateRepresentant(idx, 'civilite', e.target.value)}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                          >
+                            <option value="Monsieur">Monsieur</option>
+                            <option value="Madame">Madame</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Prénom</label>
+                          <input
+                            type="text"
+                            value={rep.prenom || ''}
+                            onChange={(e) => updateRepresentant(idx, 'prenom', e.target.value)}
+                            placeholder="Ex: Philippe"
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Nom</label>
+                          <input
+                            type="text"
+                            value={rep.nom || ''}
+                            onChange={(e) => updateRepresentant(idx, 'nom', e.target.value)}
+                            placeholder="Ex: ROBY"
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Nationalité</label>
+                          <input
+                            type="text"
+                            value={rep.nationalite || 'française'}
+                            onChange={(e) => updateRepresentant(idx, 'nationalite', e.target.value)}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Adresse du représentant
+                          </label>
+                          <input
+                            type="text"
+                            value={rep.adresse || ''}
+                            onChange={(e) => updateRepresentant(idx, 'adresse', e.target.value)}
+                            placeholder="Ex: 525 Route de L'Etang 24340 MAREUIL EN PERIGORD"
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Né(e) à (Lieu de naissance)
+                          </label>
+                          <input
+                            type="text"
+                            value={rep.lieuNaissance || ''}
+                            onChange={(e) => updateRepresentant(idx, 'lieuNaissance', e.target.value)}
+                            placeholder="Ex: PERIGUEUX (24000)"
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Le (Date de naissance)
+                          </label>
+                          <input
+                            type="text"
+                            value={rep.dateNaissance || ''}
+                            onChange={(e) => updateRepresentant(idx, 'dateNaissance', e.target.value)}
+                            placeholder="Ex: 11/10/1964"
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                        Né(e) à (Lieu de naissance)
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.societe?.repLieuNaissance || ''}
-                        onChange={(e) => updateSociete('repLieuNaissance', e.target.value)}
-                        placeholder="Ex: PERIGUEUX (24000)"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                        Le (Date de naissance)
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.societe?.repDateNaissance || ''}
-                        onChange={(e) => updateSociete('repDateNaissance', e.target.value)}
-                        placeholder="Ex: 11/10/1964"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                  </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addRepresentant}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Ajouter un représentant légal
+                  </button>
                 </div>
               </div>
             )}

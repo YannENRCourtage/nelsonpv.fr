@@ -236,19 +236,33 @@ export function extractDefaultPromesseFaradayData(project = {}) {
       ];
 
   // Données société
+  const fallbackRep = {
+    civilite: saved.societe?.repCivilite || guessedCiv,
+    prenom: saved.societe?.repPrenom || rawFirstName || '',
+    nom: saved.societe?.repNom || (!companyRegex.test(rawName) ? rawName.replace(/\s+\d+$/, '') : '') || '',
+    adresse: saved.societe?.repAdresse || fullBailleurAddress,
+    lieuNaissance: saved.societe?.repLieuNaissance || '',
+    dateNaissance: saved.societe?.repDateNaissance || '',
+    nationalite: saved.societe?.repNationalite || 'française'
+  };
+  const defaultRepresentants = Array.isArray(saved.societe?.representants) && saved.societe.representants.length > 0
+    ? saved.societe.representants
+    : [fallbackRep];
+
   const defaultSociete = {
     denomination: saved.societe?.denomination || rawCompany || rawName || '',
     capital: saved.societe?.capital || '',
     rcsVille: saved.societe?.rcsVille || rawCity || '',
     siren: saved.societe?.siren || project?.siren || '',
     siegeSocial: saved.societe?.siegeSocial || fullBailleurAddress,
-    repCivilite: saved.societe?.repCivilite || guessedCiv,
-    repPrenom: saved.societe?.repPrenom || rawFirstName || '',
-    repNom: saved.societe?.repNom || (!companyRegex.test(rawName) ? rawName.replace(/\s+\d+$/, '') : '') || '',
-    repAdresse: saved.societe?.repAdresse || fullBailleurAddress,
-    repLieuNaissance: saved.societe?.repLieuNaissance || '',
-    repDateNaissance: saved.societe?.repDateNaissance || '',
-    repNationalite: saved.societe?.repNationalite || 'française'
+    representants: defaultRepresentants,
+    repCivilite: defaultRepresentants[0]?.civilite || guessedCiv,
+    repPrenom: defaultRepresentants[0]?.prenom || '',
+    repNom: defaultRepresentants[0]?.nom || '',
+    repAdresse: defaultRepresentants[0]?.adresse || fullBailleurAddress,
+    repLieuNaissance: defaultRepresentants[0]?.lieuNaissance || '',
+    repDateNaissance: defaultRepresentants[0]?.dateNaissance || '',
+    repNationalite: defaultRepresentants[0]?.nationalite || 'française'
   };
 
   // Capture carte pour Annexe 2
@@ -621,26 +635,43 @@ function buildPromettantBlockXml(formData) {
       paras.push(buildBailleurParagraphXml(`Dont le siège social est situé ${soc.siegeSocial}`));
     }
 
-    const repCiv = soc.repCivilite || 'Monsieur';
-    const repFullName = [repCiv, soc.repPrenom, soc.repNom].filter(Boolean).join(' ').trim();
-    if (repFullName) {
-      paras.push(buildBailleurParagraphXml(`Représentée par ${repFullName}`));
-    }
-    if (soc.repAdresse) {
-      const addrLine = /^adresse\b/i.test(soc.repAdresse.trim())
-        ? soc.repAdresse.trim()
-        : `Adresse ${soc.repAdresse.trim()}`;
-      paras.push(buildBailleurParagraphXml(addrLine));
-    }
-    if (soc.repLieuNaissance || soc.repDateNaissance) {
-      const neLabel = repCiv === 'Madame' ? 'Née' : 'Né';
-      paras.push(
-        buildBailleurParagraphXml(
-          `${neLabel} à ${soc.repLieuNaissance || '....................'} le ${soc.repDateNaissance || '..../..../........'}`
-        )
-      );
-    }
-    paras.push(buildBailleurParagraphXml(`De nationalité ${soc.repNationalite || 'française'},`));
+    const representants = Array.isArray(soc.representants) && soc.representants.length > 0
+      ? soc.representants
+      : [{
+          civilite: soc.repCivilite || 'Monsieur',
+          prenom: soc.repPrenom || '',
+          nom: soc.repNom || '',
+          adresse: soc.repAdresse || '',
+          lieuNaissance: soc.repLieuNaissance || '',
+          dateNaissance: soc.repDateNaissance || '',
+          nationalite: soc.repNationalite || 'française'
+        }];
+
+    representants.forEach((rep, idx) => {
+      const repCiv = rep.civilite || 'Monsieur';
+      const repFullName = [repCiv, rep.prenom, rep.nom].filter(Boolean).join(' ').trim();
+      if (repFullName) {
+        const repPrefix = idx === 0 ? 'Représentée par' : 'Et par';
+        paras.push(buildBailleurParagraphXml(`${repPrefix} ${repFullName}`));
+      } else if (idx > 0) {
+        paras.push(buildBailleurParagraphXml(`Et par ${repCiv} ....................`));
+      }
+      if (rep.adresse && rep.adresse.trim()) {
+        const addrLine = /^adresse\b/i.test(rep.adresse.trim())
+          ? rep.adresse.trim()
+          : `Adresse ${rep.adresse.trim()}`;
+        paras.push(buildBailleurParagraphXml(addrLine));
+      }
+      if (rep.lieuNaissance || rep.dateNaissance) {
+        const neLabel = repCiv === 'Madame' ? 'Née' : 'Né';
+        paras.push(
+          buildBailleurParagraphXml(
+            `${neLabel} à ${rep.lieuNaissance || '....................'} le ${rep.dateNaissance || '..../..../........'}`
+          )
+        );
+      }
+      paras.push(buildBailleurParagraphXml(`De nationalité ${(rep.nationalite || 'française').trim()},`));
+    });
   } else {
     const signataires = Array.isArray(formData.signataires) && formData.signataires.length > 0
       ? formData.signataires
@@ -925,7 +956,7 @@ export async function generatePromesseBailFaradayDocx(formData, options = {}) {
 
   // Nommage du fichier selon la convention : PROMESSE DE BAIL [NOM] [CP] [VILLE].docx
   const mainName = formData.bailleurType === 'societe'
-    ? (formData.societe?.repNom || formData.societe?.denomination || 'CLIENT')
+    ? (formData.societe?.representants?.[0]?.nom || formData.societe?.repNom || formData.societe?.denomination || 'CLIENT')
     : (formData.signataires?.[0]?.nom || 'CLIENT');
   const cleanFileParts = [
     'PROMESSE DE BAIL',
