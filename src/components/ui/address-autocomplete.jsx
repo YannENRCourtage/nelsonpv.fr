@@ -2,6 +2,71 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Input } from './input';
 import { Search, MapPin, Loader2 } from 'lucide-react';
 
+async function fetchGeoportailCompletionFeatures(rawQuery, signal) {
+  const q = (rawQuery || '').trim();
+  if (q.length < 2) return [];
+
+  try {
+    const url = `https://data.geopf.fr/geocodage/completion/?text=${encodeURIComponent(
+      q
+    )}&type=StreetAddress,PositionOfInterest&maximumResponses=8`;
+    const res = await fetch(url, { signal });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data?.results) && data.results.length > 0) {
+        return data.results
+          .filter((item) => Number.isFinite(Number(item.x)) && Number.isFinite(Number(item.y)))
+          .map((item, idx) => {
+            const x = Number(item.x);
+            const y = Number(item.y);
+            const fulltext =
+              item.fulltext ||
+              [item.street, item.zipcode, item.city].filter(Boolean).join(', ');
+            const streetPart =
+              item.street || (fulltext.split(',')[0] || '').trim();
+            return {
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: [x, y],
+              },
+              properties: {
+                id: `${item.zipcode || ''}_${x}_${y}_${idx}`,
+                label: fulltext,
+                name: streetPart || fulltext,
+                street: streetPart,
+                postcode: item.zipcode || '',
+                city: item.city || '',
+              },
+            };
+          });
+      }
+    }
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    console.warn('[AddressAutocomplete] Erreur API Géoportail completion:', err);
+  }
+
+  // Fallback geocodage search
+  try {
+    const res = await fetch(
+      `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q)}&limit=6`,
+      { signal }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data?.features)) {
+        return data.features;
+      }
+    }
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    console.warn('[AddressAutocomplete] Erreur API Géoportail search:', err);
+  }
+
+  return [];
+}
+
 export function AddressAutocomplete({ value, onChange, onSelect, className, placeholder }) {
   const [query, setQuery] = useState(value || '');
   const [suggestions, setSuggestions] = useState([]);
@@ -13,10 +78,11 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
 
   // Sync internal query with external value (pas de recherche automatique si mise à jour externe)
   useEffect(() => {
-    isUserTypingRef.current = false;
-    setQuery(value || '');
-    setSuggestions([]);
-    setIsOpen(false);
+    if (!isUserTypingRef.current) {
+      setQuery(value || '');
+      setSuggestions([]);
+      setIsOpen(false);
+    }
   }, [value]);
 
   // Click outside to close
@@ -30,38 +96,40 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Search logic with debounce : uniquement si l'utilisateur saisit un nouveau caractère
+  // Search logic with debounce : propositions Géoportail en direct pendant la saisie
   useEffect(() => {
     if (!isUserTypingRef.current || isSelectedRef.current) {
       return;
     }
 
-    // Only search if query is long enough
-    if (!query || query.length < 3) {
+    if (!query || query.trim().length < 2) {
       setSuggestions([]);
       setIsOpen(false);
       return;
     }
 
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`);
-        const data = await res.json();
+        const features = await fetchGeoportailCompletionFeatures(query, controller.signal);
         if (isUserTypingRef.current && !isSelectedRef.current) {
-          setSuggestions(data.features || []);
-          if (data.features?.length > 0) {
-            setIsOpen(true);
-          }
+          setSuggestions(features);
+          setIsOpen(features.length > 0);
         }
       } catch (err) {
-        console.error("Address search error:", err);
+        if (err?.name !== 'AbortError') {
+          console.error('Address search error:', err);
+        }
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, 150);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
   const handleSelect = (feature) => {
@@ -100,6 +168,11 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
             setQuery(e.target.value);
             onChange?.(e);
           }}
+          onFocus={() => {
+            if (suggestions.length > 0) {
+              setIsOpen(true);
+            }
+          }}
           className={className}
           placeholder={placeholder}
         />
@@ -109,20 +182,29 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
       </div>
 
       {isOpen && suggestions.length > 0 && (
-        <div className="absolute z-[1001] w-full mt-1 bg-white border rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          {suggestions.map((feat) => (
+        <div className="absolute z-[1001] w-full mt-1 bg-white border rounded-lg shadow-xl max-h-72 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          {suggestions.map((feat, idx) => (
             <button
-              key={feat.properties.id}
+              key={feat.properties?.id || idx}
               type="button"
-              className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors flex items-start gap-3 border-b last:border-b-0"
-              onClick={() => handleSelect(feat)}
+              className="w-full text-left px-3.5 py-2.5 hover:bg-blue-50 transition-colors flex items-start gap-2.5 border-b last:border-b-0"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(feat);
+              }}
             >
-              <div className="mt-1 text-blue-500 shrink-0">
-                <MapPin size={16} />
+              <div className="mt-0.5 text-blue-500 shrink-0">
+                <MapPin size={15} />
               </div>
               <div className="overflow-hidden">
-                <div className="font-semibold text-sm text-gray-900 truncate">{feat.properties.name}</div>
-                <div className="text-xs text-gray-500 truncate">{feat.properties.postcode} {feat.properties.city}</div>
+                <div className="font-semibold text-xs text-gray-900 truncate">
+                  {feat.properties?.label || feat.properties?.name}
+                </div>
+                {(feat.properties?.postcode || feat.properties?.city) && (
+                  <div className="text-[11px] text-gray-500 truncate">
+                    {feat.properties?.postcode} {feat.properties?.city}
+                  </div>
+                )}
               </div>
             </button>
           ))}
