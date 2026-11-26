@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Sun,
   Layers,
@@ -183,10 +183,12 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
     };
   }, [allPvSites, debtDuration, debtRate]);
 
-  // Propagation au parent
+  // Propagation au parent (sans boucle infinie sur la référence de callback)
+  const onDataChangeRef = useRef(onDataChange);
+  onDataChangeRef.current = onDataChange;
   useEffect(() => {
-    if (onDataChange) {
-      onDataChange({
+    if (onDataChangeRef.current) {
+      onDataChangeRef.current({
         portfolioName: selectedPortfolio,
         debtDuration,
         debtRate,
@@ -195,7 +197,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
         consolidatedChronique
       });
     }
-  }, [selectedPortfolio, debtDuration, debtRate, analyzedSites, consolidatedTotals, consolidatedChronique, onDataChange]);
+  }, [selectedPortfolio, debtDuration, debtRate, analyzedSites, consolidatedTotals, consolidatedChronique]);
 
   // Filtrage des sites
   const filteredSites = useMemo(() => {

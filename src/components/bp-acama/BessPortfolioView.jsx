@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Layers,
   ChevronDown,
@@ -52,7 +52,11 @@ export default function BessPortfolioView({
   onSelectPortfolio
 }) {
   const { bessPortfolios, canManagePortfolios } = usePortfolios();
-  const [selectedPortfolio, setSelectedPortfolio] = useState(externalPortfolio || initialPortfolio || 'VOLTA');
+  const [internalPortfolio, setInternalPortfolio] = useState(externalPortfolio || initialPortfolio || 'VOLTA');
+  // Source de vérité synchrone sans décalage d'un cycle de rendu entre la barre supérieure et la vue portefeuille
+  const selectedPortfolio = externalPortfolio || internalPortfolio || 'VOLTA';
+  const onDataChangeRef = useRef(onDataChange);
+  onDataChangeRef.current = onDataChange;
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isLenderModalOpen, setIsLenderModalOpen] = useState(false);
   const [selectedSpv, setSelectedSpv] = useState('ALL');
@@ -104,13 +108,13 @@ export default function BessPortfolioView({
 
   // Synchronisation avec le portefeuille sélectionné dans la barre supérieure parente
   useEffect(() => {
-    if (externalPortfolio && externalPortfolio !== selectedPortfolio) {
-      setSelectedPortfolio(externalPortfolio);
+    if (externalPortfolio && externalPortfolio !== internalPortfolio) {
+      setInternalPortfolio(externalPortfolio);
     }
-  }, [externalPortfolio]);
+  }, [externalPortfolio, internalPortfolio]);
 
   const handlePortfolioSelect = (portName) => {
-    setSelectedPortfolio(portName);
+    setInternalPortfolio(portName);
     if (onSelectPortfolio) {
       onSelectPortfolio(portName);
     }
@@ -440,10 +444,10 @@ export default function BessPortfolioView({
     };
   }, [portfolioModel, nbSites, unitPowerKw, unitCapacityKwh]);
 
-  // Propagation des données mises à jour au parent (BpAcama.jsx)
+  // Propagation des données mises à jour au parent (BpAcama.jsx) sans boucle de re-render sur la référence callback
   useEffect(() => {
-    if (onDataChange) {
-      onDataChange({
+    if (onDataChangeRef.current) {
+      onDataChangeRef.current({
         debtDuration: inputs.loanDurationYears,
         debtRate: Number(inputs.nominalRatePct || 4.10) + Number(inputs.insuranceRatePct || 0.20),
         fraisCommerciaux: inputs.fraisCommerciaux,
@@ -461,7 +465,7 @@ export default function BessPortfolioView({
         selectedPortfolio
       });
     }
-  }, [inputs, portfolioModel, portfolioStress, analyzedSites, consolidatedTotals, consolidatedChronique, selectedPortfolio, onDataChange]);
+  }, [inputs, portfolioModel, portfolioStress, analyzedSites, consolidatedTotals, consolidatedChronique, selectedPortfolio]);
 
   // Filtrage des sites dans le tableau d'inventaire
   const filteredSites = useMemo(() => {

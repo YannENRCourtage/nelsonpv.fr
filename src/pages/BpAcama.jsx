@@ -1696,9 +1696,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           }}
           onDataChange={(data) => {
             setPortfolioExportData(data);
-            if (data?.selectedPortfolio && data.selectedPortfolio !== selectedBessPortfolio) {
-              setSelectedBessPortfolio(data.selectedPortfolio);
-            }
           }}
         />
       ) : (
