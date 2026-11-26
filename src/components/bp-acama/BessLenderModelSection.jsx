@@ -11,6 +11,8 @@ import {
   computeBessLenderModel,
   computeBessStressTests
 } from '../../services/bessLenderFinanceEngine.js';
+import { computeBessFinancials } from '../../services/bessSimulationEngine.js';
+import { resolveProjectPortfolio, getProjectBessPortfolio, normalizePortfolioName } from '../../data/bessPortfolioData.js';
 import { generateBpAcamaPDF } from './BpAcamaPDFGenerator.jsx';
 
 function fmtEur(val) {
@@ -88,6 +90,41 @@ export default function BessLenderModelSection({
       setInputs({ ...BESS_PRESETS[defaultPresetKey] });
     }
   }, [defaultPresetKey]);
+
+  const projectPortfolio = useMemo(() => {
+    if (!project) return null;
+    return resolveProjectPortfolio(project) || normalizePortfolioName(getProjectBessPortfolio(project)) || null;
+  }, [project]);
+
+  // Synchronisation automatique des paramètres financiers (CAPEX raccordement, TURPE zone CRE, Loyer Faraday 2000€ vs Volta/Edison 3000€) lors de la sélection d'un projet CRM
+  useEffect(() => {
+    if (!project || (!project.id && !project.name)) return;
+    try {
+      const basePreset = BESS_PRESETS[presetKey] || BESS_PRESETS['0.50'];
+      const scale = (basePreset.powerMw || 0.5) / 0.5;
+      const fin = computeBessFinancials(project, {
+        loyerDalle: project.rent || (projectPortfolio === 'FARADAY' ? 2000 : 3000)
+      });
+      const loyerSite = Math.round((fin.loyerDalle || (projectPortfolio === 'FARADAY' ? 2000 : 3000)) * scale);
+      const capexSite = Math.round((fin.capexTotal || basePreset.capex) * scale);
+      const revSite = Math.round((fin.caAnnuel || basePreset.rev1) * scale);
+      const opexTechSite = Math.round(((fin.turpeAnnuel || 8317) + (fin.rows?.[0]?.coutRechargeAn || 3118) + (fin.rows?.[0]?.maint || 4000)) * scale);
+
+      setInputs(prev => ({
+        ...prev,
+        capex: capexSite,
+        capexTotal: capexSite,
+        rev1: revSite,
+        revenuAn1: revSite,
+        opex1: opexTechSite,
+        opexAn1: opexTechSite,
+        loyer1: loyerSite,
+        loyerAn1: loyerSite
+      }));
+    } catch (err) {
+      console.warn('[BessLenderModelSection] Sync project financials error:', err);
+    }
+  }, [project?.id, project?.name, project?.substation?.distanceKm, projectPortfolio, presetKey]);
 
   // Calcul du modèle financier prêteur
   const model = useMemo(() => {
@@ -305,6 +342,17 @@ export default function BessLenderModelSection({
                 <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200">
                   Palier {inputs.powerMw ?? currentPreset.powerMw ?? presetKey} MW • {inputs.capacityMwh ?? currentPreset.capacityMwh ?? (Number(presetKey) * 2).toFixed(2)} MWh
                 </span>
+                {projectPortfolio && (
+                  <span className={cn(
+                    "text-xs px-2.5 py-0.5 rounded-full font-black uppercase border",
+                    projectPortfolio === 'VOLTA' ? "bg-blue-100 text-blue-800 border-blue-200" :
+                    projectPortfolio === 'FARADAY' ? "bg-emerald-100 text-emerald-800 border-emerald-200" :
+                    projectPortfolio === 'EDISON' ? "bg-indigo-100 text-indigo-800 border-indigo-200" :
+                    "bg-slate-100 text-slate-800 border-slate-200"
+                  )}>
+                    Portefeuille {projectPortfolio}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 Modèle BESS Stand-Alone 12 ans • Amortissement sculpté 10 ans • Ratios bancaires & fiscalité LF 2024

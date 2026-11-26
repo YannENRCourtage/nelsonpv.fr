@@ -34,8 +34,9 @@ import {
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import BatteryStationVisualizer from '../developpement/BatteryStationVisualizer.jsx';
-import { BESS_PORTFOLIO_SITES, getBessPortfolioSites } from '../../data/bessPortfolioData.js';
+import { BESS_PORTFOLIO_SITES, getBessPortfolioSites, normalizePortfolioName } from '../../data/bessPortfolioData.js';
 import { calculatePmt, computeBessFinancials } from '../../services/bessSimulationEngine.js';
+import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
 import BessProjectSingleSheet from './BessProjectSingleSheet.jsx';
 import BessDailyCycleVisualizer from './BessDailyCycleVisualizer.jsx';
 
@@ -55,9 +56,14 @@ function MapBoundsUpdater({ bounds }) {
 }
 
 // Helper pour le calcul dynamique des métriques et du Payback réel de chaque site du répertoire
-const computeDynamicSiteMetrics = (site, fc = 2500) => {
+const computeDynamicSiteMetrics = (site, fc = 2500, options = {}) => {
   const customFc = fc !== undefined ? fc : (site?.fraisCommerciaux !== undefined ? site.fraisCommerciaux : 2500);
-  const fin = computeBessFinancials(site, { fraisCommerciaux: customFc });
+  const fin = computeBessFinancials(site, {
+    fraisCommerciaux: customFc,
+    ...(options.loyerDalle !== undefined ? { loyerDalle: options.loyerDalle } : {}),
+    ...(options.debtDuration !== undefined ? { debtDuration: options.debtDuration } : {}),
+    ...(options.debtRate !== undefined ? { debtRate: options.debtRate } : {})
+  });
   return {
     capexTotal: fin.capexTotal,
     ebitdaAn1: fin.ebitdaAn1,
@@ -179,10 +185,35 @@ export default function BessDossierPDFGenerator({
   portfolioData = null,
   projects = []
 }) {
+  const { bessPortfolios } = usePortfolios();
   const [activeMode, setActiveMode] = useState(initialMode || 'portfolio');
+  const [activePortfolio, setActivePortfolio] = useState(() => portfolioData?.selectedPortfolio || 'VOLTA');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressStep, setProgressStep] = useState('');
   const [activePageIndex, setActivePageIndex] = useState(0);
+
+  // Liste garantie des portefeuilles BESS (VOLTA, FARADAY, EDISON + portefeuilles personnalisés)
+  const effectiveBessPortfolios = useMemo(() => {
+    const list = Array.isArray(bessPortfolios) ? [...bessPortfolios] : [];
+    const defaults = [
+      { id: 'bess-volta', name: 'VOLTA', type: 'BESS' },
+      { id: 'bess-faraday', name: 'FARADAY', type: 'BESS' },
+      { id: 'bess-edison', name: 'EDISON', type: 'BESS' }
+    ];
+    defaults.forEach(def => {
+      if (!list.some(p => normalizePortfolioName(p.name) === def.name)) {
+        list.push(def);
+      }
+    });
+    return list;
+  }, [bessPortfolios]);
+
+  // Synchronisation du portefeuille actif avec portfolioData lors de l'ouverture
+  useEffect(() => {
+    if (portfolioData?.selectedPortfolio) {
+      setActivePortfolio(portfolioData.selectedPortfolio);
+    }
+  }, [portfolioData?.selectedPortfolio, isOpen]);
 
   // Frais commerciaux configurables pour l'étude (Standard : 5 000 €/MW = 2 500 € pour 500 kW)
   const [fraisCommerciaux, setFraisCommerciaux] = useState(() => {
@@ -197,16 +228,38 @@ export default function BessDossierPDFGenerator({
     }
   }, [portfolioData?.fraisCommerciaux, batteryConfig?.fraisCommerciaux]);
 
-  // Base de données consolidée des sites BESS (hydratée depuis portfolioData ou getBessPortfolioSites)
+  // Paramètres de dette senior et loyer bailleur dynamiques
+  const debtDuration = portfolioData?.debtDuration ?? 12;
+  const debtRate = portfolioData?.debtRate ?? 4.30;
+  const activeLoyerBailleur = useMemo(() => {
+    const normActive = normalizePortfolioName(activePortfolio);
+    const normPassed = normalizePortfolioName(portfolioData?.selectedPortfolio);
+    if (normActive === normPassed && portfolioData?.loyerBailleur !== undefined) {
+      return Number(portfolioData.loyerBailleur);
+    }
+    return normActive === 'FARADAY' ? 2000 : 3000;
+  }, [activePortfolio, portfolioData?.selectedPortfolio, portfolioData?.loyerBailleur]);
+
+  // Tous les sites BESS pour les compteurs par portefeuille
+  const allPortfolioSites = useMemo(() => {
+    return getBessPortfolioSites(projects, 'ALL');
+  }, [projects]);
+
+  // Base de données consolidée des sites BESS (hydratée selon le portefeuille sélectionné VOLTA / FARADAY / EDISON / ALL)
   const allAvailableSites = useMemo(() => {
-    const targetPort = portfolioData?.selectedPortfolio || 'ALL';
-    const rawSites = (portfolioData?.analyzedSites && portfolioData.analyzedSites.length > 0)
+    const targetPort = activePortfolio || portfolioData?.selectedPortfolio || 'VOLTA';
+    const isSameAsPassed = normalizePortfolioName(targetPort) === normalizePortfolioName(portfolioData?.selectedPortfolio);
+    const rawSites = (isSameAsPassed && portfolioData?.analyzedSites && portfolioData.analyzedSites.length > 0)
       ? portfolioData.analyzedSites
       : getBessPortfolioSites(projects, targetPort);
 
     if (!rawSites || rawSites.length === 0) {
       return RAW_SITES_DATABASE.map((s, idx) => {
-        const m = computeDynamicSiteMetrics(s, fraisCommerciaux);
+        const m = computeDynamicSiteMetrics(s, fraisCommerciaux, {
+          loyerDalle: activeLoyerBailleur,
+          debtDuration,
+          debtRate
+        });
         return {
           ...s,
           id: s.id || `bess_site_${idx + 1}`,
@@ -220,8 +273,13 @@ export default function BessDossierPDFGenerator({
     }
 
     return rawSites.map((s, idx) => {
-      const m = computeDynamicSiteMetrics(s, fraisCommerciaux);
+      const m = computeDynamicSiteMetrics(s, fraisCommerciaux, {
+        loyerDalle: activeLoyerBailleur,
+        debtDuration,
+        debtRate
+      });
       const cp = s.cp || s.postcode || '';
+      const siteRent = activeLoyerBailleur !== undefined ? activeLoyerBailleur : (typeof s.rent === 'number' ? s.rent : (normalizePortfolioName(s.portfolio) === 'FARADAY' ? 2000 : 3000));
       return {
         ...s,
         id: s.id || `bess_site_${idx + 1}`,
@@ -234,7 +292,8 @@ export default function BessDossierPDFGenerator({
         s3renr: s.s3renr || s.substation?.quotePartS3renr || "92.73 k€/MW",
         power: s.power || `${s.powerKw || 500} kW`,
         cap: s.cap || `${s.capacityKwh || 1044} kWh`,
-        rent: s.rent ? (typeof s.rent === 'number' ? fmtEur(s.rent) : s.rent) : "3 000 €",
+        rent: fmtEur(siteRent),
+        rentNum: siteRent,
         capexTotal: m.capexTotal,
         ebitda: fmtEur(m.ebitdaAn1),
         payback: m.paybackFormatted,
@@ -242,7 +301,7 @@ export default function BessDossierPDFGenerator({
         paybackAnnees: m.paybackAnnees
       };
     });
-  }, [portfolioData?.analyzedSites, portfolioData?.selectedPortfolio, projects, fraisCommerciaux]);
+  }, [activePortfolio, portfolioData?.analyzedSites, portfolioData?.selectedPortfolio, projects, fraisCommerciaux, activeLoyerBailleur, debtDuration, debtRate]);
 
   const [selectedProjectIds, setSelectedProjectIds] = useState(() => allAvailableSites.map(s => s.id));
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
@@ -257,10 +316,16 @@ export default function BessDossierPDFGenerator({
     ? allAvailableSites.filter(s => selectedProjectIds.includes(s.id))
     : allAvailableSites;
   const mult = isPort ? selectedBessSites.length : 1;
-  const portName = portfolioData?.selectedPortfolio || 'VOLTA';
+  const portName = activePortfolio || portfolioData?.selectedPortfolio || 'VOLTA';
+  const portDisplayName = normalizePortfolioName(portName) === 'ALL' ? 'CONSOLIDÉ' : portName.toUpperCase();
 
   // Si tous les projets tiennent sur la planche 8 (<= 18 sites), on omet la planche 9
   const totalPagesCount = isPort ? (selectedBessSites.length > 18 ? 9 : 8) : 7;
+
+  // Sélectionner automatiquement tous les projets du portefeuille actif lors d'un changement de portefeuille
+  useEffect(() => {
+    setSelectedProjectIds(allAvailableSites.map(s => s.id));
+  }, [activePortfolio]);
 
   // Synchronisation dynamique si allAvailableSites change
   useEffect(() => {
@@ -288,31 +353,27 @@ export default function BessDossierPDFGenerator({
     }
   }, [totalPagesCount, activePageIndex]);
 
-  // Auto-déclenchement si mode complete demandé
+  // Auto-déclenchement uniquement si initialMode === 'complete' explicite
   useEffect(() => {
-    if (isOpen && (initialMode === 'complete' || portfolioData?.autoExportType === 'complete')) {
+    if (isOpen && initialMode === 'complete') {
       const timer = setTimeout(() => {
         handleGeneratePdf('complete');
       }, 400);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, initialMode, portfolioData]);
+  }, [isOpen, initialMode]);
 
   // Recherche du site unitaire
   const selectedSite = allAvailableSites.find(s => s.name?.toUpperCase() === (projectData?.name || '').toUpperCase()) || allAvailableSites[0] || SITES_DATABASE[7]; // Concèze
 
   // Nom institutionnel affiché dynamique
   const headerProjectTitle = isPort
-    ? `Portefeuille Consolidé BESS ${(mult * 0.5).toFixed(2).replace('.', ',')} MW / ${(mult * 1.044).toFixed(2).replace('.', ',')} MWh`
+    ? `Portefeuille Consolidé BESS ${portDisplayName} — ${(mult * 0.5).toFixed(2).replace('.', ',')} MW / ${(mult * 1.044).toFixed(2).replace('.', ',')} MWh`
     : `Centrale BESS Stand-Alone 500 kW / 1 044 kWh (${projectData?.name || selectedSite.name})`;
 
   const headerProjectSubtitle = isPort
-    ? `Grappe territoriale de ${mult} unité${mult > 1 ? 's standardisées' : ' standardisée'} (500 kW / 1 044 kWh) raccordée${mult > 1 ? 's' : ''} au réseau HTA 20 kV Enedis dans le Grand Sud-Ouest (Nouvelle-Aquitaine & Occitanie). Monétisation agrégée en Value Stacking sous le régime TURPE 7 délibéré CRE 2025-227.`
+    ? `Grappe territoriale ${portDisplayName} de ${mult} unité${mult > 1 ? 's standardisées' : ' standardisée'} (500 kW / 1 044 kWh) raccordée${mult > 1 ? 's' : ''} au réseau HTA 20 kV Enedis dans le Grand Sud-Ouest (Nouvelle-Aquitaine & Occitanie). Monétisation agrégée en Value Stacking sous le régime TURPE 7 délibéré CRE 2025-227.`
     : `Unité de stockage stationnaire autonome par batterie LFP (4 armoires CESC Mercury 261) raccordée au réseau HTA 20 kV Enedis (${selectedSite.substation} - ${selectedSite.dist}). Monétisation optimisée en Value Stacking sous le barème TURPE 7.`;
-
-  // Paramètres de dette senior dynamiques
-  const debtDuration = portfolioData?.debtDuration ?? 12;
-  const debtRate = portfolioData?.debtRate ?? 4.30;
 
   // Matrice financière dynamique consolidée calculée site par site
   const dynamicFinancialMatrix = useMemo(() => {
@@ -331,7 +392,8 @@ export default function BessDossierPDFGenerator({
         studyDuration: 15,
         debtDuration: debtDuration || 12,
         debtRate: debtRate || 4.30,
-        fraisCommerciaux: s.fraisCommerciaux !== undefined ? s.fraisCommerciaux : fraisCommerciaux
+        fraisCommerciaux: s.fraisCommerciaux !== undefined ? s.fraisCommerciaux : fraisCommerciaux,
+        loyerDalle: activeLoyerBailleur
       });
     });
 
@@ -368,8 +430,8 @@ export default function BessDossierPDFGenerator({
       debtService.push(Math.round(sumDebt));
     }
 
-    return { revFcr, revCapa, revArb, opexTurpe, opexRecharge, opexAgregateur, opexAutres, debtService };
-  }, [isPort, selectedBessSites, selectedSite, debtRate, debtDuration, fraisCommerciaux]);
+      return { revFcr, revCapa, revArb, opexTurpe, opexRecharge, opexAgregateur, opexAutres, debtService };
+  }, [isPort, selectedBessSites, selectedSite, debtRate, debtDuration, fraisCommerciaux, activeLoyerBailleur]);
 
   // Calcul dynamique du DSCR moyen
   const dscrArray = YEARS_15.map((_, i) => {
@@ -384,7 +446,7 @@ export default function BessDossierPDFGenerator({
   const avgDscr = validDscr.length > 0 ? (validDscr.reduce((a, b) => a + b, 0) / validDscr.length) : 1.98;
 
   // Totaux cumulés et métriques unifiées basés exclusivement sur les projets sélectionnés
-  const singleMetrics = !isPort ? computeDynamicSiteMetrics(selectedSite, fraisCommerciaux) : null;
+  const singleMetrics = !isPort ? computeDynamicSiteMetrics(selectedSite, fraisCommerciaux, { loyerDalle: activeLoyerBailleur, debtDuration, debtRate }) : null;
 
   // Chronique 15 ans pour le Compte de Résultat Consolidé affiché en bas de Planche 1
   const bessP1Chronique = useMemo(() => {
@@ -408,11 +470,12 @@ export default function BessDossierPDFGenerator({
     });
   }, [dynamicFinancialMatrix]);
   const totalEbitdaAllSites = selectedBessSites.reduce((sum, s) => sum + s.ebitdaAn1, 0);
-  const totalCaAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s, fraisCommerciaux).caAnnuel, 0);
-  const totalCapexAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s, fraisCommerciaux).capexTotal, 0);
+  const totalCaAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s, fraisCommerciaux, { loyerDalle: activeLoyerBailleur, debtDuration, debtRate }).caAnnuel, 0);
+  const totalCapexAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s, fraisCommerciaux, { loyerDalle: activeLoyerBailleur, debtDuration, debtRate }).capexTotal, 0);
   const totalRentAllSites = selectedBessSites.reduce((sum, s) => {
+    if (s.rentNum !== undefined) return sum + s.rentNum;
     const val = typeof s.rent === 'number' ? s.rent : parseFloat(String(s.rent || '0').replace(/[^0-9]/g, ''));
-    return sum + (isNaN(val) || val === 0 ? (s.portfolio === 'FARADAY' ? 2000 : 3000) : val);
+    return sum + (isNaN(val) || val === 0 ? activeLoyerBailleur : val);
   }, 0);
 
   // Totaux cumulés 15 ans
@@ -823,9 +886,9 @@ export default function BessDossierPDFGenerator({
       const fileDate = new Date().toISOString().slice(0, 10);
       let fileName = '';
       if (isComplete) {
-        fileName = `Etude_Complete_BESS_Portefeuille_${selectedBessSites.length}_Sites_${totalPagesCount + selectedBessSites.length}_Pages_${fileDate}.pdf`;
+        fileName = `Etude_Complete_BESS_Portefeuille_${portDisplayName}_${selectedBessSites.length}_Sites_${totalPagesCount + selectedBessSites.length}_Pages_${fileDate}.pdf`;
       } else if (isPort) {
-        fileName = `Dossier_Investissement_BESS_Portefeuille_${selectedBessSites.length}_Sites_${(selectedBessSites.length * 0.5).toFixed(1)}MW_TURPE7_${fileDate}.pdf`;
+        fileName = `Dossier_Investissement_BESS_Portefeuille_${portDisplayName}_${selectedBessSites.length}_Sites_${(selectedBessSites.length * 0.5).toFixed(1)}MW_TURPE7_${fileDate}.pdf`;
       } else {
         fileName = `Dossier_Investissement_BESS_${projectData?.name || 'Unitaire_500kW'}_TURPE7_${fileDate}.pdf`;
       }
@@ -848,7 +911,7 @@ export default function BessDossierPDFGenerator({
       "24 Heures dans la Vie d'une Batterie",
       "Plan d'Affaires Prévisionnel 15 Ans",
       "Trajectoire EBITDA vs Cash-Flow Disponible",
-      "Standard Technique DP & Cartographie Volta",
+      `Standard Technique DP & Cartographie ${portDisplayName}`,
       "Répertoire Foncier & Réseau (Sites #1 à #18)",
       `Répertoire Foncier & Réseau (Sites #19 à #${selectedBessSites.length} & Total)`
     ] : [
@@ -858,7 +921,7 @@ export default function BessDossierPDFGenerator({
       "24 Heures dans la Vie d'une Batterie",
       "Plan d'Affaires Prévisionnel 15 Ans",
       "Trajectoire EBITDA vs Cash-Flow Disponible",
-      "Standard Technique DP & Cartographie Volta",
+      `Standard Technique DP & Cartographie ${portDisplayName}`,
       `Répertoire Foncier & Réseau (${selectedBessSites.length} Sites & Total)`
     ]
   ) : [
@@ -882,7 +945,7 @@ export default function BessDossierPDFGenerator({
         {/* BARRE SUPÉRIEURE DE NAVIGATION ET EXPORT (FOND BLANC PUR) */}
         {/* ========================================================================= */}
         <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-6 py-3.5 shadow-xs flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4">
             {/* Logo ENR Courtage */}
             <div className="flex items-center gap-3">
               <img
@@ -908,7 +971,7 @@ export default function BessDossierPDFGenerator({
               <button
                 type="button"
                 onClick={() => setActiveMode('single')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   !isPort
                     ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
                     : 'text-slate-600 hover:text-slate-900'
@@ -920,16 +983,54 @@ export default function BessDossierPDFGenerator({
               <button
                 type="button"
                 onClick={() => setActiveMode('portfolio')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   isPort
                     ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
-                Portefeuille Consolidé ({selectedBessSites.length} Sites / {((selectedBessSites.length * 500) / 1000).toFixed(1)} MW)
+                Portefeuille {portDisplayName} ({selectedBessSites.length} Sites / {((selectedBessSites.length * 500) / 1000).toFixed(1)} MW)
               </button>
             </div>
+
+            {/* Sélecteur de portefeuille BESS (VOLTA / FARADAY / EDISON / TOUS) directement dans la visionneuse */}
+            {isPort && (
+              <div className="flex items-center gap-1 bg-slate-100 border border-slate-300 rounded-xl p-1">
+                {effectiveBessPortfolios.map(port => {
+                  const count = allPortfolioSites.filter(s => normalizePortfolioName(s.portfolio) === normalizePortfolioName(port.name)).length;
+                  const isSel = normalizePortfolioName(activePortfolio) === normalizePortfolioName(port.name);
+                  return (
+                    <button
+                      key={port.id}
+                      type="button"
+                      onClick={() => setActivePortfolio(port.name)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isSel
+                          ? 'bg-blue-700 text-white shadow-xs'
+                          : 'text-slate-700 hover:bg-white'
+                      }`}
+                    >
+                      <span>{port.name}</span>
+                      <span className={`px-1.5 py-0.2 text-[10px] rounded-full ${isSel ? 'bg-blue-900 text-blue-100' : 'bg-slate-200 text-slate-700'}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setActivePortfolio('ALL')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    normalizePortfolioName(activePortfolio) === 'ALL'
+                      ? 'bg-slate-800 text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-white'
+                  }`}
+                >
+                  Tous ({allPortfolioSites.length})
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Actions réservées au bas de page */}
@@ -1185,7 +1286,7 @@ export default function BessDossierPDFGenerator({
                     </div>
                     <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Sécurisation foncière des sites :</span>
-                      <span className="font-extrabold text-emerald-700">Promesses de bail sur 20 ans signées (3 000 € HT/an/site)</span>
+                      <span className="font-extrabold text-emerald-700">Promesses de bail sur 20 ans signées ({fmtEur(activeLoyerBailleur)} HT/an/site)</span>
                     </div>
                     <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Statut Réseau Postes Sources :</span>
@@ -1310,7 +1411,7 @@ export default function BessDossierPDFGenerator({
                 <div className="px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-right whitespace-nowrap min-w-[310px] shadow-xs">
                   <span className="text-[10px] font-extrabold text-emerald-600 uppercase block tracking-wider">Gain Économique Réseau</span>
                   <span className="text-sm font-black text-emerald-800 whitespace-nowrap block mt-0.5">
-                    {isPort ? '+439 673 € / an de marge brute' : '+14 183 € / an de marge brute'}
+                    {isPort ? `+${Math.round(mult * 14183).toLocaleString('fr-FR')} € / an de marge brute` : '+14 183 € / an de marge brute'}
                   </span>
                 </div>
               </div>
@@ -1378,19 +1479,19 @@ export default function BessDossierPDFGenerator({
                         <td className="p-2.5 font-semibold text-slate-900">Composante de Soutirage Variable (CS)</td>
                         <td className="p-2.5 text-red-500">Plein tarif sur 100% de l'énergie chargée</td>
                         <td className="p-2.5 text-emerald-700 font-bold">Exonération totale sur les 88% d'énergie réinjectée</td>
-                        <td className="p-2.5 text-right font-bold text-emerald-600">{isPort ? '+293 880 € / an' : '+9 480 € / an'}</td>
+                        <td className="p-2.5 text-right font-bold text-emerald-600">{isPort ? `+${Math.round(mult * 9480).toLocaleString('fr-FR')} € / an` : '+9 480 € / an'}</td>
                       </tr>
                       <tr>
                         <td className="p-2.5 font-semibold text-slate-900">Composante Fixe de Puissance (CS Fixe)</td>
                         <td className="p-2.5 text-red-500">Tarification longue utilisation rigide</td>
                         <td className="p-2.5 text-emerald-700 font-bold">Formule HTA1 Courte Utilisation (13.20 €/kW/an)</td>
-                        <td className="p-2.5 text-right font-bold text-emerald-600">{isPort ? '+105 400 € / an' : '+3 400 € / an'}</td>
+                        <td className="p-2.5 text-right font-bold text-emerald-600">{isPort ? `+${Math.round(mult * 3400).toLocaleString('fr-FR')} € / an` : '+3 400 € / an'}</td>
                       </tr>
                       <tr>
                         <td className="p-2.5 font-semibold text-slate-900">Pertes Réseau non récupérables</td>
                         <td className="p-2.5 text-red-500">Double taxation cumulée</td>
                         <td className="p-2.5 text-emerald-700 font-bold">Strictement limitée aux 12% de conversion de cycle</td>
-                        <td className="p-2.5 text-right font-bold text-emerald-600">{isPort ? '+40 393 € / an' : '+1 303 € / an'}</td>
+                        <td className="p-2.5 text-right font-bold text-emerald-600">{isPort ? `+${Math.round(mult * 1303).toLocaleString('fr-FR')} € / an` : '+1 303 € / an'}</td>
                       </tr>
                       <tr>
                         <td className="p-2.5 font-semibold text-slate-900">Composantes de Gestion &amp; Comptage (CG/CC)</td>
@@ -1401,10 +1502,10 @@ export default function BessDossierPDFGenerator({
                       <tr className="bg-emerald-50/60 font-black text-slate-900">
                         <td className="p-2.5 uppercase">Total Facture Annuelle TURPE Réseau</td>
                         <td className="p-2.5 text-red-600 font-bold">
-                          {isPort ? '697 500 € / an' : '22 500 € / an'}
+                          {isPort ? `${Math.round(mult * 22500).toLocaleString('fr-FR')} € / an` : '22 500 € / an'}
                         </td>
-                        <td className="p-2.5 text-emerald-800 text-sm">{isPort ? '257 827 € / an' : '8 317 € / an'}</td>
-                        <td className="p-2.5 text-right text-emerald-700 text-sm font-black">{isPort ? '+439 673 € / an' : '+14 183 € / an'}</td>
+                        <td className="p-2.5 text-emerald-800 text-sm">{isPort ? `${Math.round(mult * 8317).toLocaleString('fr-FR')} € / an` : '8 317 € / an'}</td>
+                        <td className="p-2.5 text-right text-emerald-700 text-sm font-black">{isPort ? `+${Math.round(mult * 14183).toLocaleString('fr-FR')} € / an` : '+14 183 € / an'}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -1799,7 +1900,7 @@ export default function BessDossierPDFGenerator({
                     </h2>
                     <p className="text-xs font-medium text-slate-600 mt-0.5 leading-snug">
                       Chronique 15 ans détaillée : Dette senior {debtDuration} ans à {debtRate.toFixed(2)}% • Inflation 2.0%/an • Dégradation batterie 2.2%/an<br />
-                      Loyer foncier 3 000 €/an/site sur 20 ans.
+                      Loyer foncier {fmtEur(activeLoyerBailleur)}/an/site sur 20 ans.
                     </p>
                   </div>
                 </div>
@@ -2123,7 +2224,7 @@ export default function BessDossierPDFGenerator({
                     </h2>
                     <p className="text-xs font-medium text-slate-600 mt-0.5">
                       {isPort
-                        ? "Cartographie Grand Sud-Ouest identique à la plateforme investisseurs VOLTA • Visuel technique de la station 500 kW (dalle 19.84 m² et clôture rigide vert RAL 6005) conforme au dossier DP."
+                        ? `Cartographie Grand Sud-Ouest identique à la plateforme investisseurs ${portDisplayName} • Visuel technique de la station 500 kW (dalle 19.84 m² et clôture rigide vert RAL 6005) conforme au dossier DP.`
                         : `Implantation géographique et modèle 3D de la centrale ${selectedSite.name} • 4 armoires Mercury 261 sur dalle 19.84 m² avec clôture rigide H 2.00 m.`}
                     </p>
                   </div>
@@ -2239,7 +2340,7 @@ export default function BessDossierPDFGenerator({
             {/* Pied de page institutionnel sans "(Paysage)" */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
               <div>ENR COURTAGE SAS • Implantation Territoriale &amp; Ingénierie Pré-Construction</div>
-              <div className="font-semibold text-slate-600">Cartographie VOLTA • Standard technique DP certifié</div>
+              <div className="font-semibold text-slate-600">Cartographie {portDisplayName} • Standard technique DP certifié</div>
               <div className="font-bold text-[#0b192c]">Planche 7 / {totalPagesCount}</div>
             </div>
             </section>
@@ -2535,6 +2636,10 @@ export default function BessDossierPDFGenerator({
                     totalSites={selectedBessSites.length}
                     studyDuration={20}
                     fraisCommerciaux={fraisCommerciaux}
+                    loyerDalle={activeLoyerBailleur}
+                    debtDuration={debtDuration}
+                    debtRate={debtRate}
+                    portfolioName={portDisplayName}
                     plancheOffset={totalPagesCount}
                   />
                 </div>
@@ -2667,6 +2772,42 @@ export default function BessDossierPDFGenerator({
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}
+                </div>
+
+                {/* Sélecteur de portefeuille dans la modale de personnalisation */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                  {effectiveBessPortfolios.map(port => {
+                    const count = allPortfolioSites.filter(s => normalizePortfolioName(s.portfolio) === normalizePortfolioName(port.name)).length;
+                    const isSel = normalizePortfolioName(activePortfolio) === normalizePortfolioName(port.name);
+                    return (
+                      <button
+                        key={port.id}
+                        type="button"
+                        onClick={() => setActivePortfolio(port.name)}
+                        className={`px-2.5 py-1 rounded text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                          isSel
+                            ? 'bg-blue-600 text-white shadow-2xs'
+                            : 'text-slate-700 hover:bg-white'
+                        }`}
+                      >
+                        <span>{port.name}</span>
+                        <span className={`px-1 py-0.2 text-[10px] rounded-full ${isSel ? 'bg-blue-800 text-blue-100' : 'bg-slate-200 text-slate-700'}`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setActivePortfolio('ALL')}
+                    className={`px-2 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                      normalizePortfolioName(activePortfolio) === 'ALL'
+                        ? 'bg-slate-800 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-white'
+                    }`}
+                  >
+                    Tous ({allPortfolioSites.length})
+                  </button>
                 </div>
               </div>
 

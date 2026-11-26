@@ -944,7 +944,9 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
         }
       }
 
-      const pPort = getProjectBessPortfolio(p);
+      const resolvedCanonical = resolveProjectPortfolio(p);
+      const rawDirectPort = getProjectBessPortfolio(p);
+      const pPort = resolvedCanonical || rawDirectPort;
       if (!pPort) return;
 
       const normPort = normalizePortfolioName(pPort);
@@ -973,11 +975,12 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
       const city = p.city || p.commune || mock?.city || '';
       const dept = cp ? cp.substring(0, 2) : (mock?.dept || 'FR');
 
-      // Extraction robuste des coordonnées GPS
+      // Extraction robuste des coordonnées GPS (gps, lat/lng, coordinates, map_state, features, odre, mock, ou département)
       let lat = null;
       let lng = null;
-      if (p.gps && typeof p.gps === 'string' && p.gps.includes(',')) {
-        const parts = p.gps.split(',').map(s => parseFloat(s.trim()));
+      if (p.gps && typeof p.gps === 'string' && (p.gps.includes(',') || p.gps.includes(';'))) {
+        const sep = p.gps.includes(';') ? ';' : ',';
+        const parts = p.gps.split(sep).map(s => parseFloat(s.trim()));
         if (!isNaN(parts[0]) && !isNaN(parts[1]) && (parts[0] !== 0 || parts[1] !== 0)) {
           lat = parts[0];
           lng = parts[1];
@@ -988,6 +991,40 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
       if (lng === null && p.lng !== undefined && !isNaN(parseFloat(p.lng)) && (parseFloat(p.lng) !== 1.0 || lat !== 45.0)) lng = parseFloat(p.lng);
       if (lng === null && p.longitude !== undefined && !isNaN(parseFloat(p.longitude))) lng = parseFloat(p.longitude);
 
+      if ((lat === null || lng === null) && p.coordinates) {
+        const cLat = parseFloat(p.coordinates.lat ?? p.coordinates.latitude ?? p.coordinates[0]);
+        const cLng = parseFloat(p.coordinates.lng ?? p.coordinates.longitude ?? p.coordinates[1]);
+        if (!isNaN(cLat) && !isNaN(cLng) && cLat > 41 && cLat < 51.5) {
+          lat = cLat;
+          lng = cLng;
+        }
+      }
+
+      if ((lat === null || lng === null) && p.map_state?.center) {
+        const mLat = parseFloat(p.map_state.center.lat ?? p.map_state.center[0]);
+        const mLng = parseFloat(p.map_state.center.lng ?? p.map_state.center[1]);
+        if (!isNaN(mLat) && !isNaN(mLng) && mLat > 41 && mLat < 51.5) {
+          lat = mLat;
+          lng = mLng;
+        }
+      }
+
+      if (lat === null || lng === null) {
+        const features = p.features || p.map_state?.features || [];
+        for (const feat of features) {
+          if (feat?.latLngs && Array.isArray(feat.latLngs) && feat.latLngs.length > 0) {
+            const pt = Array.isArray(feat.latLngs[0]) && feat.latLngs[0][0]?.lat !== undefined ? feat.latLngs[0][0] : feat.latLngs[0];
+            const fLat = parseFloat(pt?.lat ?? pt?.[0]);
+            const fLng = parseFloat(pt?.lng ?? pt?.[1]);
+            if (!isNaN(fLat) && !isNaN(fLng) && fLat > 41 && fLat < 51.5) {
+              lat = fLat;
+              lng = fLng;
+              break;
+            }
+          }
+        }
+      }
+
       if (lat === null && mock?.lat !== undefined) lat = parseFloat(mock.lat);
       if (lng === null && mock?.lng !== undefined) lng = parseFloat(mock.lng);
 
@@ -997,11 +1034,39 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
         lng = parseFloat(odre.longitude);
       }
 
-      if (lat === null || isNaN(lat)) lat = 45.0;
-      if (lng === null || isNaN(lng)) lng = 1.0;
+      if (lat === null || isNaN(lat) || lng === null || isNaN(lng) || (lat === 45.0 && lng === 1.0)) {
+        const DEPT_COORDS = {
+          '24': { lat: 45.18, lng: 0.72 },
+          '33': { lat: 44.84, lng: -0.58 },
+          '47': { lat: 44.33, lng: 0.45 },
+          '40': { lat: 43.89, lng: -0.89 },
+          '64': { lat: 43.30, lng: -0.37 },
+          '32': { lat: 43.65, lng: 0.58 },
+          '82': { lat: 44.02, lng: 1.35 },
+          '81': { lat: 43.93, lng: 2.15 },
+          '31': { lat: 43.60, lng: 1.44 },
+          '65': { lat: 43.23, lng: 0.08 },
+          '19': { lat: 45.27, lng: 1.77 },
+          '87': { lat: 45.83, lng: 1.26 },
+          '23': { lat: 46.17, lng: 1.87 },
+          '16': { lat: 45.65, lng: 0.16 },
+          '17': { lat: 45.75, lng: -0.63 },
+          '46': { lat: 44.45, lng: 1.44 },
+          '12': { lat: 44.35, lng: 2.57 },
+          '03': { lat: 46.34, lng: 3.43 },
+          '63': { lat: 45.78, lng: 3.08 },
+          '15': { lat: 44.93, lng: 2.44 }
+        };
+        const strHash = String(p.name || p.id || city || 'site').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+        const baseCoord = DEPT_COORDS[dept] || { lat: 44.85, lng: 0.85 };
+        const jitterLat = ((strHash % 19) - 9) * 0.018;
+        const jitterLng = (((strHash * 5) % 19) - 9) * 0.018;
+        lat = +(baseCoord.lat + jitterLat).toFixed(6);
+        lng = +(baseCoord.lng + jitterLng).toFixed(6);
+      }
 
       // Recherche automatique du poste source le plus proche via Caparéseau si non trouvé dans la matrice ODRE VOLTA
-      const closestSubstation = (lat && lng && (lat !== 45.0 || lng !== 1.0)) 
+      const closestSubstation = (lat && lng) 
         ? findClosestCapareseauSubstation(lat, lng) 
         : null;
 
@@ -1102,14 +1167,14 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
         city,
         dept,
         address: p.address || `${cp} ${city}`.trim() || mock?.address || '',
-        spv: p.spv || mock?.spv || (normPort === 'FARADAY' ? 'SPV B' : 'SPV A'),
+        spv: p.spv || mock?.spv || (normPort === 'FARADAY' ? 'SPV B' : (normPort === 'EDISON' ? 'SPV C' : 'SPV A')),
         rent: Number(p.rent || p.loyer_annuel || p.loyer || mock?.rent || (normPort === 'FARADAY' ? 2000 : 3000)),
         lat,
         lng,
         gps: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
         substation,
-        portfolio: pPort,
-        bess_portfolio: pPort,
+        portfolio: normPort,
+        bess_portfolio: normPort,
         crmProject: p
       });
     });

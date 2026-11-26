@@ -22,15 +22,27 @@ const fmtPct = (n) => `${(n ?? 0).toFixed(1)}%`;
  * Rendu 1 Page A4 Paysage (1380 x 940 px) d'une Fiche BESS Unitaire
  * Utilisé pour la génération individuelle ou intégrée dans l'Étude Complète 39 Pages
  */
-export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 31, studyDuration = 20, fraisCommerciaux, plancheOffset = 9 }) {
+export default function BessProjectSingleSheet({
+  site,
+  siteIndex,
+  totalSites = 31,
+  studyDuration = 20,
+  fraisCommerciaux,
+  loyerDalle: customLoyerDalle,
+  debtDuration: customDebtDuration = 12,
+  debtRate: customDebtRate = 4.30,
+  portfolioName,
+  plancheOffset = 9
+}) {
   if (!site) return null;
 
   // Calcul unifié avec computeBessFinancials
   const fin = computeBessFinancials(site, {
     studyDuration: studyDuration || 20,
-    debtDuration: 12,
-    debtRate: 4.30,
-    fraisCommerciaux: site?.fraisCommerciaux !== undefined ? site.fraisCommerciaux : fraisCommerciaux
+    debtDuration: customDebtDuration || 12,
+    debtRate: customDebtRate || 4.30,
+    fraisCommerciaux: site?.fraisCommerciaux !== undefined ? site.fraisCommerciaux : fraisCommerciaux,
+    loyerDalle: customLoyerDalle
   });
 
   // Données techniques unitaires
@@ -46,11 +58,12 @@ export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 3
   const raccordement = fin.raccordementCost;
   const capexTotal = fin.capexTotal;
 
-  // Financement senior (12 ans @ 4.30%)
-  const debtDuration = 12;
-  const debtRate = 4.30;
+  // Financement senior
+  const debtDuration = customDebtDuration || 12;
+  const debtRate = customDebtRate || 4.30;
   const rateDec = debtRate / 100;
   const annuite = fin.annuite || Math.abs(calculatePmt(rateDec, debtDuration, capexTotal));
+  const resolvedPortfolio = portfolioName || site.portfolio || site.bess_portfolio || 'VOLTA';
 
   // Value Stacking Year 1
   const revFcr = fin.rows[0]?.revFCR || 53936;
@@ -152,6 +165,11 @@ export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 3
                 <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-[9.5px] font-black uppercase tracking-wider">
                   Site #{siteIndex} / {totalSites}
                 </span>
+                {resolvedPortfolio && resolvedPortfolio !== 'ALL' && (
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200 text-[9.5px] font-black uppercase tracking-wider">
+                    Portefeuille {resolvedPortfolio}
+                  </span>
+                )}
                 <h1 className="text-lg font-black text-[#0b192c] tracking-tight">
                   PROJET {site.name?.toUpperCase()} • {powerKw} kW / {capacityKwh} kWh
                 </h1>

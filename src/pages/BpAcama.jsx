@@ -34,8 +34,10 @@ import BessPortfolioLenderModal from '../components/bp-acama/BessPortfolioLender
 import PvPortfolioView from '../components/bp-acama/PvPortfolioView.jsx';
 import PvDossierPDFGenerator from '../components/bp-acama/PvDossierPDFGenerator.jsx';
 import PvPortfolioLenderModal from '../components/bp-acama/PvPortfolioLenderModal.jsx';
-import { PV_PORTFOLIO_SITES, getPvPortfolioSites, normalizePortfolioName, getProjectPvPortfolio } from '../data/pvPortfolioData.js';
-import { getBessPortfolioSites } from '../data/bessPortfolioData.js';
+import { PV_PORTFOLIO_SITES, getPvPortfolioSites, normalizePortfolioName, getProjectPvPortfolio, extractProjectCoordinates } from '../data/pvPortfolioData.js';
+import { getBessPortfolioSites, resolveProjectPortfolio, getProjectBessPortfolio } from '../data/bessPortfolioData.js';
+import { findClosestCapareseauSubstation } from '../data/capareseauSubstations.js';
+import { getCreSubstationQualification } from '../services/creZonesService.js';
 import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
 import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
 import { calculateProjectPayback, calculateEquityPayback } from '../services/bessSimulationEngine.js';
@@ -1279,8 +1281,10 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
 }
 
 function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isGreenInvest, onApplyProject, projects = [] }) {
+  const { bessPortfolios, canManagePortfolios } = usePortfolios();
   const [bessMode, setBessMode] = useState('single'); // 'single' | 'portfolio'
   const [selectedBessPortfolio, setSelectedBessPortfolio] = useState('VOLTA');
+  const [isBessPortfolioModalOpen, setIsBessPortfolioModalOpen] = useState(false);
   const [viewDetailed, setViewDetailed] = useState(false);
   const [networkQualification, setNetworkQualification] = useState(null);
   const [isLoadingNetwork, setIsLoadingNetwork] = useState(false);
@@ -1289,12 +1293,44 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   const [isBessPortfolioLenderModalOpen, setIsBessPortfolioLenderModalOpen] = useState(false);
   const [portfolioExportData, setPortfolioExportData] = useState(null);
 
+  // Liste garantie des portefeuilles BESS (VOLTA, FARADAY, EDISON + portefeuilles personnalisés)
+  const effectiveBessPortfolios = useMemo(() => {
+    const list = Array.isArray(bessPortfolios) ? [...bessPortfolios] : [];
+    const defaults = [
+      { id: 'bess-volta', name: 'VOLTA', type: 'BESS', spv: 'SPV A (VOLTA)' },
+      { id: 'bess-faraday', name: 'FARADAY', type: 'BESS', spv: 'SPV B (FARADAY)' },
+      { id: 'bess-edison', name: 'EDISON', type: 'BESS', spv: 'SPV C (EDISON)' }
+    ];
+    defaults.forEach(def => {
+      if (!list.some(p => normalizePortfolioName(p.name) === def.name)) {
+        list.push(def);
+      }
+    });
+    return list;
+  }, [bessPortfolios]);
+
+  const allBessSites = useMemo(() => {
+    return getBessPortfolioSites(projects, 'ALL');
+  }, [projects]);
+
   const activeBessSites = useMemo(() => {
-    return getBessPortfolioSites(projects, selectedBessPortfolio);
-  }, [projects, selectedBessPortfolio]);
+    const normSel = normalizePortfolioName(selectedBessPortfolio);
+    if (!normSel || normSel === 'ALL' || normSel === 'TOUS') return allBessSites;
+    return allBessSites.filter(s => normalizePortfolioName(s.portfolio) === normSel);
+  }, [allBessSites, selectedBessPortfolio]);
   const activeBessPowerMw = useMemo(() => {
     return ((activeBessSites.length * 500) / 1000).toFixed(1);
   }, [activeBessSites]);
+
+  // Synchroniser automatiquement le portefeuille BESS sélectionné lorsqu'un projet CRM d'un portefeuille (VOLTA, FARADAY, EDISON) est choisi
+  useEffect(() => {
+    if (selectedProject) {
+      const pPort = resolveProjectPortfolio(selectedProject) || normalizePortfolioName(getProjectBessPortfolio(selectedProject));
+      if (pPort && ['VOLTA', 'FARADAY', 'EDISON'].includes(pPort)) {
+        setSelectedBessPortfolio(pPort);
+      }
+    }
+  }, [selectedProject?.id]);
 
   if (!config.enabled) return null;
 
@@ -1468,39 +1504,105 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
 
   return (
     <div className="space-y-4">
-      {/* Sélecteur de Mode BESS : Projet Unitaire vs Portefeuille Multi-Projets */}
+      {/* Sélecteur de Mode BESS : Projet Unitaire vs Portefeuille Multi-Projets (VOLTA / FARADAY / EDISON) */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm" data-html2canvas-ignore="true">
-        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-          <button
-            type="button"
-            onClick={() => setBessMode('single')}
-            className={cn(
-              "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
-              bessMode === 'single'
-                ? "bg-white text-blue-900 shadow-sm border border-slate-200"
-                : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
-            )}
-          >
-            <BatteryCharging className="w-4 h-4 text-blue-600" />
-            <span>Simulation Unitaire ({selectedProject?.name || 'Projet CRM'})</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setBessMode('single')}
+              className={cn(
+                "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer",
+                bessMode === 'single'
+                  ? "bg-white text-blue-900 shadow-sm border border-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+              )}
+            >
+              <BatteryCharging className="w-4 h-4 text-blue-600" />
+              <span>Simulation Unitaire ({selectedProject?.name || 'Projet CRM'})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setBessMode('portfolio')}
-            className={cn(
-              "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
-              bessMode === 'portfolio'
-                ? "bg-gradient-to-r from-blue-700 to-indigo-700 text-white shadow-sm font-black"
-                : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+            <button
+              type="button"
+              onClick={() => setBessMode('portfolio')}
+              className={cn(
+                "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer",
+                bessMode === 'portfolio'
+                  ? "bg-gradient-to-r from-blue-700 to-indigo-700 text-white shadow-sm font-black"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+              )}
+            >
+              <Layers className="w-4 h-4 text-amber-300" />
+              <span>Portefeuille Multi-Projets ({activeBessSites.length} sites / {activeBessPowerMw} MW)</span>
+              <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-full bg-amber-400 text-slate-900">
+                {selectedBessPortfolio === 'ALL' ? 'TOUS' : selectedBessPortfolio} • CRE 2025-227
+              </span>
+            </button>
+          </div>
+
+          {/* Sélecteur rapide de Portefeuille BESS (VOLTA / FARADAY / EDISON / TOUS) */}
+          <div className="flex items-center gap-1 bg-blue-50/80 p-1 rounded-lg border border-blue-200">
+            <span className="text-[10px] font-bold text-blue-800 uppercase px-1">Portefeuille :</span>
+            {effectiveBessPortfolios.map(port => {
+              const isSel = normalizePortfolioName(selectedBessPortfolio) === normalizePortfolioName(port.name);
+              const count = allBessSites.filter(s => normalizePortfolioName(s.portfolio) === normalizePortfolioName(port.name)).length;
+              return (
+                <button
+                  key={port.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedBessPortfolio(port.name);
+                    setBessMode('portfolio');
+                  }}
+                  className={cn(
+                    "px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1 cursor-pointer",
+                    isSel && bessMode === 'portfolio'
+                      ? "bg-blue-600 text-white shadow-xs font-black"
+                      : isSel
+                      ? "bg-blue-100 text-blue-900 border border-blue-300 font-black"
+                      : "text-blue-900 hover:bg-blue-100"
+                  )}
+                  title={`Étude BP du portefeuille BESS ${port.name} (${count} sites)`}
+                >
+                  <span>{port.name}</span>
+                  <span className={cn(
+                    "text-[10px] px-1.5 rounded-full",
+                    isSel && bessMode === 'portfolio' ? "bg-blue-900/80 text-blue-100" : "bg-blue-200/70 text-blue-900"
+                  )}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedBessPortfolio('ALL');
+                setBessMode('portfolio');
+              }}
+              className={cn(
+                "px-2 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                selectedBessPortfolio === 'ALL' && bessMode === 'portfolio'
+                  ? "bg-slate-800 text-white shadow-xs font-black"
+                  : "text-slate-700 hover:bg-blue-100"
+              )}
+              title={`Étude BP consolidée de tous les portefeuilles BESS (${allBessSites.length} sites)`}
+            >
+              Tous ({allBessSites.length})
+            </button>
+
+            {canManagePortfolios && (
+              <button
+                type="button"
+                onClick={() => setIsBessPortfolioModalOpen(true)}
+                className="px-2 py-1 text-xs font-bold text-blue-800 hover:text-blue-950 hover:bg-blue-200/60 rounded-md transition-all flex items-center gap-1 border-l border-blue-300 ml-1 pl-2 cursor-pointer"
+                title="Gérer les portefeuilles PV & BESS (Admin)"
+              >
+                + Gérer
+              </button>
             )}
-          >
-            <Layers className="w-4 h-4 text-amber-300" />
-            <span>Portefeuille Multi-Projets ({activeBessSites.length} sites / {activeBessPowerMw} MW)</span>
-            <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-full bg-amber-400 text-slate-900">
-              CRE 2025-227
-            </span>
-          </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -1528,7 +1630,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
               title={`Dossier Prêteur Consolidé BESS (${selectedBessPortfolio}) pour Banques et Financeurs`}
             >
               <ShieldCheck className="w-4 h-4 text-emerald-300" />
-              <span>DOSSIER PRÊTEUR {selectedBessPortfolio.toUpperCase()} ({activeBessSites.length} SITES)</span>
+              <span>DOSSIER PRÊTEUR {selectedBessPortfolio === 'ALL' ? 'CONSOLIDÉ' : selectedBessPortfolio.toUpperCase()} ({activeBessSites.length} SITES)</span>
             </button>
           )}
 
@@ -1537,17 +1639,20 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             onClick={() => {
               setPortfolioExportData(prev => ({
                 ...(prev || {}),
-                autoExportType: 'complete',
-                fraisCommerciaux: config.fraisCommerciaux !== undefined ? config.fraisCommerciaux : 2500
+                selectedPortfolio: selectedBessPortfolio,
+                fraisCommerciaux: prev?.fraisCommerciaux !== undefined ? prev.fraisCommerciaux : (config.fraisCommerciaux !== undefined ? config.fraisCommerciaux : 2500),
+                loyerBailleur: prev?.selectedPortfolio === selectedBessPortfolio && prev?.loyerBailleur !== undefined
+                  ? prev.loyerBailleur
+                  : (normalizePortfolioName(selectedBessPortfolio) === 'FARADAY' ? 2000 : 3000)
               }));
               setBessMode('portfolio');
               setIsDossierPdfOpen(true);
             }}
-            className="px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
-            title="Générer l'étude complète et le dossier d'investissement consolidé"
+            className="px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+            title={`Ouvrir et générer l'étude complète du portefeuille BESS ${selectedBessPortfolio}`}
           >
             <Sparkles className="w-4 h-4 text-yellow-200" />
-            <span>ÉTUDE COMPLÈTE</span>
+            <span>ÉTUDE COMPLÈTE ({selectedBessPortfolio === 'ALL' ? 'TOUS' : selectedBessPortfolio.toUpperCase()})</span>
           </button>
         </div>
       </div>
@@ -1555,21 +1660,32 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
       {bessMode === 'portfolio' ? (
         <BessPortfolioView
           projects={projects}
+          initialPortfolio={selectedBessPortfolio}
+          selectedPortfolio={selectedBessPortfolio}
+          onSelectPortfolio={(portName) => setSelectedBessPortfolio(portName)}
           onSelectSite={(site) => {
             if (site && onApplyProject) {
               onApplyProject({
+                ...(site.crmProject || {}),
                 id: site.id,
                 name: site.name,
+                client: site.client,
                 city: site.city,
                 postcode: site.postcode,
                 address: site.address,
                 lat: site.lat,
                 lng: site.lng,
+                gps: site.gps,
+                spv: site.spv,
+                rent: site.fin?.loyerDalle ?? site.rent,
+                portfolio: site.portfolio,
+                bess_portfolio: site.bess_portfolio || site.portfolio,
+                substation: site.substation,
                 isBatteryStandAlone: 'Oui'
               });
               setBessMode('single');
               toast({
-                title: `Site ${site.name} chargé`,
+                title: `Site ${site.name} (${site.portfolio || selectedBessPortfolio}) chargé`,
                 description: `Simulation unitaire de 500 kW rattachée au poste source ${site.substation?.name || 'ODRE'}.`
               });
             }
@@ -1580,7 +1696,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           }}
           onDataChange={(data) => {
             setPortfolioExportData(data);
-            if (data?.selectedPortfolio) {
+            if (data?.selectedPortfolio && data.selectedPortfolio !== selectedBessPortfolio) {
               setSelectedBessPortfolio(data.selectedPortfolio);
             }
           }}
@@ -1656,15 +1772,21 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           isOpen={isBessPortfolioLenderModalOpen}
           onClose={() => setIsBessPortfolioLenderModalOpen(false)}
           portfolioName={selectedBessPortfolio}
-          sites={portfolioExportData?.analyzedSites || activeBessSites}
-          consolidatedTotals={portfolioExportData?.consolidatedTotals || {}}
-          consolidatedChronique={portfolioExportData?.consolidatedChronique || []}
+          sites={(portfolioExportData?.selectedPortfolio === selectedBessPortfolio && portfolioExportData?.analyzedSites?.length > 0) ? portfolioExportData.analyzedSites : activeBessSites}
+          consolidatedTotals={(portfolioExportData?.selectedPortfolio === selectedBessPortfolio && portfolioExportData?.consolidatedTotals) ? portfolioExportData.consolidatedTotals : {}}
+          consolidatedChronique={(portfolioExportData?.selectedPortfolio === selectedBessPortfolio && portfolioExportData?.consolidatedChronique) ? portfolioExportData.consolidatedChronique : []}
           debtDuration={portfolioExportData?.debtDuration ?? 12}
           debtRate={portfolioExportData?.debtRate ?? 4.30}
-          loyerBailleurPerSite={portfolioExportData?.loyerBailleurPerSite ?? 3000}
+          loyerBailleurPerSite={portfolioExportData?.loyerBailleur ?? (normalizePortfolioName(selectedBessPortfolio) === 'FARADAY' ? 2000 : 3000)}
           fraisCommerciauxPerSite={portfolioExportData?.fraisCommerciaux ?? (config.fraisCommerciaux !== undefined ? config.fraisCommerciaux : 2500)}
         />
       )}
+
+      <PortfolioManagerModal
+        open={isBessPortfolioModalOpen}
+        onClose={() => setIsBessPortfolioModalOpen(false)}
+        projects={projects}
+      />
     </div>
   );
 }
@@ -2589,25 +2711,43 @@ function TabBpProjets({
     }
     if (!p) return;
 
-    // 1. Appariement automatique avec la Matrice ODRE certifiée des 31 sites
+    // 1. Extraction des coordonnées et appariement avec la Matrice ODRE ou Caparéseau (3 118 postes) pour VOLTA / FARADAY / EDISON
+    const coords = extractProjectCoordinates(p);
+    const pLat = p.lat && !isNaN(parseFloat(p.lat)) ? parseFloat(p.lat) : coords?.lat;
+    const pLng = p.lng && !isNaN(parseFloat(p.lng)) ? parseFloat(p.lng) : coords?.lng;
+
     const odreSite = findBessOdreData(
       p.name || p.client_name || p.clientName || p.id,
       p.city || p.commune,
       p.address,
-      p.lat,
-      p.lng
+      pLat,
+      pLng
     );
 
-    let enrichedProject = { ...p };
+    const closestCapareseau = (!odreSite && pLat && pLng)
+      ? findClosestCapareseauSubstation(pLat, pLng)
+      : null;
+
+    const projPortfolio = resolveProjectPortfolio(p) || normalizePortfolioName(getProjectBessPortfolio(p));
+    const defaultLoyerBess = Number(p.rent || p.loyer_annuel || p.loyer || (projPortfolio === 'FARADAY' ? 2000 : 3000));
+
+    let enrichedProject = {
+      ...p,
+      lat: pLat,
+      lng: pLng,
+      bess_portfolio: projPortfolio || p.bess_portfolio
+    };
     let distKmBess = 5.0;
     let distMetersBess = 5000;
     let raccordementCostBess = 115000;
+    let resolvedZoneCre = '';
 
     if (odreSite) {
       distKmBess = odreSite.distanceKm;
       const rCalc = computeBessRaccordementCost(distKmBess, 10);
       distMetersBess = rCalc.distanceMeters;
       raccordementCostBess = rCalc.raccordementCost;
+      resolvedZoneCre = odreSite.typologieZoneCre || '';
 
       enrichedProject = {
         ...enrichedProject,
@@ -2630,12 +2770,36 @@ function TabBpProjets({
           statutRaccordement: odreSite.statutRaccordement
         }
       };
+    } else if (p.substation?.name || closestCapareseau) {
+      const subName = (p.substation?.name && p.substation.name !== 'ODRE') ? p.substation.name : (closestCapareseau?.name || 'ODRE');
+      const subCode = p.substation?.code || closestCapareseau?.code || subName.substring(0, 5).toUpperCase();
+      const creQual = getCreSubstationQualification(subName, subCode);
+      distKmBess = Number(p.substation?.distanceKm || closestCapareseau?.distanceKm || 5.0);
+      const rCalc = computeBessRaccordementCost(distKmBess, 10);
+      distMetersBess = rCalc.distanceMeters;
+      raccordementCostBess = rCalc.raccordementCost;
+      resolvedZoneCre = p.substation?.typologieZoneCre || creQual?.label || 'Zone standard Enedis';
+
+      enrichedProject = {
+        ...enrichedProject,
+        substation: {
+          name: subName,
+          code: subCode,
+          voltageLevel: p.substation?.voltageLevel || closestCapareseau?.voltageLevel || 'HTA 20 kV',
+          distanceKm: distKmBess,
+          quotePartS3renr: p.substation?.quotePartS3renr || closestCapareseau?.quotePartS3renr || '92.73 k€/MW',
+          quotePartS3renrEur: p.substation?.quotePartS3renrEur || closestCapareseau?.quotePartS3renrEur || 92730,
+          resteAffecterMw: p.substation?.resteAffecterMw ?? closestCapareseau?.resteAffecterMw ?? 0,
+          typologieZoneCre: resolvedZoneCre,
+          statutRaccordement: p.substation?.statutRaccordement || closestCapareseau?.statutRaccordement || 'Transfo sol libre - Dépôt PTF'
+        }
+      };
     }
 
     setSelectedProject(enrichedProject);
     
     // Auto-switch to BESS tab if project is stand-alone battery and has no PV data saved
-    if (p.isBatteryStandAlone === 'Oui' && !p.bp_pv_data) {
+    if ((p.isBatteryStandAlone === 'Oui' || Boolean(projPortfolio)) && !p.bp_pv_data) {
       onBpSubTabChange('bess');
     }
 
@@ -2660,14 +2824,14 @@ function TabBpProjets({
       raccordementHT: distMetersBess,
       distancePriv: 10,
       raccordement: raccordementCostBess,
-      loyerDalle: 3000,
-      revenuBailleurAn: 3000,
+      loyerDalle: defaultLoyerBess,
+      revenuBailleurAn: defaultLoyerBess,
       dureeEtude: 20,
       useTurpe7: true,
       tensionDomain: 'HTA1',
-      storageZone: odreSite?.typologieZoneCre?.toLowerCase().includes('injection') 
+      storageZone: resolvedZoneCre.toLowerCase().includes('injection') 
         ? 'ZONE_INJECTION_SATURATION' 
-        : (odreSite?.typologieZoneCre?.toLowerCase().includes('soutirage') ? 'ZONE_SOUTIRAGE_TENSION' : 'ZONE_STANDARD')
+        : (resolvedZoneCre.toLowerCase().includes('soutirage') ? 'ZONE_SOUTIRAGE_TENSION' : 'ZONE_STANDARD')
     };
 
     if (resolved) {
@@ -5312,17 +5476,26 @@ export default function BpAcama() {
     const features = selectedProject.features || selectedProject.map_state?.features || selectedProject.map_state?.projects || [];
     const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
     
-    // Rapprochement ODRE automatique
+    // Rapprochement ODRE / Caparéseau automatique (VOLTA / FARADAY / EDISON)
+    const coords = extractProjectCoordinates(selectedProject);
+    const sLat = selectedProject.lat && !isNaN(parseFloat(selectedProject.lat)) ? parseFloat(selectedProject.lat) : coords?.lat;
+    const sLng = selectedProject.lng && !isNaN(parseFloat(selectedProject.lng)) ? parseFloat(selectedProject.lng) : coords?.lng;
+
     const odreSite = findBessOdreData(
       selectedProject.name || selectedProject.client_name || selectedProject.id,
       selectedProject.city || selectedProject.commune,
       selectedProject.address,
-      selectedProject.lat,
-      selectedProject.lng
+      sLat,
+      sLng
     );
-    const rCalc = computeBessRaccordementCost(odreSite ? odreSite.distanceKm : 5.0, 10);
+    const closestCap = (!odreSite && sLat && sLng) ? findClosestCapareseauSubstation(sLat, sLng) : null;
+    const distKmVal = odreSite ? odreSite.distanceKm : (selectedProject.substation?.distanceKm || closestCap?.distanceKm || 5.0);
+    const rCalc = computeBessRaccordementCost(distKmVal, 10);
     const initialRaccordementHT = rCalc.distanceMeters;
     const initialRaccordementCost = rCalc.raccordementCost;
+    const projPort = resolveProjectPortfolio(selectedProject) || normalizePortfolioName(getProjectBessPortfolio(selectedProject));
+    const defaultLoyerVal = Number(selectedProject.rent || selectedProject.loyer_annuel || selectedProject.loyer || (projPort === 'FARADAY' ? 2000 : 3000));
+    const zoneCreLabel = odreSite?.typologieZoneCre || selectedProject.substation?.typologieZoneCre || getCreSubstationQualification(selectedProject.substation?.name || closestCap?.name, selectedProject.substation?.code || closestCap?.code)?.label || '';
 
     const defaultBatteryConfig = {
       enabled: false,
@@ -5350,8 +5523,8 @@ export default function BpAcama() {
       disponibilite: 98,
       rendementRoundTrip: 88,
       maintenanceAn: 4000,
-      revenuBailleurAn: 3000,
-      loyerDalle: 3000,
+      revenuBailleurAn: defaultLoyerVal,
+      loyerDalle: defaultLoyerVal,
       gestionChargeAn: 0,
       assuranceAn: 1750,
       commissionAgregateur: 18,
@@ -5362,9 +5535,9 @@ export default function BpAcama() {
       dureeEtude: 20,
       apport: 0,
       tauxIS: 25,
-      storageZone: odreSite?.typologieZoneCre?.toLowerCase().includes('injection') 
+      storageZone: zoneCreLabel.toLowerCase().includes('injection') 
         ? 'ZONE_INJECTION_SATURATION' 
-        : (odreSite?.typologieZoneCre?.toLowerCase().includes('soutirage') ? 'ZONE_SOUTIRAGE_TENSION' : 'ZONE_STANDARD')
+        : (zoneCreLabel.toLowerCase().includes('soutirage') ? 'ZONE_SOUTIRAGE_TENSION' : 'ZONE_STANDARD')
     };
 
     if (selectedProject.bp_hybrid_enabled !== undefined) {

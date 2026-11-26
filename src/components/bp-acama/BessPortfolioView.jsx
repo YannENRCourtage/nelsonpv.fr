@@ -21,7 +21,7 @@ import {
   FileSpreadsheet,
   Coins
 } from 'lucide-react';
-import { BESS_PORTFOLIO_SITES, getBessPortfolioSites } from '../../data/bessPortfolioData.js';
+import { BESS_PORTFOLIO_SITES, getBessPortfolioSites, normalizePortfolioName } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
 import { calculateIrr, calculatePmt, calculateProjectPayback, calculateEquityPayback, computeBessFinancials } from '../../services/bessSimulationEngine.js';
 import { exportBessPortfolioToExcel, exportBessOdreMatrixToExcel } from '../../services/exportBessExcel.js';
@@ -36,28 +36,67 @@ const fmtK = (v) => `${(v / 1000).toFixed(0)} k€`;
 const fmtM = (v) => `${(v / 1000000).toFixed(2)} M€`;
 const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
 
-export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataChange, projects = [] }) {
+export default function BessPortfolioView({
+  onSelectSite,
+  onExportPdf,
+  onDataChange,
+  projects = [],
+  initialPortfolio = 'VOLTA',
+  selectedPortfolio: externalPortfolio,
+  onSelectPortfolio
+}) {
   const { bessPortfolios, canManagePortfolios } = usePortfolios();
-  const [selectedPortfolio, setSelectedPortfolio] = useState('VOLTA'); // 'VOLTA' | 'FARADAY' | 'ALL' etc.
+  const [selectedPortfolio, setSelectedPortfolio] = useState(externalPortfolio || initialPortfolio || 'VOLTA'); // 'VOLTA' | 'FARADAY' | 'EDISON' | 'ALL'
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isLenderModalOpen, setIsLenderModalOpen] = useState(false);
   const [selectedSpv, setSelectedSpv] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedChronique, setExpandedChronique] = useState(false);
 
+  // Synchronisation avec le portefeuille sélectionné dans la barre supérieure parente
+  useEffect(() => {
+    if (externalPortfolio && externalPortfolio !== selectedPortfolio) {
+      setSelectedPortfolio(externalPortfolio);
+    }
+  }, [externalPortfolio]);
+
+  const handlePortfolioSelect = (portName) => {
+    setSelectedPortfolio(portName);
+    if (onSelectPortfolio) {
+      onSelectPortfolio(portName);
+    }
+  };
+
+  // Liste garantie des portefeuilles BESS (VOLTA, FARADAY, EDISON + portefeuilles personnalisés)
+  const effectiveBessPortfolios = useMemo(() => {
+    const list = Array.isArray(bessPortfolios) ? [...bessPortfolios] : [];
+    const defaults = [
+      { id: 'bess-volta', name: 'VOLTA', type: 'BESS', spv: 'SPV A (VOLTA)' },
+      { id: 'bess-faraday', name: 'FARADAY', type: 'BESS', spv: 'SPV B (FARADAY)' },
+      { id: 'bess-edison', name: 'EDISON', type: 'BESS', spv: 'SPV C (EDISON)' }
+    ];
+    defaults.forEach(def => {
+      if (!list.some(p => normalizePortfolioName(p.name) === def.name)) {
+        list.push(def);
+      }
+    });
+    return list;
+  }, [bessPortfolios]);
+
   // Paramètres de dette senior, frais et loyer modifiables
   const [debtDuration, setDebtDuration] = useState(12); // en années (e.g. 10, 12, 15, 20)
   const [debtRate, setDebtRate] = useState(4.30); // en % (e.g. 3.80, 4.00, 4.30, 4.50, 5.00)
   const [fraisCommerciauxPerSite, setFraisCommerciauxPerSite] = useState(2500); // 5 000 €/MW = 2 500 € pour 500 kW
   const [loyerBailleurPerSite, setLoyerBailleurPerSite] = useState(
-    selectedPortfolio === 'FARADAY' ? 2000 : 3000
+    normalizePortfolioName(externalPortfolio || initialPortfolio) === 'FARADAY' ? 2000 : 3000
   );
 
-  // Basculement automatique du loyer bailleur par défaut selon le portefeuille (2 000 € Faraday, 3 000 € Volta)
+  // Basculement automatique du loyer bailleur par défaut et réinitialisation du filtre SPV selon le portefeuille
   useEffect(() => {
-    if (selectedPortfolio === 'FARADAY') {
+    setSelectedSpv('ALL');
+    if (normalizePortfolioName(selectedPortfolio) === 'FARADAY') {
       setLoyerBailleurPerSite(2000);
-    } else if (selectedPortfolio === 'VOLTA') {
+    } else {
       setLoyerBailleurPerSite(3000);
     }
   }, [selectedPortfolio]);
@@ -68,15 +107,16 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
   const nbCyclesJour = 2.0; // 2 cycles/jour
   const studyYears = 15;
 
-  // Harmonisation des sites BESS avec les projets CRM et attribution portefeuille VOLTA / FARADAY
+  // Harmonisation des sites BESS avec les projets CRM et attribution portefeuille VOLTA / FARADAY / EDISON
   const allPortfolioSites = useMemo(() => {
     return getBessPortfolioSites(projects, 'ALL');
   }, [projects]);
 
-  // Sites actifs filtrés par portefeuille (VOLTA vs FARADAY vs TOUS)
+  // Sites actifs filtrés par portefeuille (VOLTA vs FARADAY vs EDISON vs TOUS)
   const activeSites = useMemo(() => {
-    if (selectedPortfolio === 'ALL') return allPortfolioSites;
-    return allPortfolioSites.filter(s => s.portfolio === selectedPortfolio);
+    const normSel = normalizePortfolioName(selectedPortfolio);
+    if (!normSel || normSel === 'ALL' || normSel === 'TOUS') return allPortfolioSites;
+    return allPortfolioSites.filter(s => normalizePortfolioName(s.portfolio) === normSel);
   }, [allPortfolioSites, selectedPortfolio]);
 
   // Calcul financier de chaque site et agrégation avec dette dynamique via computeBessFinancials
@@ -305,15 +345,15 @@ const ODRE_CAPARESEAU_29_SITES = [
         <div className="flex flex-wrap items-center gap-3" data-html2canvas-ignore="true">
           {/* Sélecteur dynamique de Portefeuille BESS */}
           <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/20">
-            {bessPortfolios.map(port => {
-              const count = allPortfolioSites.filter(s => s.portfolio && s.portfolio.toUpperCase() === port.name.toUpperCase()).length;
-              const isSelected = selectedPortfolio.toUpperCase() === port.name.toUpperCase();
+            {effectiveBessPortfolios.map(port => {
+              const count = allPortfolioSites.filter(s => normalizePortfolioName(s.portfolio) === normalizePortfolioName(port.name)).length;
+              const isSelected = normalizePortfolioName(selectedPortfolio) === normalizePortfolioName(port.name);
               return (
                 <button
                   key={port.id}
                   type="button"
-                  onClick={() => setSelectedPortfolio(port.name)}
-                  className={`px-3 py-1.5 text-xs font-black rounded-md transition-all flex items-center gap-1.5 ${
+                  onClick={() => handlePortfolioSelect(port.name)}
+                  className={`px-3 py-1.5 text-xs font-black rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-sm font-black'
                       : 'text-slate-300 hover:text-white hover:bg-white/10'
@@ -329,8 +369,8 @@ const ODRE_CAPARESEAU_29_SITES = [
 
             <button
               type="button"
-              onClick={() => setSelectedPortfolio('ALL')}
-              className={`px-2.5 py-1.5 text-xs font-bold rounded-md transition-all ${
+              onClick={() => handlePortfolioSelect('ALL')}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
                 selectedPortfolio === 'ALL'
                   ? 'bg-white/20 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
@@ -354,15 +394,15 @@ const ODRE_CAPARESEAU_29_SITES = [
 
           <button
             onClick={handleExportExcel}
-            className="px-3 py-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-all flex items-center gap-1.5"
+            className="px-3 py-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
             title="Télécharger l'analyse consolidée complète au format Excel"
           >
             <Download className="w-4 h-4 text-emerald-400" />
-            BP consolidé par site
+            BP consolidé ({selectedPortfolio === 'ALL' ? 'TOUS' : selectedPortfolio})
           </button>
           <button
             onClick={handleExportOdreMatrix}
-            className="px-3 py-2 text-xs font-bold bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-100 rounded-lg border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-xs"
+            className="px-3 py-2 text-xs font-bold bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-100 rounded-lg border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
             title={`Télécharger la matrice Caparéseau ODRE des ${activeSites.length} postes sources (${selectedPortfolio}) au format Excel`}
           >
             <FileSpreadsheet className="w-4 h-4 text-cyan-300" />
@@ -370,12 +410,33 @@ const ODRE_CAPARESEAU_29_SITES = [
           </button>
           <button
             onClick={() => setIsLenderModalOpen(true)}
-            className="px-3.5 py-2 text-xs font-black bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white rounded-lg border border-blue-500/40 transition-all flex items-center gap-2 shadow-sm"
+            className="px-3.5 py-2 text-xs font-black bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white rounded-lg border border-blue-500/40 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
             title={`Ouvrir et générer le Dossier Prêteur Consolidé pour Banques et Financeurs (${selectedPortfolio})`}
           >
             <ShieldCheck className="w-4 h-4 text-emerald-300" />
             Dossier Prêteur ({selectedPortfolio === 'ALL' ? 'TOUS' : selectedPortfolio})
           </button>
+          {onExportPdf && (
+            <button
+              onClick={() =>
+                onExportPdf({
+                  debtDuration,
+                  debtRate,
+                  fraisCommerciaux: fraisCommerciauxPerSite,
+                  loyerBailleur: loyerBailleurPerSite,
+                  analyzedSites,
+                  consolidatedTotals,
+                  consolidatedChronique,
+                  selectedPortfolio
+                })
+              }
+              className="px-3.5 py-2 text-xs font-black bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg border border-amber-400/40 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+              title={`Ouvrir l'Étude Complète & Mémorandum d'Investissement pour le portefeuille ${selectedPortfolio}`}
+            >
+              <Sparkles className="w-4 h-4 text-yellow-200" />
+              Étude Complète ({selectedPortfolio === 'ALL' ? 'TOUS' : selectedPortfolio})
+            </button>
+          )}
         </div>
       </div>
 
@@ -591,7 +652,7 @@ const ODRE_CAPARESEAU_29_SITES = [
             </div>
             <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
               <span>0 €</span>
-              <span className="text-emerald-700 font-bold">2k€ (Faraday) / 3k€ (Volta)</span>
+              <span className="text-emerald-700 font-bold">2k€ (Faraday) / 3k€ (Volta & Edison)</span>
               <span>6 000 €</span>
             </div>
           </div>

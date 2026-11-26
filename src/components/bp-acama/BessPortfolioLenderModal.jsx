@@ -1061,9 +1061,9 @@ export default function BessPortfolioLenderModal({
                           <span className="text-[9.5px] text-slate-400">{s.cp || s.postcode}</span>
                         </td>
                         <td className="py-1 px-2 font-mono text-[9px] text-blue-700">{s.gps}</td>
-                        <td className="py-1 px-2 font-extrabold text-emerald-800">{typeof s.substation === 'object' ? s.substation?.name : (s.substation || 'ODRE')}</td>
-                        <td className="py-1 px-2 text-center font-semibold text-slate-600">{s.dist || '5.0 km'}</td>
-                        <td className="py-1 px-2 text-right font-semibold text-slate-600">{s.s3renr || '92.73 k€/MW'}</td>
+                        <td className="py-1 px-2 font-extrabold text-emerald-800">{typeof s.substation === 'object' ? (s.substation?.name || siteSims[idx]?.posteSource || 'ODRE') : (s.substation || siteSims[idx]?.posteSource || 'ODRE')}</td>
+                        <td className="py-1 px-2 text-center font-semibold text-slate-600">{s.dist || (s.substation?.distanceKm != null ? `${s.substation.distanceKm} km` : (siteSims[idx]?.distanceKm != null ? `${siteSims[idx].distanceKm} km` : '5.0 km'))}</td>
+                        <td className="py-1 px-2 text-right font-semibold text-slate-600">{s.s3renr || s.substation?.quotePartS3renr || siteSims[idx]?.quotePartS3REnR || '92.73 k€/MW'}</td>
                         <td className="py-1 px-2 text-center font-bold text-slate-900">
                           <span className="px-1 py-0.5 rounded-md bg-blue-50 text-blue-700 block leading-tight">500 kW / 1 044 kWh</span>
                         </td>

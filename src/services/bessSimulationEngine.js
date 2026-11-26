@@ -15,6 +15,8 @@
 
 import { calculateTurpe7Details, generateAnnualRechargeProfileMwh } from './turpeCalculationService.js';
 import { findBessOdreData, computeBessRaccordementCost, BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
+import { findClosestCapareseauSubstation } from '../data/capareseauSubstations.js';
+import { getCreSubstationQualification } from './creZonesService.js';
 
 /**
  * Fonction de nettoyage et parsing numérique sécurisé (élimine symboles €, kW, espaces, etc.)
@@ -466,17 +468,36 @@ export function simulateBessFinancials(config = {}) {
 export function computeBessFinancials(siteOrConfig = {}, options = {}) {
   const site = siteOrConfig || {};
   
-  // 1. Appariement automatique avec la matrice officielle ODRE des 31 sites
+  // 1. Appariement automatique avec la matrice officielle ODRE des 31 sites ou Caparéseau (3 118 postes) pour VOLTA / FARADAY / EDISON
+  let siteLat = site.lat ?? site.latitude;
+  let siteLng = site.lng ?? site.longitude;
+  if ((!siteLat || !siteLng) && site.gps && typeof site.gps === 'string') {
+    const sep = site.gps.includes(';') ? ';' : ',';
+    const parts = site.gps.split(sep).map(s => parseFloat(s.trim()));
+    if (!isNaN(parts[0]) && !isNaN(parts[1])) {
+      siteLat = parts[0];
+      siteLng = parts[1];
+    }
+  }
+
   const odreData = findBessOdreData(
     site.name || site.siteName || site.id,
     site.city || site.commune,
     site.address,
-    site.lat || site.latitude,
-    site.lng || site.longitude
+    siteLat,
+    siteLng
   );
 
+  const capareseauData = (!odreData && siteLat && siteLng)
+    ? findClosestCapareseauSubstation(siteLat, siteLng)
+    : null;
+
   // 2. Détermination de la typologie CRE & TURPE 7
-  const zoneCre = site.typologieZoneCre || site.zoneCre || odreData?.typologieZoneCre || 'Zone standard Enedis';
+  const resolvedSubstationName = site.substation?.name || (typeof site.substation === 'string' ? site.substation : null) || odreData?.posteSourceEnedis || capareseauData?.name || 'Poste HTA';
+  const resolvedSubstationCode = site.substation?.code || odreData?.codePoste || capareseauData?.code || '';
+  const creQualFromSubstation = getCreSubstationQualification(resolvedSubstationName, resolvedSubstationCode);
+
+  const zoneCre = site.typologieZoneCre || site.zoneCre || site.substation?.typologieZoneCre || odreData?.typologieZoneCre || creQualFromSubstation?.label || 'Zone standard Enedis';
   let storageZone = 'ZONE_STANDARD';
   const cleanZone = String(zoneCre).toLowerCase();
   if (cleanZone.includes('injection') || site.storageZone === 'ZONE_INJECTION_SATURATION') {
@@ -486,7 +507,7 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
   }
 
   // 3. Distance réseau & CAPEX Raccordement
-  const rawDist = site.distanceKm ?? site.distKm ?? site.dist ?? site.substation?.distanceKm ?? odreData?.distanceKm ?? 5.0;
+  const rawDist = site.distanceKm ?? site.distKm ?? site.dist ?? site.substation?.distanceKm ?? odreData?.distanceKm ?? capareseauData?.distanceKm ?? 5.0;
   const distKm = parseNum(rawDist, 5.0);
   const distPriv = parseNum(site.distancePriv ?? options.distancePriv, 10);
   const raccCostResult = computeBessRaccordementCost(distKm, distPriv);
@@ -562,9 +583,9 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
     commune: site.city || site.commune || odreData?.commune || '',
     codePostal: site.cp || site.postcode || site.codePostal || odreData?.codePostal || '',
     departement: site.dept || odreData?.departement || '',
-    posteSource: site.substation?.name || site.substation || odreData?.posteSourceEnedis || 'Poste HTA',
+    posteSource: resolvedSubstationName,
     distanceKm: distKm,
-    quotePartS3REnR: site.s3renr || site.substation?.quotePartS3renr || odreData?.quotePartS3REnR || '',
+    quotePartS3REnR: site.s3renr || site.substation?.quotePartS3renr || odreData?.quotePartS3REnR || capareseauData?.quotePartS3renr || '92.73 k€/MW',
     zoneCre,
     storageZone,
     raccordementCost: raccordement,

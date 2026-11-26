@@ -39,8 +39,18 @@ export const DEFAULT_PORTFOLIOS = [
     name: 'FARADAY',
     type: 'BESS',
     spv: 'SPV B (FARADAY)',
-    description: 'Portefeuille Stockage BESS FARADAY',
-    color: '#ef4444',
+    description: 'Portefeuille Stockage BESS FARADAY (500 kW / 1044 kWh)',
+    color: '#10b981',
+    isDefault: true,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'bess-edison',
+    name: 'EDISON',
+    type: 'BESS',
+    spv: 'SPV C (EDISON)',
+    description: 'Portefeuille Stockage BESS EDISON (500 kW / 1044 kWh)',
+    color: '#6366f1',
     isDefault: true,
     createdAt: '2026-01-01T00:00:00.000Z'
   }
@@ -93,6 +103,11 @@ export function getPortfoliosFromLS() {
       if (!hasFaraday) {
         const f = DEFAULT_PORTFOLIOS.find(p => p.name === 'FARADAY');
         if (f) list.push(f);
+      }
+      const hasEdison = list.some(p => (p.name || '').toUpperCase() === 'EDISON');
+      if (!hasEdison) {
+        const ed = DEFAULT_PORTFOLIOS.find(p => p.name === 'EDISON');
+        if (ed) list.push(ed);
       }
       savePortfoliosToLS(list);
       return list;
@@ -203,6 +218,11 @@ export function subscribeToPortfolios(callback) {
         if (!hasFaraday) {
           const faraday = DEFAULT_PORTFOLIOS.find(p => p.name === 'FARADAY');
           if (faraday) docs.push(faraday);
+        }
+        const hasEdison = docs.some(p => (p.name || '').toUpperCase() === 'EDISON');
+        if (!hasEdison) {
+          const edison = DEFAULT_PORTFOLIOS.find(p => p.name === 'EDISON');
+          if (edison) docs.push(edison);
         }
 
         savePortfoliosToLS(docs);
@@ -347,7 +367,7 @@ export async function deletePortfolio(id, user) {
     throw new Error("Portefeuille introuvable.");
   }
 
-  if (target.isDefault && (target.name === 'HELIOS' || target.name === 'VOLTA' || target.name === 'FARADAY')) {
+  if (target.isDefault && (target.name === 'HELIOS' || target.name === 'VOLTA' || target.name === 'FARADAY' || target.name === 'EDISON')) {
     throw new Error(`Le portefeuille système "${target.name}" ne peut pas être supprimé car il sert de référence de base.`);
   }
 

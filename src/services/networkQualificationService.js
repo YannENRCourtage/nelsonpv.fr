@@ -13,6 +13,7 @@
 import { CERTITUDE_LEVELS } from '../data/turpe/turpe7Tarifs.js';
 import { getCreSubstationQualification } from './creZonesService.js';
 import { findBessOdreData } from '../data/bessOdreMatrix.js';
+import { findClosestCapareseauSubstation } from '../data/capareseauSubstations.js';
 
 /**
  * Calcul de distance géodésique Haversine entre deux coordonnées (lat/lon) en kilomètres
@@ -112,6 +113,32 @@ export async function fetchClosestSubstation(lat, lng) {
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
     if (isNaN(latNum) || isNaN(lngNum)) return null;
+
+    // 0. Recherche directe en mémoire dans la base Caparéseau embarquée (3 118 postes)
+    const inMemoryClosest = findClosestCapareseauSubstation(latNum, lngNum);
+    if (inMemoryClosest) {
+      const creQual = getCreSubstationQualification(inMemoryClosest.name, inMemoryClosest.code);
+      return {
+        id: inMemoryClosest.code || inMemoryClosest.name || 'Poste Source',
+        name: inMemoryClosest.name || 'Poste Source HTA/HTB',
+        code: inMemoryClosest.code || '',
+        voltageLevel: inMemoryClosest.voltageLevel || 'HTA / 20 kV',
+        availableCapacityMw: inMemoryClosest.resteAffecterMw ?? 0,
+        reservedCapacityMw: inMemoryClosest.capaciteReserveeMw ?? 0,
+        quotePartS3REnR: inMemoryClosest.quotePartS3renr || '—',
+        quotePartS3renrEur: inMemoryClosest.quotePartS3renrEur,
+        fileAttenteMw: inMemoryClosest.fileAttenteMw ?? 0,
+        tauxOccupation: '—',
+        gestionnaire: inMemoryClosest.gestionnaire || 'Enedis',
+        commune: '',
+        lat: inMemoryClosest.lat,
+        lng: inMemoryClosest.lng,
+        distanceKm: inMemoryClosest.distanceKm,
+        estimatedRouteMeters: Math.round(inMemoryClosest.distanceKm * 1000),
+        statutRaccordement: inMemoryClosest.statutRaccordement,
+        creQualification: creQual
+      };
+    }
 
     // 1. Recherche instantanée dans la base locale Caparéseau (3 118 postes)
     const localData = await loadCapareseauData();

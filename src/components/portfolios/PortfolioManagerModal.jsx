@@ -180,7 +180,7 @@ export default function PortfolioManagerModal({ open, onClose, projects = [] }) 
   };
 
   const handleDelete = async (port) => {
-    if (port.isDefault && (port.name === 'HELIOS' || port.name === 'VOLTA')) {
+    if (port.isDefault && (port.name === 'HELIOS' || port.name === 'VOLTA' || port.name === 'FARADAY' || port.name === 'EDISON')) {
       toast({
         title: "Action non autorisée",
         description: `Le portefeuille système ${port.name} est indispensable et ne peut être supprimé.`,
@@ -481,9 +481,9 @@ export default function PortfolioManagerModal({ open, onClose, projects = [] }) 
                         <button
                           type="button"
                           onClick={() => handleDelete(port)}
-                          disabled={port.isDefault && (port.name === 'HELIOS' || port.name === 'VOLTA')}
+                          disabled={port.isDefault && (port.name === 'HELIOS' || port.name === 'VOLTA' || port.name === 'FARADAY' || port.name === 'EDISON')}
                           className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={port.isDefault && (port.name === 'HELIOS' || port.name === 'VOLTA') ? "Portefeuille système protégé" : "Supprimer"}
+                          title={port.isDefault && (port.name === 'HELIOS' || port.name === 'VOLTA' || port.name === 'FARADAY' || port.name === 'EDISON') ? "Portefeuille système protégé" : "Supprimer"}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

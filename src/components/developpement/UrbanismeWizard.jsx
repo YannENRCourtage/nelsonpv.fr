@@ -7099,23 +7099,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
   }, [step, editedProject?.city, editedProject?.commune, editedProject?.zip, editedProject?.address, editedProject?.insee, project?.city, project?.commune, project?.zip, project?.address, project?.insee]);
 
   const handleOpenPortalAndDownloadZip = async () => {
-    const portalUrl = mairieRouting?.data?.portal?.url || 'https://www.service-public.fr/particuliers/vosdroits/R52221';
-
-    // 1. Tenter l'ouverture du guichet unique dans un nouvel onglet
-    try {
-      const newWin = window.open(portalUrl, '_blank');
-      if (!newWin) {
-        setPopupBlocked(true);
-      } else {
-        try { newWin.opener = null; } catch (_) {}
-        setPopupBlocked(false);
-      }
-    } catch (e) {
-      console.warn('[UrbanismeWizard] Pop-up bloqué par le navigateur:', e);
-      setPopupBlocked(true);
-    }
-
-    // 2. Déclencher le packaging ZIP via le pipeline officiel onGenerate pour synchronisation parfaite du DOM
+    // Déclencher uniquement le packaging ZIP via le pipeline officiel onGenerate pour synchronisation parfaite du DOM
     setIsExportingZip(true);
     setZipProgressText('Préparation des pièces du dossier...');
     try {
@@ -10446,7 +10430,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                           disabled={isExportingZip}
                           onClick={handleOpenPortalAndDownloadZip}
                           className="inline-flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all active:scale-98 disabled:opacity-60 cursor-pointer"
-                          title="Ouvre le guichet de dépôt officiel et télécharge l'ensemble des pièces ordonnées en archive ZIP"
+                          title="Télécharge l'ensemble des pièces du dossier ordonnées en archive ZIP"
                         >
                           {isExportingZip ? (
                             <>
@@ -10456,8 +10440,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                           ) : (
                             <>
                               <Download className="w-4 h-4 text-white" />
-                              <span>Ouvrir le Guichet Unique &amp; Télécharger les pièces (.ZIP)</span>
-                              <ExternalLink className="w-4 h-4 text-blue-200" />
+                              <span>Télécharger les pièces du dossier (.ZIP)</span>
                             </>
                           )}
                         </button>
