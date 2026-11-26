@@ -62,7 +62,11 @@ const computeDynamicSiteMetrics = (site, fc = 2500, options = {}) => {
     fraisCommerciaux: customFc,
     ...(options.loyerDalle !== undefined ? { loyerDalle: options.loyerDalle } : {}),
     ...(options.debtDuration !== undefined ? { debtDuration: options.debtDuration } : {}),
-    ...(options.debtRate !== undefined ? { debtRate: options.debtRate } : {})
+    ...(options.debtRate !== undefined ? { debtRate: options.debtRate } : {}),
+    ...(options.capexMode !== undefined ? { capexMode: options.capexMode } : {}),
+    ...(options.capexBreakdown !== undefined ? { capexBreakdown: options.capexBreakdown } : {}),
+    ...(options.financingMode !== undefined ? { financingMode: options.financingMode } : {}),
+    ...(options.revenueModel !== undefined ? { revenueModel: options.revenueModel } : {})
   });
   return {
     capexTotal: fin.capexTotal,
@@ -276,7 +280,11 @@ export default function BessDossierPDFGenerator({
       const m = computeDynamicSiteMetrics(s, fraisCommerciaux, {
         loyerDalle: activeLoyerBailleur,
         debtDuration,
-        debtRate
+        debtRate,
+        capexMode: portfolioData?.capexMode,
+        capexBreakdown: portfolioData?.unifiedInputs?.capexBreakdown,
+        financingMode: portfolioData?.financingMode,
+        revenueModel: portfolioData?.revenueModel
       });
       const cp = s.cp || s.postcode || '';
       const siteRent = activeLoyerBailleur !== undefined ? activeLoyerBailleur : (typeof s.rent === 'number' ? s.rent : (normalizePortfolioName(s.portfolio) === 'FARADAY' ? 2000 : 3000));

@@ -1778,7 +1778,10 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           debtDuration={portfolioExportData?.debtDuration ?? 12}
           debtRate={portfolioExportData?.debtRate ?? 4.30}
           loyerBailleurPerSite={portfolioExportData?.loyerBailleur ?? (normalizePortfolioName(selectedBessPortfolio) === 'FARADAY' ? 2000 : 3000)}
-          fraisCommerciauxPerSite={portfolioExportData?.fraisCommerciaux ?? (config.fraisCommerciaux !== undefined ? config.fraisCommerciaux : 2500)}
+          fraisCommerciauxPerSite={portfolioExportData?.fraisCommerciaux ?? 0}
+          unifiedInputs={portfolioExportData?.selectedPortfolio === selectedBessPortfolio ? portfolioExportData?.unifiedInputs : null}
+          portfolioModel={portfolioExportData?.selectedPortfolio === selectedBessPortfolio ? portfolioExportData?.portfolioModel : null}
+          portfolioStress={portfolioExportData?.selectedPortfolio === selectedBessPortfolio ? portfolioExportData?.portfolioStress : null}
         />
       )}
 

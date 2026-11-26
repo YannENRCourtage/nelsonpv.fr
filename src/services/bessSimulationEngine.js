@@ -17,6 +17,9 @@ import { calculateTurpe7Details, generateAnnualRechargeProfileMwh } from './turp
 import { findBessOdreData, computeBessRaccordementCost, BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
 import { findClosestCapareseauSubstation } from '../data/capareseauSubstations.js';
 import { getCreSubstationQualification } from './creZonesService.js';
+import { CLEAN_HORIZON_20Y, BESS_CAPEX_PRESETS, getScaledCapexPreset } from './bessLenderFinanceEngine.js';
+
+export { CLEAN_HORIZON_20Y, BESS_CAPEX_PRESETS, getScaledCapexPreset };
 
 /**
  * Fonction de nettoyage et parsing numérique sécurisé (élimine symboles €, kW, espaces, etc.)
@@ -521,13 +524,38 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
   const capaciteStockage = parseNum(site.capacityKwh ?? site.capaciteKwh ?? site.cap, 1044);
   const defaultFraisComm = Math.round((puissanceDemandee / 1000) * 5000); // 5 000 €/MW -> 2 500 € pour 500 kW
 
-  // 5. Décomposition du CAPEX unitaire (Standard Nelson / CESC Mercury 261 500 kW / 1044 kWh)
-  const isInvestPropre = Boolean(site.isInvestPropre ?? options.isInvestPropre ?? false);
-  const batterieBms = parseNum(site.batterieBms, 140000);
-  const genieCivil = parseNum(site.genieCivil, 9900);
-  const developpement = parseNum(site.developpement, 7500);
-  const fraisCommerciaux = isInvestPropre ? 0 : (site.fraisCommerciaux !== undefined ? parseNum(site.fraisCommerciaux, defaultFraisComm) : (options.fraisCommerciaux !== undefined ? parseNum(options.fraisCommerciaux, defaultFraisComm) : defaultFraisComm));
-  const capexTotal = batterieBms + genieCivil + developpement + fraisCommerciaux + raccordement;
+  // 5. Décomposition du CAPEX unitaire (Grille Excel : Compte Propre 184 k€ vs Compte Tiers 229 k€ / 500 kW, ou raccordement spécifique ODRE)
+  const capexMode = options.capexMode || site.capexMode || null;
+  const isInvestPropre = Boolean(capexMode === 'COMPTE_PROPRE' || site.isInvestPropre || options.isInvestPropre);
+  const customBreakdown = options.capexBreakdown || site.capexBreakdown || (capexMode ? getScaledCapexPreset(capexMode, puissanceDemandee / 1000) : null);
+
+  let batterieBms = parseNum(site.batterieBms, 140000);
+  let genieCivil = parseNum(site.genieCivil, 9900);
+  let developpement = parseNum(site.developpement, 7500);
+  let effectiveRaccordement = raccordement;
+
+  if (customBreakdown) {
+    developpement = parseNum(customBreakdown.securisationFonciere, 2000) +
+      parseNum(customBreakdown.urbanismeDp, 500) +
+      parseNum(customBreakdown.huissier, 500) +
+      parseNum(customBreakdown.geometre, 1500) +
+      parseNum(customBreakdown.notaire, 4000);
+    batterieBms = parseNum(customBreakdown.batteries, 108000);
+    genieCivil = parseNum(customBreakdown.genieCivil, 4500) + parseNum(customBreakdown.installation, 13000);
+    if (options.useUniformRaccordement !== false && customBreakdown.raccordementEnedis !== undefined && site.customCapex === undefined && site.customRaccordement === undefined) {
+      effectiveRaccordement = parseNum(customBreakdown.raccordementEnedis, 50000);
+    } else if (site.customRaccordement !== undefined) {
+      effectiveRaccordement = parseNum(site.customRaccordement, effectiveRaccordement);
+    }
+  }
+
+  const fraisCommerciaux = isInvestPropre
+    ? parseNum(options.fraisCommerciaux ?? site.fraisCommerciaux, 0)
+    : (site.fraisCommerciaux !== undefined ? parseNum(site.fraisCommerciaux, defaultFraisComm) : (options.fraisCommerciaux !== undefined ? parseNum(options.fraisCommerciaux, defaultFraisComm) : defaultFraisComm));
+
+  const capexTotal = site.customCapex !== undefined && site.customCapex !== null
+    ? parseNum(site.customCapex, batterieBms + genieCivil + developpement + fraisCommerciaux + effectiveRaccordement)
+    : (batterieBms + genieCivil + developpement + fraisCommerciaux + effectiveRaccordement);
 
   const defaultLoyer = (site.portfolio === 'FARADAY' || site.bess_portfolio === 'FARADAY' || site.spv === 'SPV B') ? 2000 : 3000;
   const loyerDalle = parseNum(options.loyerDalle !== undefined ? options.loyerDalle : (site.rent ?? site.loyerDalle), defaultLoyer);
@@ -536,17 +564,17 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
   const sim = simulateBessFinancials({
     puissanceDemandee,
     capaciteStockage,
-    disponibilite: parseNum(site.disponibilite, 98),
-    rendementRoundTrip: parseNum(site.rendementRoundTrip, 88),
-    degradationAnnuelle: parseNum(site.degradationAnnuelle, 2.2),
-    dureeEtude: parseNum(options.studyDuration ?? site.dureeEtude, 15),
-    nbCyclesJour: parseNum(site.nbCyclesJour, 2.0),
+    disponibilite: parseNum(options.availabilityPct ?? site.disponibilite, 98),
+    rendementRoundTrip: parseNum(options.roundTripEfficiencyPct ?? site.rendementRoundTrip, 88),
+    degradationAnnuelle: parseNum(options.batteryDegradationPct ?? site.degradationAnnuelle, options.revenueModel === 'CLEAN_HORIZON' ? 1.37 : 2.2),
+    dureeEtude: parseNum(options.studyDuration ?? options.horizonYears ?? site.dureeEtude, options.revenueModel === 'CLEAN_HORIZON' ? 20 : 15),
+    nbCyclesJour: parseNum(site.nbCyclesJour, options.revenueModel === 'CLEAN_HORIZON' ? 1.0 : 2.0),
     prixFCR: parseNum(site.prixFCR, 20),
     facteurDerating: parseNum(site.facteurDerating, 0.5),
     prixCapacite: parseNum(site.prixCapacite, 35),
     spreadArbitrage: parseNum(site.spreadArbitrage, 0.040),
     coutRecharge: parseNum(site.coutRecharge, 0.030),
-    commissionAgregateur: parseNum(site.commissionAgregateur, 18),
+    commissionAgregateur: parseNum(options.aggregatorFeePct ?? site.commissionAgregateur, options.revenueModel === 'CLEAN_HORIZON' ? 12 : 18),
     useTurpe7Engine: true,
     tensionDomain: site.tensionDomain || 'HTA1',
     tarifOption: site.tarifOption || 'CU',
@@ -555,17 +583,16 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
     maintenanceTarif: parseNum(site.maintenanceTarif, 8),
     assuranceTarif: parseNum(site.assuranceTarif, 3.5),
     loyerDalle,
-    inflationAnnuelle: parseNum(site.inflationAnnuelle, 2.0),
+    inflationAnnuelle: parseNum(options.opexInflationPct ?? site.inflationAnnuelle, 2.0),
     batterieBms,
     genieCivil,
-    raccordement,
+    raccordement: effectiveRaccordement,
     developpement,
     fraisCommerciaux,
     isInvestPropre,
-    loyerDalle,
     tauxEmprunt: parseNum(options.debtRate ?? site.tauxEmprunt, 4.30),
     dureeEmprunt: parseNum(options.debtDuration ?? site.dureeEmprunt, 12),
-    apport: parseNum(site.apport ?? options.apport, 0),
+    apport: options.financingMode === 'CASH' ? capexTotal : parseNum(site.apport ?? options.apport, 0),
     tauxIS: parseNum(site.tauxIS, 25)
   });
 

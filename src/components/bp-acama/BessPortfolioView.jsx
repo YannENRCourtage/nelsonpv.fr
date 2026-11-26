@@ -1,40 +1,46 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Layers,
-  TrendingUp,
-  BatteryCharging,
-  Zap,
-  MapPin,
-  FileDown,
   ChevronDown,
   ChevronUp,
   Download,
-  Filter,
   CheckCircle2,
+  AlertTriangle,
   ShieldCheck,
   Building2,
   Table as TableIcon,
-  Landmark,
-  Percent,
-  Calendar,
   Sparkles,
   FileSpreadsheet,
-  Coins
+  Plus,
+  RotateCcw,
+  Sliders
 } from 'lucide-react';
-import { BESS_PORTFOLIO_SITES, getBessPortfolioSites, normalizePortfolioName } from '../../data/bessPortfolioData.js';
+import { getBessPortfolioSites, normalizePortfolioName } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
-import { calculateIrr, calculatePmt, calculateProjectPayback, calculateEquityPayback, computeBessFinancials } from '../../services/bessSimulationEngine.js';
+import { computeBessFinancials } from '../../services/bessSimulationEngine.js';
+import {
+  BESS_PRESETS,
+  getScaledCapexPreset,
+  computeBessLenderModel,
+  computeBessStressTests
+} from '../../services/bessLenderFinanceEngine.js';
 import { exportBessPortfolioToExcel, exportBessOdreMatrixToExcel } from '../../services/exportBessExcel.js';
-import * as XLSX from 'xlsx';
 import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
 import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
 import BessPortfolioLenderModal from './BessPortfolioLenderModal.jsx';
-import { Plus } from 'lucide-react';
+import {
+  BessGlobalSelectorsBar,
+  BessCapexBreakdownCard,
+  BessAssumptions4ColumnsGrid,
+  BessLender4SummaryCards,
+  BessCleanHorizonChartsSection,
+  BessCompleteAnnualTable,
+  BessSensitivityMatrixSection,
+  fmtEur,
+  fmtPct
+} from './BessUnifiedDashboardComponents.jsx';
 
-const fmtEur = (v) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(v || 0))} €`;
-const fmtK = (v) => `${(v / 1000).toFixed(0)} k€`;
-const fmtM = (v) => `${(v / 1000000).toFixed(2)} M€`;
-const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
+const fmtM = (v) => `${((v || 0) / 1000000).toFixed(2)} M€`;
 
 export default function BessPortfolioView({
   onSelectSite,
@@ -46,12 +52,55 @@ export default function BessPortfolioView({
   onSelectPortfolio
 }) {
   const { bessPortfolios, canManagePortfolios } = usePortfolios();
-  const [selectedPortfolio, setSelectedPortfolio] = useState(externalPortfolio || initialPortfolio || 'VOLTA'); // 'VOLTA' | 'FARADAY' | 'EDISON' | 'ALL'
+  const [selectedPortfolio, setSelectedPortfolio] = useState(externalPortfolio || initialPortfolio || 'VOLTA');
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isLenderModalOpen, setIsLenderModalOpen] = useState(false);
   const [selectedSpv, setSelectedSpv] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedChronique, setExpandedChronique] = useState(false);
+  const [expandedChronique, setExpandedChronique] = useState(true);
+
+  // Palier de puissance par site (défaut 0.50 MW = 500 kW / 1 044 kWh)
+  const [presetKey, setPresetKey] = useState('0.50');
+  const currentPreset = BESS_PRESETS[presetKey] || BESS_PRESETS['0.50'];
+
+  // Paramètres unifiés du modèle financier & CAPEX détaillé
+  const [inputs, setInputs] = useState(() => ({
+    ...(BESS_PRESETS['0.50']),
+    capexMode: 'COMPTE_PROPRE',
+    financingMode: 'WITH_LOAN',
+    revenueModel: 'CLEAN_HORIZON',
+    horizonYears: 20,
+    lifeYears: 20,
+    loanDurationYears: 12,
+    loanYears: 12,
+    debtSharePct: 80,
+    nominalRatePct: 4.10,
+    insuranceRatePct: 0.20,
+    roundTripEfficiencyPct: 88.0,
+    availabilityPct: 98.0,
+    batteryDegradationPct: 1.37,
+    revenueDegradationPct: 1.37,
+    aggregatorFeePct: 12.0,
+    opexInflationPct: 1.5,
+    discountRatePct: 7.0,
+    taxReducedThreshold: 42500,
+    taxReducedRatePct: 15.0,
+    taxNormalRatePct: 25.0,
+    withIS: true,
+    cfeAn: 1000,
+    taxeFonciereAn: 500,
+    maintenanceAn1: 1500,
+    opexAn1: 1500,
+    assuranceAn1: 1840,
+    turpeAn1: 11664,
+    fraisCommerciaux: 0,
+    loyerAn1: normalizePortfolioName(externalPortfolio || initialPortfolio) === 'FARADAY' ? 2000 : 3000,
+    loyer1: normalizePortfolioName(externalPortfolio || initialPortfolio) === 'FARADAY' ? 2000 : 3000,
+    capexBreakdown: getScaledCapexPreset('COMPTE_PROPRE', 0.50)
+  }));
+
+  // Surcharges CAPEX site par site dans le tableau d'inventaire
+  const [siteCapexOverrides, setSiteCapexOverrides] = useState({});
 
   // Synchronisation avec le portefeuille sélectionné dans la barre supérieure parente
   useEffect(() => {
@@ -66,6 +115,19 @@ export default function BessPortfolioView({
       onSelectPortfolio(portName);
     }
   };
+
+  // Basculement automatique du loyer bailleur par défaut et réinitialisation du filtre SPV selon le portefeuille
+  useEffect(() => {
+    setSelectedSpv('ALL');
+    const scale = (currentPreset.powerMw || 0.50) / 0.50;
+    const defaultRent = normalizePortfolioName(selectedPortfolio) === 'FARADAY' ? 2000 : 3000;
+    const scaledRent = Math.round(defaultRent * scale);
+    setInputs(prev => ({
+      ...prev,
+      loyerAn1: scaledRent,
+      loyer1: scaledRent
+    }));
+  }, [selectedPortfolio, currentPreset.powerMw]);
 
   // Liste garantie des portefeuilles BESS (VOLTA, FARADAY, EDISON + portefeuilles personnalisés)
   const effectiveBessPortfolios = useMemo(() => {
@@ -83,31 +145,7 @@ export default function BessPortfolioView({
     return list;
   }, [bessPortfolios]);
 
-  // Paramètres de dette senior, frais et loyer modifiables
-  const [debtDuration, setDebtDuration] = useState(12); // en années (e.g. 10, 12, 15, 20)
-  const [debtRate, setDebtRate] = useState(4.30); // en % (e.g. 3.80, 4.00, 4.30, 4.50, 5.00)
-  const [fraisCommerciauxPerSite, setFraisCommerciauxPerSite] = useState(2500); // 5 000 €/MW = 2 500 € pour 500 kW
-  const [loyerBailleurPerSite, setLoyerBailleurPerSite] = useState(
-    normalizePortfolioName(externalPortfolio || initialPortfolio) === 'FARADAY' ? 2000 : 3000
-  );
-
-  // Basculement automatique du loyer bailleur par défaut et réinitialisation du filtre SPV selon le portefeuille
-  useEffect(() => {
-    setSelectedSpv('ALL');
-    if (normalizePortfolioName(selectedPortfolio) === 'FARADAY') {
-      setLoyerBailleurPerSite(2000);
-    } else {
-      setLoyerBailleurPerSite(3000);
-    }
-  }, [selectedPortfolio]);
-
-  // Modèle unitaire standardisé (4 armoires CESC Mercury 261 = 500 kW / 1044 kWh)
-  const unitPower = 500; // kW
-  const unitCapacity = 1044; // kWh
-  const nbCyclesJour = 2.0; // 2 cycles/jour
-  const studyYears = 15;
-
-  // Harmonisation des sites BESS avec les projets CRM et attribution portefeuille VOLTA / FARADAY / EDISON
+  // Tous les sites BESS
   const allPortfolioSites = useMemo(() => {
     return getBessPortfolioSites(projects, 'ALL');
   }, [projects]);
@@ -119,145 +157,313 @@ export default function BessPortfolioView({
     return allPortfolioSites.filter(s => normalizePortfolioName(s.portfolio) === normSel);
   }, [allPortfolioSites, selectedPortfolio]);
 
-  // Calcul financier de chaque site et agrégation avec dette dynamique via computeBessFinancials
-  const { analyzedSites, consolidatedTotals, consolidatedChronique } = useMemo(() => {
-    const rateDecimal = (debtRate || 4.30) / 100;
-    const durationYears = debtDuration || 12;
+  const nbSites = Math.max(1, activeSites.length);
+  const unitPowerKw = Math.round((currentPreset.powerMw || 0.50) * 1000);
+  const unitCapacityKwh = Math.round((currentPreset.capacityMwh || 1.044) * 1000);
+
+  // Handlers de sélection globale
+  const handleSelectPreset = (key) => {
+    if (!BESS_PRESETS[key]) return;
+    setPresetKey(key);
+    const targetPreset = BESS_PRESETS[key];
+    const mode = inputs.capexMode || 'COMPTE_PROPRE';
+    const scaledBreakdown = getScaledCapexPreset(mode, targetPreset.powerMw);
+    const scale = targetPreset.powerMw / 0.50;
+    const totalUnitCap = Object.values(scaledBreakdown).reduce((a, b) => a + Number(b || 0), 0);
+    const baseRent = normalizePortfolioName(selectedPortfolio) === 'FARADAY' ? 2000 : 3000;
+
+    setInputs(prev => ({
+      ...prev,
+      palierKey: key,
+      powerMw: targetPreset.powerMw,
+      capacityMwh: targetPreset.capacityMwh,
+      capexBreakdown: scaledBreakdown,
+      maintenanceAn1: Math.round(1500 * scale),
+      opexAn1: Math.round(1500 * scale),
+      assuranceAn1: Math.round(totalUnitCap * 0.01),
+      ass1: Math.round(totalUnitCap * 0.01),
+      turpeAn1: Math.round(11664 * scale),
+      loyerAn1: Math.round(baseRent * scale),
+      loyer1: Math.round(baseRent * scale),
+      cfeAn: Math.round(1000 * scale),
+      taxeFonciereAn: Math.round(500 * scale)
+    }));
+  };
+
+  const handleSelectCapexMode = (mode) => {
+    const pMw = currentPreset.powerMw || 0.50;
+    const scaledBreakdown = getScaledCapexPreset(mode, pMw);
+    const totalUnitCap = Object.values(scaledBreakdown).reduce((a, b) => a + Number(b || 0), 0);
+    setSiteCapexOverrides({});
+    setInputs(prev => ({
+      ...prev,
+      capexMode: mode,
+      capexBreakdown: scaledBreakdown,
+      assuranceAn1: Math.round(totalUnitCap * 0.01),
+      ass1: Math.round(totalUnitCap * 0.01)
+    }));
+  };
+
+  const handleUpdateCapexField = (field, value) => {
+    setInputs(prev => {
+      const currentB = prev.capexBreakdown || getScaledCapexPreset(prev.capexMode || 'COMPTE_PROPRE', currentPreset.powerMw);
+      const nextB = { ...currentB, [field]: Number(value) || 0 };
+      return {
+        ...prev,
+        capexBreakdown: nextB
+      };
+    });
+  };
+
+  const handleSelectFinancingMode = (fMode) => {
+    setInputs(prev => ({
+      ...prev,
+      financingMode: fMode,
+      debtSharePct: fMode === 'CASH' ? 0 : (prev.debtSharePct > 0 ? prev.debtSharePct : 80)
+    }));
+  };
+
+  const handleSelectRevenueModel = (rModel) => {
+    setInputs(prev => {
+      const nextHorizon = rModel === 'CLEAN_HORIZON' ? 20 : (rModel === 'ENR_COURTAGE' ? 15 : (prev.horizonYears || 20));
+      const nextDeg = rModel === 'CLEAN_HORIZON' ? 1.37 : (rModel === 'ENR_COURTAGE' ? 2.20 : (prev.batteryDegradationPct || 1.37));
+      return {
+        ...prev,
+        revenueModel: rModel,
+        horizonYears: nextHorizon,
+        lifeYears: nextHorizon,
+        batteryDegradationPct: nextDeg,
+        revenueDegradationPct: nextDeg
+      };
+    });
+  };
+
+  const handleSelectHorizonYears = (h) => {
+    setInputs(prev => ({
+      ...prev,
+      horizonYears: Number(h),
+      lifeYears: Number(h)
+    }));
+  };
+
+  const updateInput = (field, value) => {
+    if (typeof value === 'boolean' || field === 'revenueModel' || field === 'financingMode' || field === 'capexMode') {
+      setInputs(prev => ({ ...prev, [field]: value }));
+      return;
+    }
+    const num = parseFloat(value);
+    const parsedVal = isNaN(num) ? value : num;
+    const aliasMap = {
+      opex1: 'opexAn1',
+      opexAn1: 'opex1',
+      ass1: 'assuranceAn1',
+      assuranceAn1: 'ass1',
+      loyer1: 'loyerAn1',
+      loyerAn1: 'loyer1'
+    };
+    setInputs(prev => {
+      const next = { ...prev, [field]: parsedVal };
+      if (aliasMap[field]) next[aliasMap[field]] = parsedVal;
+      return next;
+    });
+  };
+
+  // Modèle financier unitaire de référence (pour 1 site du portefeuille)
+  const unitModel = useMemo(() => {
+    return computeBessLenderModel({
+      ...inputs,
+      palierKey: presetKey,
+      powerMw: currentPreset.powerMw,
+      nbSites: 1
+    });
+  }, [inputs, presetKey, currentPreset.powerMw]);
+
+  // Analyse détaillée de chaque site + Total CAPEX consolidé tenant compte des éventuelles surcharges site par site
+  const { analyzedSites, portfolioCapexOverride } = useMemo(() => {
+    const baseUnitCapex = unitModel.capex;
+    const baseUnitCaAn1 = unitModel.rows[0]?.revenuCorrige || 93484;
+    const baseUnitOpexAn1 = unitModel.rows[0]?.totalChargesOpex || 29722;
+    const baseUnitEbitdaAn1 = unitModel.rows[0]?.ebitda || 63762;
+    const baseUnitTurpeAn1 = unitModel.rows[0]?.turpe7 || 11664;
 
     const sites = activeSites.map((site, index) => {
       const fin = computeBessFinancials(site, {
-        debtDuration: durationYears,
-        debtRate: debtRate || 4.30,
-        studyDuration: studyYears,
-        fraisCommerciaux: site.fraisCommerciaux !== undefined ? site.fraisCommerciaux : fraisCommerciauxPerSite,
-        loyerDalle: loyerBailleurPerSite
+        capexMode: inputs.capexMode,
+        capexBreakdown: inputs.capexBreakdown,
+        financingMode: inputs.financingMode,
+        revenueModel: inputs.revenueModel,
+        horizonYears: inputs.horizonYears,
+        studyDuration: inputs.horizonYears,
+        debtDuration: inputs.loanDurationYears,
+        debtRate: (Number(inputs.nominalRatePct || 4.10) + Number(inputs.insuranceRatePct || 0.20)),
+        fraisCommerciaux: inputs.fraisCommerciaux || 0,
+        loyerDalle: inputs.loyerAn1
       });
       const creQualification = getCreSubstationQualification(site.substation?.name || fin.posteSource, site.substation?.code);
+
+      const siteOverrideCapex = siteCapexOverrides[site.id];
+      const effectiveSiteCapex = siteOverrideCapex !== undefined && siteOverrideCapex !== null
+        ? Number(siteOverrideCapex)
+        : baseUnitCapex;
+
+      // Recalcul du TRI et Payback du site si le CAPEX du site est surchargé
+      const sitePayback = baseUnitEbitdaAn1 > 0 ? (effectiveSiteCapex / baseUnitEbitdaAn1) : 4.0;
+      const capexRatio = baseUnitCapex > 0 ? (baseUnitCapex / Math.max(1, effectiveSiteCapex)) : 1;
+      const siteTri = unitModel.kpis.triProjet * Math.pow(capexRatio, 0.65);
 
       return {
         ...site,
         index: index + 1,
-        powerKw: unitPower,
-        capacityKwh: unitCapacity,
-        capexTotal: fin.capexTotal,
-        caAnnuel: fin.caAnnuel,
-        opexAnnuel: fin.opexAnnuel,
-        turpeAnnuel: fin.turpeAnnuel,
-        ebitda: fin.ebitdaAn1,
-        ebitdaAn1: fin.ebitdaAn1,
-        triProjet: fin.triProjet,
-        payback: fin.payback,
-        paybackAnnees: fin.paybackAnnees,
-        paybackFormatted: fin.paybackFormatted,
-        paybackEquity: fin.paybackEquity,
-        dscrMoyen: fin.dscrMoyen,
+        powerKw: unitPowerKw,
+        capacityKwh: unitCapacityKwh,
+        capexTotal: effectiveSiteCapex,
+        isCapexOverridden: siteOverrideCapex !== undefined,
+        odreRaccordementCost: fin.raccordementCost,
+        caAnnuel: Math.round(baseUnitCaAn1),
+        opexAnnuel: Math.round(baseUnitOpexAn1),
+        turpeAnnuel: Math.round(baseUnitTurpeAn1),
+        ebitda: Math.round(baseUnitEbitdaAn1),
+        ebitdaAn1: Math.round(baseUnitEbitdaAn1),
+        triProjet: siteTri,
+        payback: sitePayback,
+        paybackAnnees: Number(sitePayback.toFixed(1)),
+        paybackFormatted: `${sitePayback.toFixed(1)} ans`,
+        dscrMoyen: unitModel.kpis.dscrAvg,
         creQualification,
-        fin,
-        rows: fin.rows.map(r => ({
+        fin: {
+          ...fin,
+          capexTotal: effectiveSiteCapex,
+          caAnnuel: Math.round(baseUnitCaAn1),
+          caBrutAn1: Math.round(baseUnitCaAn1),
+          opexAnnuel: Math.round(baseUnitOpexAn1),
+          turpeAnnuel: Math.round(baseUnitTurpeAn1),
+          ebitdaAn1: Math.round(baseUnitEbitdaAn1),
+          ebitda: Math.round(baseUnitEbitdaAn1),
+          loyerDalle: inputs.loyerAn1,
+          triProjet: siteTri,
+          payback: sitePayback,
+          paybackAnnees: Number(sitePayback.toFixed(1)),
+          paybackFormatted: `${sitePayback.toFixed(1)} ans`
+        },
+        rows: unitModel.rows.map(r => ({
           year: r.year,
-          ca: r.caTotalBrut,
-          opex: r.opex,
-          ebitda: r.ebe,
+          ca: r.revenuCorrige,
+          opex: r.totalChargesOpex,
+          ebitda: r.ebitda,
           serviceDette: r.serviceDette,
-          cfNet: r.cashFlow
+          cfNet: r.cashFlowNet
         }))
       };
     });
 
-    // Agrégation consolidée du portefeuille
-    const totalSites = sites.length;
-    const totalPowerMw = (totalSites * unitPower) / 1000; // 15.5 MW
-    const totalCapacityMwh = (totalSites * unitCapacity) / 1000; // 32.36 MWh
-    const totalCapex = sites.reduce((sum, s) => sum + s.capexTotal, 0);
-    const totalCaAn1 = sites.reduce((sum, s) => sum + s.caAnnuel, 0);
-    const totalOpexAn1 = sites.reduce((sum, s) => sum + s.opexAnnuel, 0);
-    const totalEbitdaAn1 = sites.reduce((sum, s) => sum + s.ebitda, 0);
-    const totalLoyersAn1 = sites.reduce((sum, s) => sum + (loyerBailleurPerSite !== undefined ? loyerBailleurPerSite : (s.rent || 3000)), 0);
-    const totalAnnuite = Math.abs(calculatePmt(rateDecimal, durationYears, totalCapex));
-
-    // Chronique consolidée 15 ans
-    const chronique = [];
-    const consolidatedCfProjet = [-totalCapex];
-
-    for (let y = 1; y <= studyYears; y++) {
-      const caY = sites.reduce((sum, s) => sum + s.rows[y - 1].ca, 0);
-      const opexY = sites.reduce((sum, s) => sum + s.rows[y - 1].opex, 0);
-      const ebitdaY = caY - opexY;
-      const servDetteY = y <= durationYears ? totalAnnuite : 0;
-      const isY = sites.reduce((sum, s) => {
-        const amort = s.capexTotal / studyYears;
-        const interest = y <= durationYears ? (s.capexTotal * (1 - (y - 1) / durationYears) * rateDecimal) : 0;
-        const resFisc = Math.max(0, s.rows[y - 1].ebitda - amort - interest);
-        return sum + (resFisc * 0.25);
-      }, 0);
-      const cfNetY = ebitdaY - servDetteY - isY;
-
-      consolidatedCfProjet.push(ebitdaY - isY);
-
-      chronique.push({
-        year: y,
-        ca: caY,
-        opex: opexY,
-        ebitda: ebitdaY,
-        serviceDette: servDetteY,
-        cfNet: cfNetY,
-        cumulCf: y === 1 ? cfNetY : 0
-      });
-    }
-
-    let runningCumul = 0;
-    chronique.forEach(row => {
-      runningCumul += row.cfNet;
-      row.cumulCf = runningCumul;
-    });
-
-    const triConsolide = calculateIrr(consolidatedCfProjet, 0.08);
-    const paybackConsol = calculateProjectPayback(totalCapex, chronique.map(c => c.ebitda));
-
-    // Calcul du DSCR moyen portefeuille pendant la période de dette
-    const dscrArray = chronique.filter(c => c.serviceDette > 0).map(c => c.ebitda / c.serviceDette);
-    const avgDscr = dscrArray.length > 0 ? dscrArray.reduce((a, b) => a + b, 0) / dscrArray.length : 1.98;
-
+    const sumCapex = sites.reduce((acc, s) => acc + s.capexTotal, 0);
     return {
       analyzedSites: sites,
+      portfolioCapexOverride: Object.keys(siteCapexOverrides).length > 0 ? sumCapex : null
+    };
+  }, [activeSites, unitModel, inputs, siteCapexOverrides, unitPowerKw, unitCapacityKwh]);
+
+  // Modèle financier consolidé du portefeuille (N sites)
+  const portfolioModel = useMemo(() => {
+    return computeBessLenderModel({
+      ...inputs,
+      palierKey: presetKey,
+      powerMw: currentPreset.powerMw,
+      nbSites,
+      ...(portfolioCapexOverride !== null ? { capexTotalOverride: portfolioCapexOverride } : {})
+    });
+  }, [inputs, presetKey, currentPreset.powerMw, nbSites, portfolioCapexOverride]);
+
+  // Stress-tests consolidés du portefeuille
+  const portfolioStress = useMemo(() => {
+    return computeBessStressTests(portfolioModel, {
+      ...inputs,
+      palierKey: presetKey,
+      powerMw: currentPreset.powerMw,
+      nbSites
+    });
+  }, [portfolioModel, inputs, presetKey, currentPreset.powerMw, nbSites]);
+
+  // Totaux et chronique consolidés (compatibles avec Dossier Prêteur, Étude Complète & Export Excel)
+  const { consolidatedTotals, consolidatedChronique } = useMemo(() => {
+    const k = portfolioModel.kpis;
+    const p = portfolioModel.params;
+    const r0 = portfolioModel.rows[0] || {};
+
+    const chronique = portfolioModel.rows.map(r => ({
+      year: r.year,
+      calendarYear: r.calendarYear,
+      ca: r.revenuCorrige,
+      caBrut: r.revenuBrutTotal,
+      tradingBrut: r.tradingBrut,
+      afrrCapBrut: r.afrrCapBrut,
+      afrrEnergyBrut: r.afrrEnergyBrut,
+      capacityMechBrut: r.capacityMechBrut,
+      opex: r.totalChargesOpex,
+      ebitda: r.ebitda,
+      serviceDette: r.serviceDette,
+      is: r.is,
+      cfNet: r.cashFlowNet,
+      cumulCf: r.tresorerieCumulee,
+      dscr: r.dscr
+    }));
+
+    return {
       consolidatedTotals: {
-        totalSites,
-        totalPowerMw,
-        totalCapacityMwh,
-        totalCapex,
-        totalCaAn1,
-        totalOpexAn1,
-        totalEbitdaAn1,
-        totalLoyersAn1,
-        loyerBailleur: loyerBailleurPerSite,
-        totalAnnuite,
-        avgDscr,
-        debtDuration: durationYears,
-        debtRate: debtRate,
-        triConsolide,
-        paybackConsol: paybackConsol || (totalCapex / totalEbitdaAn1)
+        totalSites: nbSites,
+        totalPowerMw: (nbSites * unitPowerKw) / 1000,
+        totalCapacityMwh: (nbSites * unitCapacityKwh) / 1000,
+        totalCapex: k.capexTotal,
+        unitCapex: Math.round(k.capexTotal / nbSites),
+        totalCaAn1: r0.revenuCorrige || 0,
+        totalCaBrutAn1: r0.revenuBrutTotal || 0,
+        totalOpexAn1: r0.totalChargesOpex || 0,
+        totalEbitdaAn1: r0.ebitda || 0,
+        totalLoyersAn1: r0.loyerFoncier || 0,
+        loyerBailleur: p.loyerAn1,
+        totalAnnuite: k.annuiteConstante || 0,
+        avgDscr: k.dscrAvg || 0,
+        dscrMin: k.dscrMin || 0,
+        debtDuration: p.loanDurationYears,
+        debtRate: k.allInDebtRate,
+        horizonYears: p.horizonYears,
+        capexMode: p.capexMode,
+        financingMode: p.financingMode,
+        revenueModel: p.revenueModel,
+        triConsolide: k.triProjet,
+        triFondsPropres: k.triFondsPropres,
+        vanProjet: k.vanProjet,
+        vanFondsPropres: k.vanFondsPropres,
+        paybackConsol: k.paybackSimple || k.paybackActualise || 4.0
       },
       consolidatedChronique: chronique
     };
-  }, [debtDuration, debtRate, fraisCommerciauxPerSite, loyerBailleurPerSite, activeSites]);
+  }, [portfolioModel, nbSites, unitPowerKw, unitCapacityKwh]);
 
-  // Propagation des données mises à jour au parent
+  // Propagation des données mises à jour au parent (BpAcama.jsx)
   useEffect(() => {
     if (onDataChange) {
       onDataChange({
-        debtDuration,
-        debtRate,
-        fraisCommerciaux: fraisCommerciauxPerSite,
-        loyerBailleur: loyerBailleurPerSite,
+        debtDuration: inputs.loanDurationYears,
+        debtRate: Number(inputs.nominalRatePct || 4.10) + Number(inputs.insuranceRatePct || 0.20),
+        fraisCommerciaux: inputs.fraisCommerciaux,
+        loyerBailleur: inputs.loyerAn1,
+        capexMode: inputs.capexMode,
+        financingMode: inputs.financingMode,
+        revenueModel: inputs.revenueModel,
+        horizonYears: inputs.horizonYears,
+        unifiedInputs: inputs,
+        portfolioModel,
+        portfolioStress,
         analyzedSites,
         consolidatedTotals,
         consolidatedChronique,
         selectedPortfolio
       });
     }
-  }, [debtDuration, debtRate, fraisCommerciauxPerSite, loyerBailleurPerSite, analyzedSites, consolidatedTotals, consolidatedChronique, selectedPortfolio, onDataChange]);
+  }, [inputs, portfolioModel, portfolioStress, analyzedSites, consolidatedTotals, consolidatedChronique, selectedPortfolio, onDataChange]);
 
-  // Filtrage des sites
+  // Filtrage des sites dans le tableau d'inventaire
   const filteredSites = useMemo(() => {
     return analyzedSites.filter(site => {
       const matchSpv = selectedSpv === 'ALL' || site.spv === selectedSpv;
@@ -265,52 +471,19 @@ export default function BessPortfolioView({
         !searchTerm ||
         site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         site.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        site.substation?.name.toLowerCase().includes(searchTerm.toLowerCase());
+        (site.substation?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       return matchSpv && matchSearch;
     });
   }, [analyzedSites, selectedSpv, searchTerm]);
 
-// Données réseau ODRE / Caparéseau des postes sources du portefeuille BESS (29 sites)
-const ODRE_CAPARESEAU_29_SITES = [
-  { id: 1, site: "PAILLOT Noël", city: "Rochechouart", cp: "87600", dept: "87", lat: 45.847811, lng: 0.852996, substation: "PLAUD", distKm: 6.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix injection" },
-  { id: 2, site: "BATIOT Olivier", city: "Mongausy", cp: "32220", dept: "32", lat: 43.496370, lng: 0.834241, substation: "SEMEZIES", distKm: 5.9, s3renrStr: "84 130 €/MW", capOdre: 1.6, zoneCre: "Poche signal-prix injection" },
-  { id: 3, site: "DOMERGUE David", city: "Meuzac", cp: "87380", dept: "87", lat: 45.566247, lng: 1.397687, substation: "LE REPAIRE", distKm: 8.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 4, site: "CUBERTAFON René", city: "Saint-Julien-le-Vendômois", cp: "19210", dept: "19", lat: 45.460274, lng: 1.298160, substation: "LUBERSAC", distKm: 8.3, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 5, site: "PLANTE Jean-Pierre", city: "Port-de-Lanne", cp: "40300", dept: "40", lat: 43.558940, lng: -1.199501, substation: "GUICHE", distKm: 4.9, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
-  { id: 6, site: "PRAVIE Clémence", city: "Grisolles", cp: "82170", dept: "82", lat: 43.806232, lng: 1.295833, substation: "LESQUIVE 2", distKm: 2.3, s3renrStr: "84 130 €/MW", capOdre: 80.0, zoneCre: "Zone standard Enedis" },
-  { id: 7, site: "LATOURNERIE Franck", city: "Brantôme en Périgord", cp: "24310", dept: "24", lat: 45.328888, lng: 0.651040, substation: "BRANTOME", distKm: 3.5, s3renrStr: "92 730 €/MW", capOdre: 0.5, zoneCre: "Poche signal-prix soutirage" },
-  { id: 8, site: "DAVID Louis", city: "Concèze", cp: "19350", dept: "19", lat: 45.353329, lng: 1.314195, substation: "LUBERSAC", distKm: 8.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 9, site: "GRANGER Bruno", city: "Saint-Éloy-les-Tuileries", cp: "19210", dept: "19", lat: 45.442533, lng: 1.267710, substation: "LUBERSAC", distKm: 10.5, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 10, site: "CASTEBRUNET Jérémy", city: "Caussade", cp: "82300", dept: "82", lat: 44.123740, lng: 1.564486, substation: "LERE", distKm: 5.7, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
-  { id: 11, site: "BERTRANDIE Sébastien", city: "Monestier", cp: "24240", dept: "24", lat: 44.773569, lng: 0.300107, substation: "STE-FOY-LA-GRANDE", distKm: 9.0, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
-  { id: 12, site: "GIOT Joachim", city: "Leyrat", cp: "23600", dept: "23", lat: 46.360561, lng: 2.306566, substation: "BOUSSAC", distKm: 5.9, s3renrStr: "92 730 €/MW", capOdre: 0.5, zoneCre: "Poche signal-prix injection" },
-  { id: 13, site: "ARBOIN Régis", city: "Duras", cp: "47120", dept: "47", lat: 44.659496, lng: 0.222735, substation: "LA SAUVETAT", distKm: 11.8, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche mixte injection & soutirage" },
-  { id: 14, site: "MISSAULT David", city: "Saint-Saud-Lacoussière", cp: "24470", dept: "24", lat: 45.558769, lng: 0.804488, substation: "NONTRON", distKm: 13.7, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
-  { id: 15, site: "MEILLAT Maxime", city: "Mourioux-Vieilleville", cp: "23210", dept: "23", lat: 46.082964, lng: 1.538518, substation: "CHATELUS 2", distKm: 5.4, s3renrStr: "92 730 €/MW", capOdre: 2.0, zoneCre: "Zone standard Enedis" },
-  { id: 16, site: "SOULIGNAC Thierry", city: "Val-de-Livenne", cp: "33860", dept: "33", lat: 45.264357, lng: -0.550408, substation: "ETAULIERS", distKm: 7.7, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 17, site: "CHAUFFAILLE Franck", city: "Payzac", cp: "24270", dept: "24", lat: 45.436230, lng: 1.288728, substation: "LUBERSAC", distKm: 6.9, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 18, site: "CIROLI", city: "Juillac", cp: "33890", dept: "33", lat: 44.809547, lng: 0.037304, substation: "AURIOLLES", distKm: 7.9, s3renrStr: "92 730 €/MW", capOdre: 0.3, zoneCre: "Poche signal-prix soutirage" },
-  { id: 19, site: "BOURDETTES Sandrine", city: "Mansan", cp: "65140", dept: "65", lat: 43.343730, lng: 0.194628, substation: "VIC-EN-BIGORRE", distKm: 10.8, s3renrStr: "84 130 €/MW", capOdre: 7.0, zoneCre: "Poche signal-prix soutirage" },
-  { id: 20, site: "CASTEBRUNET Jérémy", city: "Caussade", cp: "82300", dept: "82", lat: 44.117157, lng: 1.566758, substation: "LERE", distKm: 5.5, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
-  { id: 21, site: "FRECHEVILLE Mathieu", city: "Saint-Eutrope-de-Born", cp: "47210", dept: "47", lat: 44.588327, lng: 0.665431, substation: "CANCON", distKm: 7.2, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix injection" },
-  { id: 22, site: "CASTEBRUNET Jérémy", city: "Monteils", cp: "82300", dept: "82", lat: 44.165754, lng: 1.564963, substation: "LERE", distKm: 3.6, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
-  { id: 23, site: "DOUMENS Morgan", city: "Beychac-et-Caillau", cp: "33750", dept: "33", lat: 44.870054, lng: -0.397698, substation: "POMPIGNAC", distKm: 4.0, s3renrStr: "92 730 €/MW", capOdre: 2.0, zoneCre: "Zone standard Enedis" },
-  { id: 24, site: "HOUSSAIT-YOUNG Jérôme", city: "Vendays-Montalivet", cp: "33930", dept: "33", lat: 45.338321, lng: -1.071016, substation: "ST-VIVIEN", distKm: 9.9, s3renrStr: "92 730 €/MW", capOdre: 8.6, zoneCre: "Poche signal-prix soutirage" },
-  { id: 25, site: "MISSAULT David", city: "Saint-Martin-de-Fressengeas", cp: "24800", dept: "24", lat: 45.438589, lng: 0.815692, substation: "THIVIERS", distKm: 6.7, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche mixte injection & soutirage" },
-  { id: 26, site: "MEILLAT Maxime", city: "Mourioux-Vieilleville", cp: "23210", dept: "23", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", distKm: 5.4, s3renrStr: "92 730 €/MW", capOdre: 2.0, zoneCre: "Zone standard Enedis" },
-  { id: 27, site: "DOMERGUE David", city: "Argences en Aubrac", cp: "12420", dept: "12", lat: 44.807528, lng: 2.798446, substation: "RUEYRES", distKm: 5.9, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix injection" },
-  { id: 28, site: "COMBY Fabrice", city: "Saint-Éloy-les-Tuileries", cp: "19210", dept: "19", lat: 45.452807, lng: 1.284563, substation: "LUBERSAC", distKm: 10.5, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 29, site: "CASTEBRUNET Jérémy", city: "Saint-Cirq", cp: "82300", dept: "82", lat: 44.124392, lng: 1.583302, substation: "LERE", distKm: 6.2, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" }
-];
-
   // Export Excel du business plan consolidé par site
   const handleExportExcel = () => {
-    exportBessPortfolioToExcel(activeSites, {
-      debtDuration,
-      debtRate,
-      fraisCommerciaux: fraisCommerciauxPerSite,
-      loyerDalle: loyerBailleurPerSite,
-      studyDuration: studyYears,
+    exportBessPortfolioToExcel(analyzedSites, {
+      debtDuration: inputs.loanDurationYears,
+      debtRate: Number(inputs.nominalRatePct || 4.10) + Number(inputs.insuranceRatePct || 0.20),
+      fraisCommerciaux: inputs.fraisCommerciaux,
+      loyerDalle: inputs.loyerAn1,
+      studyDuration: inputs.horizonYears,
       portfolioName: selectedPortfolio
     });
   };
@@ -322,6 +495,10 @@ const ODRE_CAPARESEAU_29_SITES = [
     });
   };
 
+  const isCashMode = portfolioModel.params.isCashMode;
+  const isDscrCompliant = isCashMode || (portfolioModel.kpis.dscrMin ?? 1.2) >= 1.20;
+  const isDscrAcceptable = isCashMode || (portfolioModel.kpis.dscrMin ?? 1.2) >= 1.10;
+
   return (
     <div id="pdf-section-bess-portfolio" className="space-y-5 bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
       {/* ── En-tête Portefeuille & Actions ───────────────────────────────────── */}
@@ -331,18 +508,18 @@ const ODRE_CAPARESEAU_29_SITES = [
             <Layers className="w-6 h-6 text-blue-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg sm:text-xl font-black tracking-tight">
-                PORTEFEUILLE MULTI-PROJETS BESS — {selectedPortfolio === 'ALL' ? 'CONSOLIDÉ' : selectedPortfolio} ({consolidatedTotals?.totalSites || 0} SITES / {Number(consolidatedTotals?.totalPowerMw || 0).toFixed(1)} MW)
+                PORTEFEUILLE MULTI-PROJETS BESS — {selectedPortfolio === 'ALL' ? 'CONSOLIDÉ' : selectedPortfolio} ({consolidatedTotals.totalSites} SITES / {Number(consolidatedTotals.totalPowerMw).toFixed(1)} MW)
               </h2>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              Consolidation {selectedPortfolio === 'ALL' ? 'globale' : `du portefeuille ${selectedPortfolio}`} de {consolidatedTotals.totalSites} unités de 500 kW / 1044 kWh (CESC Mercury 261) • Raccordements ODRE réels • Modèle 15 ans
+              Consolidation {selectedPortfolio === 'ALL' ? 'globale' : `du portefeuille ${selectedPortfolio}`} de {consolidatedTotals.totalSites} unités de {unitPowerKw} kW / {unitCapacityKwh} kWh (CESC Mercury 261) • {inputs.capexMode === 'COMPTE_TIERS' ? 'Compte Tiers' : 'Compte Propre'} • Modèle {inputs.horizonYears} ans ({inputs.revenueModel === 'CLEAN_HORIZON' ? 'Clean Horizon' : 'ENR Courtage'})
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3" data-html2canvas-ignore="true">
+        <div className="flex flex-wrap items-center gap-2.5" data-html2canvas-ignore="true">
           {/* Sélecteur dynamique de Portefeuille BESS */}
           <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/20">
             {effectiveBessPortfolios.map(port => {
@@ -383,7 +560,7 @@ const ODRE_CAPARESEAU_29_SITES = [
               <button
                 type="button"
                 onClick={() => setIsPortfolioModalOpen(true)}
-                className="px-2 py-1.5 text-xs font-bold text-blue-300 hover:text-white hover:bg-blue-500/20 rounded-md transition-all flex items-center gap-1 border-l border-white/20 ml-1 pl-2"
+                className="px-2 py-1.5 text-xs font-bold text-blue-300 hover:text-white hover:bg-blue-500/20 rounded-md transition-all flex items-center gap-1 border-l border-white/20 ml-1 pl-2 cursor-pointer"
                 title="Gérer les portefeuilles PV & BESS (Admin)"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -420,10 +597,17 @@ const ODRE_CAPARESEAU_29_SITES = [
             <button
               onClick={() =>
                 onExportPdf({
-                  debtDuration,
-                  debtRate,
-                  fraisCommerciaux: fraisCommerciauxPerSite,
-                  loyerBailleur: loyerBailleurPerSite,
+                  debtDuration: inputs.loanDurationYears,
+                  debtRate: Number(inputs.nominalRatePct || 4.10) + Number(inputs.insuranceRatePct || 0.20),
+                  fraisCommerciaux: inputs.fraisCommerciaux,
+                  loyerBailleur: inputs.loyerAn1,
+                  capexMode: inputs.capexMode,
+                  financingMode: inputs.financingMode,
+                  revenueModel: inputs.revenueModel,
+                  horizonYears: inputs.horizonYears,
+                  unifiedInputs: inputs,
+                  portfolioModel,
+                  portfolioStress,
                   analyzedSites,
                   consolidatedTotals,
                   consolidatedChronique,
@@ -440,248 +624,71 @@ const ODRE_CAPARESEAU_29_SITES = [
         </div>
       </div>
 
-      {/* ── Paramètres de Financement Dette Sénior (Durée & Taux Modifiables) ── */}
-      <div className="bg-white rounded-xl border-2 border-blue-200/80 shadow-md p-4 sm:p-5 relative overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-black">
-              <Landmark className="w-5 h-5 text-blue-700" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-black text-slate-900 tracking-tight">
-                  STRUCTURE & PARAMÈTRES DE FINANCEMENT (DETTE SÉNIOR)
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
-                  Simulation Interactive
+      {/* ── 1. SÉLECTEURS GLOBAUX (CAPEX PROPRE/TIERS | PRÊT/COMPTANT | CLEAN HORIZON 20A) ── */}
+      <BessGlobalSelectorsBar
+        capexMode={inputs.capexMode || 'COMPTE_PROPRE'}
+        onSelectCapexMode={handleSelectCapexMode}
+        financingMode={inputs.financingMode || 'WITH_LOAN'}
+        onSelectFinancingMode={handleSelectFinancingMode}
+        revenueModel={inputs.revenueModel || 'CLEAN_HORIZON'}
+        onSelectRevenueModel={handleSelectRevenueModel}
+        horizonYears={inputs.horizonYears || 20}
+        onSelectHorizonYears={handleSelectHorizonYears}
+        powerMw={currentPreset.powerMw}
+        nbSites={nbSites}
+      />
+
+      {/* ── Barre Paliers de Puissance unitaire & Conformité Bancaire ── */}
+      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3" data-html2canvas-ignore="true">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5 mr-1">
+            <Sliders className="w-3.5 h-3.5 text-blue-600" />
+            Puissance Unitaire par Site :
+          </span>
+          {Object.entries(BESS_PRESETS).map(([key]) => {
+            const isSelected = presetKey === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleSelectPreset(key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
+                  isSelected
+                    ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span>{key} MW ({Number(key) * 1000} kW)</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                  {(Number(key) * 2.088).toFixed(2)} MWh
                 </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                Ajustez la durée, le taux d'intérêt bancaire, les frais commerciaux et le loyer bailleur pour recalculer en temps réel le cash-flow, le DSCR, le payback et le dossier PDF.
-              </p>
-            </div>
-          </div>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
-          {/* Contrôle Durée de la Dette */}
-          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                Durée d'Amortissement
-              </label>
-              <span className="text-xs font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">
-                {debtDuration} ans
-              </span>
-            </div>
-            
-            {/* Pills de sélection rapide */}
-            <div className="grid grid-cols-4 gap-1.5 mb-2.5">
-              {[10, 12, 15, 20].map(d => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDebtDuration(d)}
-                  className={`py-1 text-xs font-bold rounded-lg border transition-all ${
-                    debtDuration === d
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {d} ans
-                </button>
-              ))}
-            </div>
-
-            {/* Slider / Range */}
-            <input
-              type="range"
-              min="5"
-              max="20"
-              step="1"
-              value={debtDuration}
-              onChange={e => setDebtDuration(parseInt(e.target.value, 10))}
-              className="w-full accent-blue-600 cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
-              <span>5 ans</span>
-              <span>12 ans (Standard)</span>
-              <span>20 ans</span>
-            </div>
-          </div>
-
-          {/* Contrôle Taux d'Intérêt */}
-          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                <Percent className="w-3.5 h-3.5 text-indigo-600" />
-                Taux d'Intérêt Bancaire
-              </label>
-              <span className="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-md">
-                {debtRate.toFixed(2)} %
-              </span>
-            </div>
-
-            {/* Pills de sélection rapide */}
-            <div className="grid grid-cols-5 gap-1 mb-2.5">
-              {[3.80, 4.00, 4.30, 4.50, 5.00].map(r => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setDebtRate(r)}
-                  className={`py-1 text-[11px] font-bold rounded-lg border transition-all ${
-                    debtRate === r
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {r.toFixed(2)}%
-                </button>
-              ))}
-            </div>
-
-            {/* Slider / Range */}
-            <input
-              type="range"
-              min="2.0"
-              max="8.0"
-              step="0.05"
-              value={debtRate}
-              onChange={e => setDebtRate(parseFloat(e.target.value))}
-              className="w-full accent-indigo-600 cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
-              <span>2.00%</span>
-              <span>4.30% (Standard)</span>
-              <span>8.00%</span>
-            </div>
-          </div>
-
-          {/* Contrôle Frais Commerciaux */}
-          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                <Coins className="w-3.5 h-3.5 text-amber-600" />
-                Frais Commerciaux
-              </label>
-              <span className="text-xs font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
-                {fmtEur(fraisCommerciauxPerSite)} / site
-              </span>
-            </div>
-            
-            {/* Pills de sélection rapide */}
-            <div className="grid grid-cols-4 gap-1 mb-2.5">
-              {[0, 2500, 5000, 20000].map(f => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setFraisCommerciauxPerSite(f)}
-                  className={`py-1 text-[11px] font-bold rounded-lg border transition-all ${
-                    fraisCommerciauxPerSite === f
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                  title={f === 2500 ? 'Standard 5 000 €/MW (2 500 € pour 500 kW)' : `${f} €`}
-                >
-                  {f === 2500 ? '2 500 €' : (f === 0 ? '0 €' : `${f / 1000} k€`)}
-                </button>
-              ))}
-            </div>
-
-            {/* Input direct */}
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0"
-                step="500"
-                value={fraisCommerciauxPerSite}
-                onChange={e => setFraisCommerciauxPerSite(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                className="w-full px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-              <span className="text-[11px] font-bold text-slate-500 shrink-0">€/site</span>
-            </div>
-            <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
-              <span>0 € (Invest. propre)</span>
-              <span className="text-amber-700 font-bold">5 000 €/MW (Std)</span>
-            </div>
-          </div>
-
-          {/* Contrôle Loyer Donné au Bailleur */}
-          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                Loyer Donné au Bailleur
-              </label>
-              <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                {fmtEur(loyerBailleurPerSite)} / an
-              </span>
-            </div>
-            
-            {/* Pills de sélection rapide */}
-            <div className="grid grid-cols-4 gap-1 mb-2.5">
-              {[1500, 2000, 2500, 3000].map(l => (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setLoyerBailleurPerSite(l)}
-                  className={`py-1 text-[11px] font-bold rounded-lg border transition-all ${
-                    loyerBailleurPerSite === l
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                  title={`${l} € / an`}
-                >
-                  {l === 2000 ? '2 000 €' : (l === 3000 ? '3 000 €' : `${l} €`)}
-                </button>
-              ))}
-            </div>
-
-            {/* Input direct */}
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0"
-                step="250"
-                value={loyerBailleurPerSite}
-                onChange={e => setLoyerBailleurPerSite(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                className="w-full px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-[11px] font-bold text-slate-500 shrink-0">€/site</span>
-            </div>
-            <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
-              <span>0 €</span>
-              <span className="text-emerald-700 font-bold">2k€ (Faraday) / 3k€ (Volta & Edison)</span>
-              <span>6 000 €</span>
-            </div>
-          </div>
-
-          {/* Métrique Annuité Portefeuille */}
-          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200 flex flex-col justify-between">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Annuité Totale Portefeuille
-            </div>
-            <div className="text-lg font-black text-slate-900 mt-1">
-              {fmtEur(consolidatedTotals.totalAnnuite)} <span className="text-xs font-medium text-slate-500">/ an</span>
-            </div>
-            <div className="text-[10px] font-semibold text-blue-700 mt-1 bg-blue-50/80 px-2 py-1 rounded border border-blue-100">
-              ~{fmtEur(consolidatedTotals.totalAnnuite / (consolidatedTotals.totalSites || 1))} / an / site ({debtDuration} ans)
-            </div>
-          </div>
-
-          {/* Métrique DSCR Portefeuille */}
-          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200 flex flex-col justify-between">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Ratio DSCR Moyen
-            </div>
-            <div className="text-lg font-black text-emerald-700 mt-1">
-              {consolidatedTotals.avgDscr.toFixed(2)}x
-            </div>
-            <div className="text-[10px] font-semibold text-emerald-800 mt-1 bg-emerald-50/80 px-2 py-1 rounded border border-emerald-100">
-              Couverture dette bancaire ({debtDuration} ans)
-            </div>
-          </div>
+        {/* Badge de conformité bancaire du portefeuille */}
+        <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-black ${
+          isDscrCompliant
+            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+            : isDscrAcceptable
+            ? 'bg-amber-50 text-amber-800 border-amber-200'
+            : 'bg-red-50 text-red-800 border-red-200'
+        }`}>
+          {isDscrCompliant ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+          )}
+          <span>
+            {isCashMode
+              ? '100% FONDS PROPRES (PAYÉ COMPTANT — SANS DETTE)'
+              : isDscrCompliant
+              ? `BANQUE COMPLIANT (DSCR min ${portfolioModel.kpis.dscrMin.toFixed(2)}x ≥ 1,20x)`
+              : isDscrAcceptable
+              ? `CONFORME LIMITE (DSCR min ${portfolioModel.kpis.dscrMin.toFixed(2)}x ≥ 1,10x)`
+              : `NON CONFORME BANQUE (DSCR min ${portfolioModel.kpis.dscrMin.toFixed(2)}x < 1,10x)`}
+          </span>
         </div>
       </div>
 
@@ -689,116 +696,135 @@ const ODRE_CAPARESEAU_29_SITES = [
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Puissance Globale</div>
-          <div className="text-xl font-black text-slate-900 mt-1">{Number(consolidatedTotals?.totalPowerMw || 0).toFixed(1)} MW</div>
-          <div className="text-[10px] font-semibold text-blue-600 mt-0.5">{consolidatedTotals?.totalSites || 0} × 500 kW HTA</div>
+          <div className="text-xl font-black text-slate-900 mt-1">{Number(consolidatedTotals.totalPowerMw).toFixed(2)} MW</div>
+          <div className="text-[10px] font-semibold text-blue-600 mt-0.5">{consolidatedTotals.totalSites} × {unitPowerKw} kW HTA</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Capacité Stockage</div>
-          <div className="text-xl font-black text-slate-900 mt-1">{Number(consolidatedTotals?.totalCapacityMwh || 0).toFixed(2)} MWh</div>
-          <div className="text-[10px] font-semibold text-indigo-600 mt-0.5">{consolidatedTotals?.totalSites || 0} × 1044 kWh (2h)</div>
+          <div className="text-xl font-black text-slate-900 mt-1">{Number(consolidatedTotals.totalCapacityMwh).toFixed(2)} MWh</div>
+          <div className="text-[10px] font-semibold text-indigo-600 mt-0.5">{consolidatedTotals.totalSites} × {unitCapacityKwh} kWh (2h)</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CAPEX Consolidé</div>
           <div className="text-xl font-black text-slate-900 mt-1">{fmtM(consolidatedTotals.totalCapex)}</div>
-          <div className="text-[10px] font-semibold text-slate-500 mt-0.5">~350 k€ / site raccordé</div>
+          <div className="text-[10px] font-semibold text-slate-500 mt-0.5">{fmtEur(consolidatedTotals.unitCapex)} / site</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CA Annuel An 1</div>
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CA Corrigé An 1</div>
           <div className="text-xl font-black text-emerald-600 mt-1">{fmtM(consolidatedTotals.totalCaAn1)}</div>
-          <div className="text-[10px] font-semibold text-emerald-700 mt-0.5">~121,4 k€ / unité</div>
+          <div className="text-[10px] font-semibold text-emerald-700 mt-0.5">{fmtEur(consolidatedTotals.totalCaAn1 / nbSites)} / site (Brut: {fmtEur(consolidatedTotals.totalCaBrutAn1 / nbSites)})</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">EBITDA An 1</div>
           <div className="text-xl font-black text-blue-600 mt-1">{fmtM(consolidatedTotals.totalEbitdaAn1)}</div>
-          <div className="text-[10px] font-semibold text-blue-700 mt-0.5">Marge : 82%</div>
+          <div className="text-[10px] font-semibold text-blue-700 mt-0.5">{fmtEur(consolidatedTotals.totalEbitdaAn1 / nbSites)} / site</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TRI / Payback</div>
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TRI Projet / FP</div>
           <div className="text-xl font-black text-purple-600 mt-1">{fmtPct(consolidatedTotals.triConsolide)}</div>
-          <div className="text-[10px] font-bold text-purple-700 mt-0.5">Retour : {consolidatedTotals.paybackConsol.toFixed(1)} ans</div>
+          <div className="text-[10px] font-bold text-purple-700 mt-0.5">
+            TRI FP : {fmtPct(consolidatedTotals.triFondsPropres)} • Payback {consolidatedTotals.paybackConsol.toFixed(1)}a
+          </div>
         </div>
       </div>
 
-      {/* ── Chronique Prévisionnelle Consolidée 15 ans (P&L Dépliable) ─────── */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div 
+      {/* ── 4 Cartes de Synthèse Prêteur Consolidées ── */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+          <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            Synthèse Bancaire Prêteur Consolidée — Portefeuille {selectedPortfolio === 'ALL' ? 'Tous' : selectedPortfolio} ({nbSites} Sites)
+          </h3>
+          <span className="text-xs font-bold text-slate-500">
+            Horizon {inputs.horizonYears} ans • {inputs.capexMode === 'COMPTE_TIERS' ? 'Pour Compte Tiers' : 'Pour Compte Propre'}
+          </span>
+        </div>
+        <BessLender4SummaryCards model={portfolioModel} />
+      </div>
+
+      {/* ── 2. VENTILATION CAPEX DÉTAILLÉE & ÉDITABLE (MOYEN PAR SITE + CONSOLIDÉ PORTEFEUILLE) ── */}
+      <BessCapexBreakdownCard
+        capexSummary={portfolioModel.capexSummary}
+        capexMode={inputs.capexMode || 'COMPTE_PROPRE'}
+        onUpdateCapexField={handleUpdateCapexField}
+        onSelectCapexMode={handleSelectCapexMode}
+        powerMw={currentPreset.powerMw}
+        nbSites={nbSites}
+        fraisCommerciaux={inputs.fraisCommerciaux || 0}
+      />
+
+      {/* ── 4. GRAPHIQUES CLEAN HORIZON (2027-2046) & TRAJECTOIRE EBITDA VS DETTE ── */}
+      <BessCleanHorizonChartsSection model={portfolioModel} />
+
+      {/* ── 3. LES 4 COLONNES D'HYPOTHÈSES FINANCIÈRES & OPEX (100% ÉDITABLES EN PORTEFEUILLE) ── */}
+      <BessAssumptions4ColumnsGrid
+        inputs={inputs}
+        model={portfolioModel}
+        onUpdateInput={updateInput}
+        onSelectRevenueModel={handleSelectRevenueModel}
+        onSelectHorizonYears={handleSelectHorizonYears}
+        onResetToDefault={() => handleSelectPreset(presetKey)}
+        powerMw={currentPreset.powerMw}
+        nbSites={nbSites}
+      />
+
+      {/* ── 5. TABLEAU COMPLET ANNÉE PAR ANNÉE CONSOLIDÉ (AN 1 À AN 20 + TOTAL) ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div
           onClick={() => setExpandedChronique(!expandedChronique)}
-          className="p-3.5 bg-slate-100 hover:bg-slate-200/70 cursor-pointer flex items-center justify-between transition-colors"
+          className="p-4 bg-slate-100 hover:bg-slate-200/70 cursor-pointer flex items-center justify-between transition-colors"
         >
           <div className="flex items-center gap-2">
             <TableIcon className="w-4 h-4 text-blue-700" />
             <span className="text-xs font-black uppercase text-slate-800 tracking-wider">
-              Compte de Résultat Consolidé 15 Ans — Portefeuille {selectedPortfolio === 'ALL' ? 'Consolidé' : selectedPortfolio} ({consolidatedTotals.totalSites} Sites)
+              Compte de Résultat, Flux de Trésorerie & Service de la Dette Consolidé ({inputs.horizonYears} Ans — {nbSites} Sites)
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-            <span>{expandedChronique ? 'Masquer le tableau' : 'Afficher les 15 années'}</span>
+            <span>{expandedChronique ? 'Masquer le tableau détaillé' : `Afficher les ${inputs.horizonYears} années`}</span>
             {expandedChronique ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </div>
         </div>
 
         {expandedChronique && (
-          <div className="overflow-x-auto p-2">
-            <table className="w-full text-xs text-right border-collapse">
-              <thead>
-                <tr className="bg-slate-800 text-white text-[11px] font-bold">
-                  <th className="p-2 text-left">Poste Financier (€)</th>
-                  {consolidatedChronique.map(c => (
-                    <th key={c.year} className="p-2 whitespace-nowrap">A{c.year}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                <tr className="font-bold text-emerald-700 bg-emerald-50/40">
-                  <td className="p-2 text-left">Chiffre d'Affaires Consolidé</td>
-                  {consolidatedChronique.map(c => <td key={c.year} className="p-2">{fmtEur(c.ca)}</td>)}
-                </tr>
-                <tr className="text-slate-600">
-                  <td className="p-2 text-left">OPEX & Acheminement TURPE 7</td>
-                  {consolidatedChronique.map(c => <td key={c.year} className="p-2 text-rose-600">-{fmtEur(c.opex)}</td>)}
-                </tr>
-                <tr className="font-black bg-blue-50/50 text-blue-900 border-t border-b border-blue-200">
-                  <td className="p-2 text-left">EBITDA Portefeuille</td>
-                  {consolidatedChronique.map(c => <td key={c.year} className="p-2">{fmtEur(c.ebitda)}</td>)}
-                </tr>
-                <tr className="text-slate-600">
-                  <td className="p-2 text-left">Service de la Dette ({debtDuration} ans à {debtRate.toFixed(2)}%)</td>
-                  {consolidatedChronique.map(c => <td key={c.year} className="p-2 text-slate-500">{c.serviceDette > 0 ? `-${fmtEur(c.serviceDette)}` : '—'}</td>)}
-                </tr>
-                <tr className="font-bold bg-amber-50/50 text-amber-800">
-                  <td className="p-2 text-left">Cash-Flow Net Annuel</td>
-                  {consolidatedChronique.map(c => <td key={c.year} className="p-2">{fmtEur(c.cfNet)}</td>)}
-                </tr>
-                <tr className="font-black bg-slate-100 text-slate-900">
-                  <td className="p-2 text-left">Trésorerie Cumulée</td>
-                  {consolidatedChronique.map(c => <td key={c.year} className="p-2">{fmtEur(c.cumulCf)}</td>)}
-                </tr>
-              </tbody>
-            </table>
+          <div className="p-4 space-y-5">
+            <BessCompleteAnnualTable model={portfolioModel} />
+            <div className="pt-4 border-t border-slate-200">
+              <BessSensitivityMatrixSection stress={portfolioStress} model={portfolioModel} />
+            </div>
           </div>
         )}
       </div>
 
-      {/* ── Table Détaillée des Sites BESS ─────────────────────────────────── */}
+      {/* ── Table Détaillée des Sites BESS (avec surcharge CAPEX site par site) ── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60">
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-blue-600" />
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-              Inventaire Exhaustif des {consolidatedTotals.totalSites} Sites du Portefeuille
+              Inventaire Exhaustif des {consolidatedTotals.totalSites} Sites du Portefeuille (CAPEX Éditable par Site)
             </h3>
             <span className="ml-2 px-2 py-0.5 text-[10px] font-black rounded-full bg-blue-100 text-blue-800">
               {filteredSites.length} / {consolidatedTotals.totalSites} sites
             </span>
+            {Object.keys(siteCapexOverrides).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSiteCapexOverrides({})}
+                className="ml-2 px-2 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800 hover:bg-amber-200 flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Réinitialiser surcharges CAPEX ({Object.keys(siteCapexOverrides).length})
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2" data-html2canvas-ignore="true">
-            {/* Filtre SPV */}
             <select
               value={selectedSpv}
               onChange={e => setSelectedSpv(e.target.value)}
@@ -812,7 +838,6 @@ const ODRE_CAPARESEAU_29_SITES = [
               <option value="SPV E">SPV E</option>
             </select>
 
-            {/* Barre de recherche */}
             <input
               type="text"
               placeholder="Rechercher commune, site ou poste..."
@@ -833,11 +858,11 @@ const ODRE_CAPARESEAU_29_SITES = [
                 <th className="p-2.5">Poste Source Enedis (ODRE)</th>
                 <th className="p-2.5 text-center">Distance</th>
                 <th className="p-2.5">Zone CRE 2025-227</th>
-                <th className="p-2.5 text-right">CAPEX</th>
-                <th className="p-2.5 text-right">CA An 1</th>
-                <th className="p-2.5 text-right">EBITDA</th>
+                <th className="p-2.5 text-right">CAPEX Site (Éditable)</th>
+                <th className="p-2.5 text-right">CA Corrigé An 1</th>
+                <th className="p-2.5 text-right">EBITDA An 1</th>
                 <th className="p-2.5 text-right">Loyer Bailleur</th>
-                <th className="p-2.5 text-center">TRI</th>
+                <th className="p-2.5 text-center">TRI Projet</th>
                 <th className="p-2.5 text-center">Payback</th>
                 <th className="p-2.5 text-center" data-html2canvas-ignore="true">Action</th>
               </tr>
@@ -868,17 +893,39 @@ const ODRE_CAPARESEAU_29_SITES = [
                       {s.creQualification?.label || 'Zone Standard'}
                     </span>
                   </td>
-                  <td className="p-2.5 text-right font-semibold text-slate-800">{fmtEur(s.capexTotal)}</td>
+                  <td className="p-2.5 text-right">
+                    <div className="inline-flex items-center justify-end gap-1">
+                      <input
+                        type="number"
+                        step="1000"
+                        value={Math.round(s.capexTotal)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          setSiteCapexOverrides(prev => ({
+                            ...prev,
+                            [s.id]: isNaN(val) ? 0 : val
+                          }));
+                        }}
+                        className={`w-24 px-1.5 py-0.5 text-right text-xs font-bold rounded border ${
+                          s.isCapexOverridden
+                            ? 'bg-amber-50 border-amber-400 text-amber-950'
+                            : 'bg-blue-50/60 border-blue-200 text-slate-800'
+                        }`}
+                        title="Modifier le CAPEX spécifique de ce site"
+                      />
+                      <span className="text-[10px] font-bold text-slate-500">€</span>
+                    </div>
+                  </td>
                   <td className="p-2.5 text-right font-bold text-emerald-600">{fmtEur(s.caAnnuel)}</td>
                   <td className="p-2.5 text-right font-black text-blue-700">{fmtEur(s.ebitda)}</td>
-                  <td className="p-2.5 text-right font-bold text-emerald-700">{fmtEur(s.fin?.loyerDalle ?? loyerBailleurPerSite ?? s.rent ?? 2000)}</td>
+                  <td className="p-2.5 text-right font-bold text-emerald-700">{fmtEur(inputs.loyerAn1)}</td>
                   <td className="p-2.5 text-center font-black text-purple-700">{fmtPct(s.triProjet)}</td>
                   <td className="p-2.5 text-center font-bold text-slate-600">{s.payback.toFixed(1)} ans</td>
                   <td className="p-2.5 text-center" data-html2canvas-ignore="true">
                     {onSelectSite && (
                       <button
                         onClick={() => onSelectSite(s)}
-                        className="px-2 py-1 text-[10px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded border border-blue-200 transition-colors"
+                        className="px-2 py-1 text-[10px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded border border-blue-200 transition-colors cursor-pointer"
                         title="Charger ce site en simulation unitaire détaillée"
                       >
                         Simuler
@@ -906,10 +953,13 @@ const ODRE_CAPARESEAU_29_SITES = [
           sites={analyzedSites}
           consolidatedTotals={consolidatedTotals}
           consolidatedChronique={consolidatedChronique}
-          debtDuration={debtDuration}
-          debtRate={debtRate}
-          loyerBailleurPerSite={loyerBailleurPerSite}
-          fraisCommerciauxPerSite={fraisCommerciauxPerSite}
+          debtDuration={inputs.loanDurationYears}
+          debtRate={Number(inputs.nominalRatePct || 4.10) + Number(inputs.insuranceRatePct || 0.20)}
+          loyerBailleurPerSite={inputs.loyerAn1}
+          fraisCommerciauxPerSite={inputs.fraisCommerciaux}
+          unifiedInputs={inputs}
+          portfolioModel={portfolioModel}
+          portfolioStress={portfolioStress}
         />
       )}
     </div>
