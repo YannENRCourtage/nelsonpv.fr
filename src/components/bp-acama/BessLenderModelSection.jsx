@@ -374,6 +374,52 @@ export default function BessLenderModelSection({
           </button>
         </div>
 
+        {/* Sélecteur rapide du Loyer Bailleur (€/an) directement en haut de page */}
+        <div className="flex flex-wrap items-center gap-1.5 bg-emerald-50/70 px-3 py-1.5 rounded-xl border border-emerald-200">
+          <span className="text-xs font-black uppercase text-emerald-900 tracking-wider mr-1">
+            Loyer Bailleur :
+          </span>
+          {[1500, 2000, 2400, 2500, 3000].map(l => {
+            const scale = (currentPreset.powerMw || 0.50) / 0.50;
+            const scaledL = Math.round(l * scale);
+            const isSel = Number(inputs.loyerAn1 ?? 3000) === scaledL;
+            return (
+              <button
+                key={l}
+                type="button"
+                onClick={() => {
+                  updateInput('loyerAn1', scaledL);
+                  updateInput('loyer1', scaledL);
+                }}
+                className={cn(
+                  "px-2 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer",
+                  isSel
+                    ? "bg-emerald-600 text-white border-emerald-700 shadow-2xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-emerald-100/60"
+                )}
+              >
+                {scaledL.toLocaleString('fr-FR')} €
+              </button>
+            );
+          })}
+          <div className="flex items-center gap-1 ml-1">
+            <input
+              type="number"
+              step="100"
+              min="0"
+              value={Math.round(inputs.loyerAn1 ?? 3000)}
+              onChange={e => {
+                const v = Math.max(0, parseInt(e.target.value, 10) || 0);
+                updateInput('loyerAn1', v);
+                updateInput('loyer1', v);
+              }}
+              className="w-20 px-2 py-1 text-xs font-black text-right rounded-lg border border-emerald-300 bg-white text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              title="Saisir un loyer annuel personnalisé (€/an)"
+            />
+            <span className="text-[11px] font-bold text-emerald-800">€/an</span>
+          </div>
+        </div>
+
         {/* Navigation des volets & bouton export 3 pages */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">

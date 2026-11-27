@@ -98,13 +98,14 @@ export default function BessPortfolioView({
     assuranceAn1: 1840,
     turpeAn1: 11664,
     fraisCommerciaux: 0,
-    loyerAn1: normalizePortfolioName(externalPortfolio || initialPortfolio) === 'FARADAY' ? 2000 : 3000,
-    loyer1: normalizePortfolioName(externalPortfolio || initialPortfolio) === 'FARADAY' ? 2000 : 3000,
+    loyerAn1: ['FARADAY', 'EDISON'].includes(normalizePortfolioName(externalPortfolio || initialPortfolio)) ? 2000 : 3000,
+    loyer1: ['FARADAY', 'EDISON'].includes(normalizePortfolioName(externalPortfolio || initialPortfolio)) ? 2000 : 3000,
     capexBreakdown: getScaledCapexPreset('COMPTE_PROPRE', 0.50)
   }));
 
-  // Surcharges CAPEX site par site dans le tableau d'inventaire
+  // Surcharges CAPEX et Loyer site par site dans le tableau d'inventaire
   const [siteCapexOverrides, setSiteCapexOverrides] = useState({});
+  const [siteRentOverrides, setSiteRentOverrides] = useState({});
 
   // Synchronisation avec le portefeuille sélectionné dans la barre supérieure parente
   useEffect(() => {
@@ -120,11 +121,12 @@ export default function BessPortfolioView({
     }
   };
 
-  // Basculement automatique du loyer bailleur par défaut et réinitialisation du filtre SPV selon le portefeuille
+  // Basculement automatique du loyer bailleur par défaut selon le portefeuille (modifiable à tout moment par l'utilisateur)
   useEffect(() => {
     setSelectedSpv('ALL');
+    setSiteRentOverrides({});
     const scale = (currentPreset.powerMw || 0.50) / 0.50;
-    const defaultRent = normalizePortfolioName(selectedPortfolio) === 'FARADAY' ? 2000 : 3000;
+    const defaultRent = ['FARADAY', 'EDISON'].includes(normalizePortfolioName(selectedPortfolio)) ? 2000 : 3000;
     const scaledRent = Math.round(defaultRent * scale);
     setInputs(prev => ({
       ...prev,
@@ -310,24 +312,38 @@ export default function BessPortfolioView({
         ? Number(siteOverrideCapex)
         : baseUnitCapex;
 
-      // Recalcul du TRI et Payback du site si le CAPEX du site est surchargé
-      const sitePayback = baseUnitEbitdaAn1 > 0 ? (effectiveSiteCapex / baseUnitEbitdaAn1) : 4.0;
+      const siteOverrideRent = siteRentOverrides[site.id];
+      const effectiveSiteRent = siteOverrideRent !== undefined && siteOverrideRent !== null
+        ? Number(siteOverrideRent)
+        : Number(inputs.loyerAn1 || 3000);
+      const rentDelta = effectiveSiteRent - Number(inputs.loyerAn1 || 3000);
+      const effectiveSiteEbitdaAn1 = Math.round(baseUnitEbitdaAn1 - rentDelta);
+      const effectiveSiteOpexAn1 = Math.round(baseUnitOpexAn1 + rentDelta);
+
+      // Recalcul du TRI et Payback du site si le CAPEX ou le Loyer du site est surchargé
+      const sitePayback = effectiveSiteEbitdaAn1 > 0 ? (effectiveSiteCapex / effectiveSiteEbitdaAn1) : 4.0;
       const capexRatio = baseUnitCapex > 0 ? (baseUnitCapex / Math.max(1, effectiveSiteCapex)) : 1;
-      const siteTri = unitModel.kpis.triProjet * Math.pow(capexRatio, 0.65);
+      const ebitdaRatio = baseUnitEbitdaAn1 > 0 ? (effectiveSiteEbitdaAn1 / baseUnitEbitdaAn1) : 1;
+      const siteTri = unitModel.kpis.triProjet * Math.pow(capexRatio * ebitdaRatio, 0.65);
+
+      const resolvedGps = site.gps || ((site.lat && site.lng) ? `${Number(site.lat).toFixed(6)}, ${Number(site.lng).toFixed(6)}` : '—');
 
       return {
         ...site,
+        gps: resolvedGps,
         index: index + 1,
         powerKw: unitPowerKw,
         capacityKwh: unitCapacityKwh,
         capexTotal: effectiveSiteCapex,
         isCapexOverridden: siteOverrideCapex !== undefined,
+        customRent: effectiveSiteRent,
+        isRentOverridden: siteOverrideRent !== undefined,
         odreRaccordementCost: fin.raccordementCost,
         caAnnuel: Math.round(baseUnitCaAn1),
-        opexAnnuel: Math.round(baseUnitOpexAn1),
+        opexAnnuel: effectiveSiteOpexAn1,
         turpeAnnuel: Math.round(baseUnitTurpeAn1),
-        ebitda: Math.round(baseUnitEbitdaAn1),
-        ebitdaAn1: Math.round(baseUnitEbitdaAn1),
+        ebitda: effectiveSiteEbitdaAn1,
+        ebitdaAn1: effectiveSiteEbitdaAn1,
         triProjet: siteTri,
         payback: sitePayback,
         paybackAnnees: Number(sitePayback.toFixed(1)),
@@ -339,11 +355,11 @@ export default function BessPortfolioView({
           capexTotal: effectiveSiteCapex,
           caAnnuel: Math.round(baseUnitCaAn1),
           caBrutAn1: Math.round(baseUnitCaAn1),
-          opexAnnuel: Math.round(baseUnitOpexAn1),
+          opexAnnuel: effectiveSiteOpexAn1,
           turpeAnnuel: Math.round(baseUnitTurpeAn1),
-          ebitdaAn1: Math.round(baseUnitEbitdaAn1),
-          ebitda: Math.round(baseUnitEbitdaAn1),
-          loyerDalle: inputs.loyerAn1,
+          ebitdaAn1: effectiveSiteEbitdaAn1,
+          ebitda: effectiveSiteEbitdaAn1,
+          loyerDalle: effectiveSiteRent,
           triProjet: siteTri,
           payback: sitePayback,
           paybackAnnees: Number(sitePayback.toFixed(1)),
@@ -352,10 +368,10 @@ export default function BessPortfolioView({
         rows: unitModel.rows.map(r => ({
           year: r.year,
           ca: r.revenuCorrige,
-          opex: r.totalChargesOpex,
-          ebitda: r.ebitda,
+          opex: r.totalChargesOpex + rentDelta,
+          ebitda: r.ebitda - rentDelta,
           serviceDette: r.serviceDette,
-          cfNet: r.cashFlowNet
+          cfNet: r.cashFlowNet - rentDelta
         }))
       };
     });
@@ -365,7 +381,7 @@ export default function BessPortfolioView({
       analyzedSites: sites,
       portfolioCapexOverride: Object.keys(siteCapexOverrides).length > 0 ? sumCapex : null
     };
-  }, [activeSites, unitModel, inputs, siteCapexOverrides, unitPowerKw, unitCapacityKwh]);
+  }, [activeSites, unitModel, inputs, siteCapexOverrides, siteRentOverrides, unitPowerKw, unitCapacityKwh]);
 
   // Modèle financier consolidé du portefeuille (N sites)
   const portfolioModel = useMemo(() => {
@@ -470,15 +486,16 @@ export default function BessPortfolioView({
   // Filtrage des sites dans le tableau d'inventaire
   const filteredSites = useMemo(() => {
     return analyzedSites.filter(site => {
-      const matchSpv = selectedSpv === 'ALL' || site.spv === selectedSpv;
-      const matchSearch =
-        !searchTerm ||
-        site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        site.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (site.substation?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-      return matchSpv && matchSearch;
+      const q = (searchTerm || '').toLowerCase();
+      return (
+        !q ||
+        (site.name || '').toLowerCase().includes(q) ||
+        (site.city || '').toLowerCase().includes(q) ||
+        (site.gps || '').toLowerCase().includes(q) ||
+        (site.substation?.name || '').toLowerCase().includes(q)
+      );
     });
-  }, [analyzedSites, selectedSpv, searchTerm]);
+  }, [analyzedSites, searchTerm]);
 
   // Export Excel du business plan consolidé par site
   const handleExportExcel = () => {
@@ -488,6 +505,11 @@ export default function BessPortfolioView({
       fraisCommerciaux: inputs.fraisCommerciaux,
       loyerDalle: inputs.loyerAn1,
       studyDuration: inputs.horizonYears,
+      capexMode: inputs.capexMode,
+      capexBreakdown: inputs.capexBreakdown,
+      financingMode: inputs.financingMode,
+      revenueModel: inputs.revenueModel,
+      consolidatedChronique,
       portfolioName: selectedPortfolio
     });
   };
@@ -642,12 +664,12 @@ export default function BessPortfolioView({
         nbSites={nbSites}
       />
 
-      {/* ── Barre Paliers de Puissance unitaire & Conformité Bancaire ── */}
+      {/* ── Barre Paliers de Puissance unitaire, Loyer Bailleur & Conformité Bancaire ── */}
       <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3" data-html2canvas-ignore="true">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5 mr-1">
             <Sliders className="w-3.5 h-3.5 text-blue-600" />
-            Puissance Unitaire par Site :
+            Puissance / Site :
           </span>
           {Object.entries(BESS_PRESETS).map(([key]) => {
             const isSelected = presetKey === key;
@@ -669,6 +691,54 @@ export default function BessPortfolioView({
               </button>
             );
           })}
+        </div>
+
+        {/* Sélecteur rapide et éditable du Loyer Bailleur (€/an/site) directement en haut de page */}
+        <div className="flex flex-wrap items-center gap-1.5 bg-emerald-50/70 px-3 py-1.5 rounded-xl border border-emerald-200">
+          <span className="text-xs font-black uppercase text-emerald-900 tracking-wider flex items-center gap-1 mr-1">
+            <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+            Loyer Bailleur :
+          </span>
+          {[1500, 2000, 2400, 2500, 3000].map(l => {
+            const scale = (currentPreset.powerMw || 0.50) / 0.50;
+            const scaledL = Math.round(l * scale);
+            const isSel = Number(inputs.loyerAn1 ?? 3000) === scaledL;
+            return (
+              <button
+                key={l}
+                type="button"
+                onClick={() => {
+                  setSiteRentOverrides({});
+                  updateInput('loyerAn1', scaledL);
+                  updateInput('loyer1', scaledL);
+                }}
+                className={`px-2 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                  isSel
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-100/60'
+                }`}
+              >
+                {scaledL.toLocaleString('fr-FR')} €
+              </button>
+            );
+          })}
+          <div className="flex items-center gap-1 ml-1">
+            <input
+              type="number"
+              step="100"
+              min="0"
+              value={Math.round(inputs.loyerAn1 ?? 3000)}
+              onChange={e => {
+                const v = Math.max(0, parseInt(e.target.value, 10) || 0);
+                setSiteRentOverrides({});
+                updateInput('loyerAn1', v);
+                updateInput('loyer1', v);
+              }}
+              className="w-20 px-2 py-1 text-xs font-black text-right rounded-lg border border-emerald-300 bg-white text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              title="Saisir un loyer annuel personnalisé (€/an/site)"
+            />
+            <span className="text-[11px] font-bold text-emerald-800">€/an</span>
+          </div>
         </div>
 
         {/* Badge de conformité bancaire du portefeuille */}
@@ -805,49 +875,39 @@ export default function BessPortfolioView({
         )}
       </div>
 
-      {/* ── Table Détaillée des Sites BESS (avec surcharge CAPEX site par site) ── */}
+      {/* ── Table Détaillée des Sites BESS (Coordonnées GPS, CAPEX et Loyer éditables site par site) ── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60">
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-blue-600" />
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-              Inventaire Exhaustif des {consolidatedTotals.totalSites} Sites du Portefeuille (CAPEX Éditable par Site)
+              Inventaire Exhaustif des {consolidatedTotals.totalSites} Sites du Portefeuille (CAPEX & Loyer Éditables par Site)
             </h3>
             <span className="ml-2 px-2 py-0.5 text-[10px] font-black rounded-full bg-blue-100 text-blue-800">
               {filteredSites.length} / {consolidatedTotals.totalSites} sites
             </span>
-            {Object.keys(siteCapexOverrides).length > 0 && (
+            {(Object.keys(siteCapexOverrides).length > 0 || Object.keys(siteRentOverrides).length > 0) && (
               <button
                 type="button"
-                onClick={() => setSiteCapexOverrides({})}
+                onClick={() => {
+                  setSiteCapexOverrides({});
+                  setSiteRentOverrides({});
+                }}
                 className="ml-2 px-2 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800 hover:bg-amber-200 flex items-center gap-1 cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
-                Réinitialiser surcharges CAPEX ({Object.keys(siteCapexOverrides).length})
+                Réinitialiser surcharges ({Object.keys(siteCapexOverrides).length + Object.keys(siteRentOverrides).length})
               </button>
             )}
           </div>
 
           <div className="flex items-center gap-2" data-html2canvas-ignore="true">
-            <select
-              value={selectedSpv}
-              onChange={e => setSelectedSpv(e.target.value)}
-              className="text-xs font-bold border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="ALL">Toutes les SPV</option>
-              <option value="SPV A">SPV A</option>
-              <option value="SPV B">SPV B</option>
-              <option value="SPV C">SPV C</option>
-              <option value="SPV D">SPV D</option>
-              <option value="SPV E">SPV E</option>
-            </select>
-
             <input
               type="text"
-              placeholder="Rechercher commune, site ou poste..."
+              placeholder="Rechercher commune, site, GPS ou poste..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-800 outline-none focus:ring-1 focus:ring-blue-500 w-48 sm:w-64"
+              className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-800 outline-none focus:ring-1 focus:ring-blue-500 w-52 sm:w-72"
             />
           </div>
         </div>
@@ -857,7 +917,8 @@ export default function BessPortfolioView({
             <thead>
               <tr className="bg-slate-100/80 text-slate-600 border-b border-slate-200 text-[11px] font-bold text-left">
                 <th className="p-2.5">N°</th>
-                <th className="p-2.5">Site / SPV</th>
+                <th className="p-2.5">Site</th>
+                <th className="p-2.5">Coordonnées GPS</th>
                 <th className="p-2.5">Localisation</th>
                 <th className="p-2.5">Poste Source Enedis (ODRE)</th>
                 <th className="p-2.5 text-center">Distance</th>
@@ -877,7 +938,12 @@ export default function BessPortfolioView({
                   <td className="p-2.5 font-bold text-slate-400">{s.index}</td>
                   <td className="p-2.5">
                     <div className="font-bold text-slate-900">{s.name}</div>
-                    <div className="text-[10px] font-semibold text-blue-600 uppercase">{s.spv}</div>
+                    {s.client && s.client !== s.name && (
+                      <div className="text-[10px] text-slate-400">{s.client}</div>
+                    )}
+                  </td>
+                  <td className="p-2.5 font-mono text-[11px] text-blue-700 font-semibold whitespace-nowrap">
+                    {s.gps}
                   </td>
                   <td className="p-2.5">
                     <div className="font-semibold text-slate-800">{s.city}</div>
@@ -922,7 +988,29 @@ export default function BessPortfolioView({
                   </td>
                   <td className="p-2.5 text-right font-bold text-emerald-600">{fmtEur(s.caAnnuel)}</td>
                   <td className="p-2.5 text-right font-black text-blue-700">{fmtEur(s.ebitda)}</td>
-                  <td className="p-2.5 text-right font-bold text-emerald-700">{fmtEur(inputs.loyerAn1)}</td>
+                  <td className="p-2.5 text-right">
+                    <div className="inline-flex items-center justify-end gap-1">
+                      <input
+                        type="number"
+                        step="100"
+                        value={Math.round(s.customRent ?? inputs.loyerAn1 ?? 3000)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          setSiteRentOverrides(prev => ({
+                            ...prev,
+                            [s.id]: isNaN(val) ? 0 : val
+                          }));
+                        }}
+                        className={`w-20 px-1.5 py-0.5 text-right text-xs font-bold rounded border ${
+                          s.isRentOverridden
+                            ? 'bg-amber-50 border-amber-400 text-amber-950'
+                            : 'bg-emerald-50/70 border-emerald-200 text-emerald-800'
+                        }`}
+                        title="Modifier le loyer bailleur annuel de ce site"
+                      />
+                      <span className="text-[10px] font-bold text-slate-500">€</span>
+                    </div>
+                  </td>
                   <td className="p-2.5 text-center font-black text-purple-700">{fmtPct(s.triProjet)}</td>
                   <td className="p-2.5 text-center font-bold text-slate-600">{s.payback.toFixed(1)} ans</td>
                   <td className="p-2.5 text-center" data-html2canvas-ignore="true">
