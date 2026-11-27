@@ -1372,14 +1372,16 @@ function TrajectoryCustomTooltip({ active, payload }) {
   );
 }
 
-export function BessCleanHorizonChartsSection({ model, show20YearsForCleanHorizon = true }) {
+export function BessCleanHorizonMarketChartCard({
+  model,
+  show20YearsForCleanHorizon = true,
+  centeredLarge = false
+}) {
   if (!model) return null;
   const p = model.params || {};
-  // Pour le graphique 1 Clean Horizon, afficher les 20 années (2027-2046) ou l'horizon sélectionné
   const chart1Rows = (p.revenueModel === 'CLEAN_HORIZON' && show20YearsForCleanHorizon)
     ? (model.all20Rows || model.rows || [])
     : (model.rows || []);
-  const chart2Rows = model.rows || [];
 
   const formatBarTopLabel = (val) => {
     if (!val || val <= 0) return '';
@@ -1388,153 +1390,176 @@ export function BessCleanHorizonChartsSection({ model, show20YearsForCleanHorizo
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      {/* GRAPHIQUE 1 — Revenus — Structure Marché (Clean Horizon) */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-blue-600" />
-              Revenus — Structure Marché (Clean Horizon)
-            </h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Ventilation annuelle brute des 4 piliers de revenus (2027 à {2026 + chart1Rows.length}) • {p.nbSites > 1 ? `${p.nbSites} sites (${p.totalPowerMw.toFixed(1)} MW)` : `${p.powerMw} MW`}
-            </p>
-          </div>
-          <span className="px-2.5 py-1 rounded-full text-[10.5px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-            <Check className="w-3.5 h-3.5 text-emerald-600" />
-            Données Clean Horizon — Scénario Central
-          </span>
+    <div
+      className={cn(
+        "bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3",
+        centeredLarge ? "w-full max-w-[1380px] mx-auto" : "w-full"
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-3">
+        <div>
+          <h3 className={cn("font-black text-slate-900 uppercase tracking-tight flex items-center gap-2", centeredLarge ? "text-base" : "text-sm")}>
+            <BarChart3 className={cn("text-blue-600", centeredLarge ? "w-5 h-5" : "w-4 h-4")} />
+            Revenus — Structure Marché (Clean Horizon)
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Ventilation annuelle brute des 4 piliers de revenus (2027 à {2026 + chart1Rows.length}) • {p.nbSites > 1 ? `${p.nbSites} sites (${p.totalPowerMw.toFixed(1)} MW)` : `${p.powerMw} MW`}
+          </p>
         </div>
-
-        <div className="h-[310px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chart1Rows} margin={{ top: 22, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis
-                dataKey="calendarYear"
-                tick={{ fontSize: 10, fill: '#475569', fontWeight: 700 }}
-                axisLine={{ stroke: '#CBD5E1' }}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M€` : `${Math.round(v / 1000)}k€`}
-                tick={{ fontSize: 10, fill: '#64748B', fontWeight: 600 }}
-                axisLine={false}
-                tickLine={false}
-                width={52}
-              />
-              <RechartsTooltip content={<CleanHorizonCustomTooltip />} />
-              <Legend
-                iconType="square"
-                wrapperStyle={{ fontSize: '11px', fontWeight: 700, paddingTop: '8px' }}
-              />
-              <Bar
-                dataKey="tradingBrut"
-                name="Trading (MA, DA, ID)"
-                stackId="rev"
-                fill="#2563EB"
-                radius={[0, 0, 0, 0]}
-              />
-              <Bar
-                dataKey="afrrCapBrut"
-                name="aFRR Capacity Reservation"
-                stackId="rev"
-                fill="#7DD3FC"
-                radius={[0, 0, 0, 0]}
-              />
-              <Bar
-                dataKey="afrrEnergyBrut"
-                name="aFRR Energy Activation"
-                stackId="rev"
-                fill="#06B6D4"
-                radius={[0, 0, 0, 0]}
-              />
-              <Bar
-                dataKey="capacityMechBrut"
-                name="Capacity Mechanism"
-                stackId="rev"
-                fill="#1E3A8A"
-                radius={[3, 3, 0, 0]}
-              >
-                <LabelList
-                  dataKey="revenuBrutTotal"
-                  position="top"
-                  formatter={formatBarTopLabel}
-                  style={{ fontSize: '9.5px', fontWeight: 800, fill: '#1E293B' }}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
+          <Check className="w-3.5 h-3.5 text-emerald-600" />
+          Données Clean Horizon — Scénario Central
+        </span>
       </div>
 
-      {/* GRAPHIQUE 2 — Trajectoire Financière : EBITDA vs Cash-Flow Net & Dette */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-600" />
-              Trajectoire Financière : EBITDA vs Cash-Flow Net & Dette
-            </h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Comparaison annuelle sur {chart2Rows.length} ans de l'EBITDA Net, du Service de la Dette et du Cash-Flow Net Disponible
-            </p>
-          </div>
-          <span className="px-2.5 py-1 rounded-full text-[10.5px] font-black bg-blue-50 text-blue-800 border border-blue-200">
-            {p.isCashMode ? '100% Fonds Propres' : `Prêt ${p.loanDurationYears} ans @ ${fmtPct(model.kpis?.allInDebtRate, 2)}`}
-          </span>
-        </div>
-
-        <div className="h-[310px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chart2Rows} margin={{ top: 18, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis
-                dataKey="calendarYear"
-                tick={{ fontSize: 10, fill: '#475569', fontWeight: 700 }}
-                axisLine={{ stroke: '#CBD5E1' }}
-                tickLine={false}
+      <div style={{ height: centeredLarge ? 420 : 320 }} className="w-full flex items-center justify-center">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chart1Rows} margin={{ top: 26, right: 16, left: 4, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+            <XAxis
+              dataKey="calendarYear"
+              tick={{ fontSize: centeredLarge ? 11.5 : 10, fill: '#334155', fontWeight: 700 }}
+              axisLine={{ stroke: '#CBD5E1' }}
+              tickLine={false}
+            />
+            <YAxis
+              tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M€` : `${Math.round(v / 1000)}k€`}
+              tick={{ fontSize: centeredLarge ? 11.5 : 10, fill: '#475569', fontWeight: 700 }}
+              axisLine={false}
+              tickLine={false}
+              width={58}
+            />
+            <RechartsTooltip content={<CleanHorizonCustomTooltip />} />
+            <Legend
+              iconType="square"
+              wrapperStyle={{ fontSize: centeredLarge ? '12px' : '11px', fontWeight: 700, paddingTop: '10px' }}
+            />
+            <Bar
+              dataKey="tradingBrut"
+              name="Trading (MA, DA, ID)"
+              stackId="rev"
+              fill="#2563EB"
+              radius={[0, 0, 0, 0]}
+            />
+            <Bar
+              dataKey="afrrCapBrut"
+              name="aFRR Capacity Reservation"
+              stackId="rev"
+              fill="#7DD3FC"
+              radius={[0, 0, 0, 0]}
+            />
+            <Bar
+              dataKey="afrrEnergyBrut"
+              name="aFRR Energy Activation"
+              stackId="rev"
+              fill="#06B6D4"
+              radius={[0, 0, 0, 0]}
+            />
+            <Bar
+              dataKey="capacityMechBrut"
+              name="Capacity Mechanism"
+              stackId="rev"
+              fill="#1E3A8A"
+              radius={[4, 4, 0, 0]}
+            >
+              <LabelList
+                dataKey="revenuBrutTotal"
+                position="top"
+                formatter={formatBarTopLabel}
+                style={{ fontSize: centeredLarge ? '11px' : '9.5px', fontWeight: 800, fill: '#0F172A' }}
               />
-              <YAxis
-                tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M€` : `${Math.round(v / 1000)}k€`}
-                tick={{ fontSize: 10, fill: '#64748B', fontWeight: 600 }}
-                axisLine={false}
-                tickLine={false}
-                width={52}
-              />
-              <RechartsTooltip content={<TrajectoryCustomTooltip />} />
-              <Legend
-                iconType="square"
-                wrapperStyle={{ fontSize: '11px', fontWeight: 700, paddingTop: '8px' }}
-              />
-              <Bar
-                dataKey="ebitda"
-                name="EBITDA Net (EBE)"
-                fill="#10B981"
-                radius={[3, 3, 0, 0]}
-              />
-              <Bar
-                dataKey="serviceDette"
-                name="Service de la Dette"
-                fill="#6366F1"
-                radius={[3, 3, 0, 0]}
-              />
-              <Bar
-                dataKey="cashFlowNet"
-                name="Cash-Flow Net Disponible"
-                fill="#0EA5E9"
-                radius={[3, 3, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 }
 
-// ─── 6. TABLEAU COMPLET ANNÉE PAR ANNÉE (AN 1 À AN 20 + TOTAL) ──────────────
+export function BessTrajectoryChartCard({ model, compact = false }) {
+  if (!model) return null;
+  const p = model.params || {};
+  const chart2Rows = model.rows || [];
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3 w-full">
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+        <div>
+          <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-emerald-600" />
+            Trajectoire Financière : EBITDA vs Cash-Flow Net & Dette
+          </h3>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Comparaison annuelle sur {chart2Rows.length} ans de l'EBITDA Net, du Service de la Dette et du Cash-Flow Net Disponible
+          </p>
+        </div>
+        <span className="px-2.5 py-1 rounded-full text-[10.5px] font-black bg-blue-50 text-blue-800 border border-blue-200">
+          {p.isCashMode ? '100% Fonds Propres' : `Prêt ${p.loanDurationYears} ans @ ${fmtPct(model.kpis?.allInDebtRate, 2)}`}
+        </span>
+      </div>
+
+      <div style={{ height: compact ? 300 : 340 }} className="w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chart2Rows} margin={{ top: 16, right: 12, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+            <XAxis
+              dataKey="calendarYear"
+              tick={{ fontSize: 10.5, fill: '#475569', fontWeight: 700 }}
+              axisLine={{ stroke: '#CBD5E1' }}
+              tickLine={false}
+            />
+            <YAxis
+              tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M€` : `${Math.round(v / 1000)}k€`}
+              tick={{ fontSize: 10.5, fill: '#64748B', fontWeight: 600 }}
+              axisLine={false}
+              tickLine={false}
+              width={54}
+            />
+            <RechartsTooltip content={<TrajectoryCustomTooltip />} />
+            <Legend
+              iconType="square"
+              wrapperStyle={{ fontSize: '11px', fontWeight: 700, paddingTop: '6px' }}
+            />
+            <Bar
+              dataKey="ebitda"
+              name="EBITDA Net (EBE)"
+              fill="#10B981"
+              radius={[3, 3, 0, 0]}
+            />
+            <Bar
+              dataKey="serviceDette"
+              name="Service de la Dette"
+              fill="#6366F1"
+              radius={[3, 3, 0, 0]}
+            />
+            <Bar
+              dataKey="cashFlowNet"
+              name="Cash-Flow Net Disponible"
+              fill="#0EA5E9"
+              radius={[3, 3, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+export function BessCleanHorizonChartsSection({ model, show20YearsForCleanHorizon = true }) {
+  if (!model) return null;
+  return (
+    <div className="space-y-4">
+      <BessCleanHorizonMarketChartCard
+        model={model}
+        show20YearsForCleanHorizon={show20YearsForCleanHorizon}
+        centeredLarge={true}
+      />
+      <BessTrajectoryChartCard model={model} />
+    </div>
+  );
+}
+
+// ─── 6. TABLEAU COMPLET ANNÉE PAR ANNÉE (AN 1 À AN 20 + TOTAL) PLEINE LARGEUR ───
 export function BessCompleteAnnualTable({ model }) {
   if (!model) return null;
   const rows = model.rows || [];
@@ -1546,20 +1571,20 @@ export function BessCompleteAnnualTable({ model }) {
   const fmtCell = (v) => Math.round(v || 0).toLocaleString('fr-FR');
 
   return (
-    <div className="overflow-x-auto w-full rounded-xl border border-slate-200">
-      <table className="w-full text-[10.5px] text-right border-collapse">
+    <div className="w-full rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full table-fixed text-[10px] text-right border-collapse">
         <thead>
           <tr className="bg-slate-900 text-white font-bold text-center">
-            <th className="py-2.5 px-2.5 text-left min-w-[215px] sticky left-0 bg-slate-900 z-10">
+            <th className="py-1.5 px-2 text-left w-[17%] bg-slate-900">
               Poste Budgétaire (€ HT)
             </th>
             {rows.map(y => (
-              <th key={y.year} className="py-2 px-1.5 min-w-[68px]">
-                <div>An {y.year}</div>
-                <div className="text-[9px] text-slate-400 font-normal">{y.calendarYear}</div>
+              <th key={y.year} className="py-1.5 px-0.5">
+                <div className="leading-tight">An {y.year}</div>
+                <div className="text-[8.5px] text-slate-400 font-normal leading-tight">{y.calendarYear}</div>
               </th>
             ))}
-            <th className="py-2 px-2 bg-blue-900 text-amber-300 min-w-[90px]">
+            <th className="py-1.5 px-1 bg-blue-900 text-amber-300 w-[6.5%]">
               TOTAL {rows.length}A
             </th>
           </tr>
@@ -1567,184 +1592,184 @@ export function BessCompleteAnnualTable({ model }) {
         <tbody className="divide-y divide-slate-200">
           {/* ── I. REVENUS BRUTS PAR PILIER & ABATTEMENTS ── */}
           <tr className="bg-blue-50/90 font-black text-blue-950 text-left">
-            <td colSpan={colSpanTotal} className="p-1.5 uppercase text-[10px] tracking-wider">
+            <td colSpan={colSpanTotal} className="py-1 px-2 uppercase text-[9.5px] tracking-wider">
               I. Revenus de Marché par Pilier (Clean Horizon) & Abattements Techniques
             </td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Trading (MA, DA, ID)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.tradingBrut)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.tradingBrut)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Trading (MA, DA, ID)</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.tradingBrut)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.tradingBrut)}</td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">aFRR Capacity Reservation</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.afrrCapBrut)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.afrrCapBrut)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">aFRR Capacity Reservation</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.afrrCapBrut)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.afrrCapBrut)}</td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">aFRR Energy Activation</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.afrrEnergyBrut)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.afrrEnergyBrut)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">aFRR Energy Activation</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.afrrEnergyBrut)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.afrrEnergyBrut)}</td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Capacity Mechanism (Mécanisme Capacité)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.capacityMechBrut)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.capacityMechBrut)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Capacity Mechanism (Capacité)</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.capacityMechBrut)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.capacityMechBrut)}</td>
           </tr>
           <tr className="bg-slate-100 font-bold text-slate-900">
-            <td className="p-1.5 text-left sticky left-0 bg-slate-100">Total Revenus Bruts (avant abattements)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.revenuBrutTotal)}</td>)}
-            <td className="p-1.5 font-black bg-blue-100/70">{fmtCell(totals.revenuBrutTotal)}</td>
+            <td className="py-1 px-2 text-left bg-slate-100 truncate">Total Revenus Bruts</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.revenuBrutTotal)}</td>)}
+            <td className="py-1 px-1 font-black bg-blue-100/70">{fmtCell(totals.revenuBrutTotal)}</td>
           </tr>
-          <tr className="text-rose-600 text-[10px]">
-            <td className="p-1.5 text-left sticky left-0 bg-white">
-              Abattement Dispo ({fmt(p.availabilityPct, 0)}%) × Rendement ({fmt(p.roundTripEfficiencyPct, 0)}%)
+          <tr className="text-rose-600 text-[9.5px]">
+            <td className="py-1 px-2 text-left bg-white truncate">
+              Abattement Dispo ({fmt(p.availabilityPct, 0)}%) × Rend. ({fmt(p.roundTripEfficiencyPct, 0)}%)
             </td>
-            {rows.map(y => <td key={y.year} className="p-1.5">-{fmtCell(y.abattementDispoRendement)}</td>)}
-            <td className="p-1.5 font-bold bg-rose-50/50">-{fmtCell(totals.abattementDispoRendement)}</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">-{fmtCell(y.abattementDispoRendement)}</td>)}
+            <td className="py-1 px-1 font-bold bg-rose-50/50">-{fmtCell(totals.abattementDispoRendement)}</td>
           </tr>
-          <tr className="text-slate-500 text-[10px] bg-slate-50/60">
-            <td className="p-1 text-left italic sticky left-0 bg-slate-50">
-              Capacité batterie restante (-{fmt(p.batteryDegradationPct, 2)}%/an)
+          <tr className="text-slate-500 text-[9.5px] bg-slate-50/60">
+            <td className="py-1 px-2 text-left italic bg-slate-50 truncate">
+              Capacité restante (-{fmt(p.batteryDegradationPct, 2)}%/an)
             </td>
-            {rows.map(y => <td key={y.year} className="p-1 font-semibold">{fmtPct(y.capaciteRestantePct, 1)}</td>)}
-            <td className="p-1 font-bold bg-blue-50/50">—</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5 font-semibold">{fmtPct(y.capaciteRestantePct, 1)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">—</td>
           </tr>
           <tr className="bg-blue-50/70 font-black text-blue-950 border-y border-blue-200">
-            <td className="p-1.5 text-left sticky left-0 bg-blue-50">Revenus Nets Corrigés HT</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.revenuCorrige)}</td>)}
-            <td className="p-1.5 bg-blue-100">{fmtCell(totals.revenuCorrige)}</td>
+            <td className="py-1 px-2 text-left bg-blue-50 truncate">Revenus Nets Corrigés HT</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.revenuCorrige)}</td>)}
+            <td className="py-1 px-1 bg-blue-100">{fmtCell(totals.revenuCorrige)}</td>
           </tr>
 
           {/* ── II. CHARGES D'EXPLOITATION (OPEX) & EBITDA ── */}
           <tr className="bg-blue-50/90 font-black text-blue-950 text-left">
-            <td colSpan={colSpanTotal} className="p-1.5 uppercase text-[10px] tracking-wider">
+            <td colSpan={colSpanTotal} className="py-1 px-2 uppercase text-[9.5px] tracking-wider">
               II. Détail des Charges d'Exploitation (OPEX) & EBE / EBITDA
             </td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Maintenance OPEX</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.opexMaintenance)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.opexMaintenance)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Maintenance OPEX</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.opexMaintenance)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.opexMaintenance)}</td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Assurance exploitation</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.assuranceExploitation)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.assuranceExploitation)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Assurance exploitation</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.assuranceExploitation)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.assuranceExploitation)}</td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Frais Agrégateur ({fmt(p.aggregatorFeePct, 1)} %)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.fraisAgregateur)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.fraisAgregateur)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Frais Agrégateur ({fmt(p.aggregatorFeePct, 1)} %)</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.fraisAgregateur)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.fraisAgregateur)}</td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">TURPE 7 (Acheminement réseau Enedis)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.turpe7)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.turpe7)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">TURPE 7 (Acheminement Enedis)</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.turpe7)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.turpe7)}</td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Loyer foncier bailleur</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.loyerFoncier)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.loyerFoncier)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Loyer foncier bailleur</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.loyerFoncier)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.loyerFoncier)}</td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">CFE (Exonérée An 1)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.cfe)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.cfe)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">CFE (Exonérée An 1)</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.cfe)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.cfe)}</td>
           </tr>
           <tr className="hover:bg-slate-50 text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Taxe foncière</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.taxeFonciere)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.taxeFonciere)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Taxe foncière</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.taxeFonciere)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.taxeFonciere)}</td>
           </tr>
           <tr className="bg-rose-50/60 font-bold text-rose-900">
-            <td className="p-1.5 text-left sticky left-0 bg-rose-50">Total Charges d'Exploitation</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">-{fmtCell(y.totalChargesOpex)}</td>)}
-            <td className="p-1.5 font-black bg-rose-100/70">-{fmtCell(totals.totalChargesOpex)}</td>
+            <td className="py-1 px-2 text-left bg-rose-50 truncate">Total Charges d'Exploitation</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">-{fmtCell(y.totalChargesOpex)}</td>)}
+            <td className="py-1 px-1 font-black bg-rose-100/70">-{fmtCell(totals.totalChargesOpex)}</td>
           </tr>
           <tr className="bg-emerald-50/80 font-black text-emerald-950 border-y border-emerald-200">
-            <td className="p-1.5 text-left sticky left-0 bg-emerald-50">EBE / EBITDA</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.ebitda)}</td>)}
-            <td className="p-1.5 bg-emerald-100">{fmtCell(totals.ebitda)}</td>
+            <td className="py-1 px-2 text-left bg-emerald-50 truncate">EBE / EBITDA</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.ebitda)}</td>)}
+            <td className="py-1 px-1 bg-emerald-100">{fmtCell(totals.ebitda)}</td>
           </tr>
-          <tr className="text-slate-500 text-[10px] bg-slate-50">
-            <td className="p-1 text-left italic sticky left-0 bg-slate-50">Marge EBITDA (%)</td>
-            {rows.map(y => <td key={y.year} className="p-1">{fmtPct(y.margeEbitda, 1)}</td>)}
-            <td className="p-1 font-bold bg-blue-50/50">{fmtPct(kpis.margeEbitdaMoyenne, 1)}</td>
+          <tr className="text-slate-500 text-[9.5px] bg-slate-50">
+            <td className="py-0.5 px-2 text-left italic bg-slate-50 truncate">Marge EBITDA (%)</td>
+            {rows.map(y => <td key={y.year} className="py-0.5 px-0.5">{fmtPct(y.margeEbitda, 1)}</td>)}
+            <td className="py-0.5 px-1 font-bold bg-blue-50/50">{fmtPct(kpis.margeEbitdaMoyenne, 1)}</td>
           </tr>
 
           {/* ── III. AMORTISSEMENTS, DETTE, FISCALITÉ & RÉSULTAT NET ── */}
           <tr className="bg-blue-50/90 font-black text-blue-950 text-left">
-            <td colSpan={colSpanTotal} className="p-1.5 uppercase text-[10px] tracking-wider">
+            <td colSpan={colSpanTotal} className="py-1 px-2 uppercase text-[9.5px] tracking-wider">
               III. Amortissements, Service de la Dette, Fiscalité (IS) & Résultat Net
             </td>
           </tr>
           <tr className="text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Amortissements installation</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.amortissementInstallation)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.amortissementInstallation)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Amortissements installation</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.amortissementInstallation)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.amortissementInstallation)}</td>
           </tr>
           <tr className="text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Intérêts + assurance emprunteur</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.interetsAssurance)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.interetsAssurance)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Intérêts + assurance emprunteur</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.interetsAssurance)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.interetsAssurance)}</td>
           </tr>
           <tr className="text-slate-700 font-semibold">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Résultat avant IS (EBT)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.ebt)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.ebt)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Résultat avant IS (EBT)</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.ebt)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.ebt)}</td>
           </tr>
           <tr className="text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">
-              Impôt sur les Sociétés ({p.withIS ? 'IS 15% / 25%' : 'Désactivé — Avant IS'})
+            <td className="py-1 px-2 text-left bg-white truncate">
+              Impôt Sociétés ({p.withIS ? 'IS 15% / 25%' : 'Avant IS'})
             </td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.is)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.is)}</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.is)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.is)}</td>
           </tr>
           <tr className="bg-slate-100 font-black text-slate-900 border-y border-slate-300">
-            <td className="p-1.5 text-left sticky left-0 bg-slate-100">Résultat Net {p.withIS ? 'après IS' : 'avant IS'}</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.resultatNet)}</td>)}
-            <td className="p-1.5 bg-blue-100 text-blue-950">{fmtCell(totals.resultatNet)}</td>
+            <td className="py-1 px-2 text-left bg-slate-100 truncate">Résultat Net {p.withIS ? 'après IS' : 'avant IS'}</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.resultatNet)}</td>)}
+            <td className="py-1 px-1 bg-blue-100 text-blue-950">{fmtCell(totals.resultatNet)}</td>
           </tr>
 
           {/* ── IV. CASH-FLOW NET, TRÉSORERIE CUMULÉE, CAPITAL RESTANT DÛ & DSCR ── */}
           <tr className="bg-blue-50/90 font-black text-blue-950 text-left">
-            <td colSpan={colSpanTotal} className="p-1.5 uppercase text-[10px] tracking-wider">
+            <td colSpan={colSpanTotal} className="py-1 px-2 uppercase text-[9.5px] tracking-wider">
               IV. Remboursement Capital, Cash-Flow Net, Trésorerie Cumulée & DSCR
             </td>
           </tr>
           <tr className="text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Remboursement capital emprunté</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.amortissementCapital)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">{fmtCell(totals.amortissementCapital)}</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Remboursement capital emprunté</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.amortissementCapital)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">{fmtCell(totals.amortissementCapital)}</td>
           </tr>
           <tr className="bg-indigo-50/60 font-bold text-indigo-900">
-            <td className="p-1.5 text-left sticky left-0 bg-indigo-50">Service de la dette total (Intérêts + Capital)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.serviceDette)}</td>)}
-            <td className="p-1.5 font-black bg-indigo-100/80">{fmtCell(totals.serviceDette)}</td>
+            <td className="py-1 px-2 text-left bg-indigo-50 truncate">Service dette total (Int. + Cap.)</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.serviceDette)}</td>)}
+            <td className="py-1 px-1 font-black bg-indigo-100/80">{fmtCell(totals.serviceDette)}</td>
           </tr>
           <tr className="bg-emerald-50/90 font-black text-emerald-950 border-t border-emerald-200">
-            <td className="p-1.5 text-left sticky left-0 bg-emerald-50">Cash-Flow Net Disponible (FCFE)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.cashFlowNet)}</td>)}
-            <td className="p-1.5 bg-emerald-200/80">{fmtCell(totals.cashFlowNet)}</td>
+            <td className="py-1 px-2 text-left bg-emerald-50 truncate">Cash-Flow Net Disponible (FCFE)</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.cashFlowNet)}</td>)}
+            <td className="py-1 px-1 bg-emerald-200/80">{fmtCell(totals.cashFlowNet)}</td>
           </tr>
           <tr className="bg-blue-950 text-white font-black">
-            <td className="p-1.5 text-left sticky left-0 bg-blue-950">Trésorerie Cumulée</td>
-            {rows.map(y => <td key={y.year} className="p-1.5 text-cyan-300">{fmtCell(y.tresorerieCumulee)}</td>)}
-            <td className="p-1.5 bg-blue-900 text-amber-300">{fmtCell(totals.cashFlowNet)}</td>
+            <td className="py-1 px-2 text-left bg-blue-950 truncate">Trésorerie Cumulée</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5 text-cyan-300">{fmtCell(y.tresorerieCumulee)}</td>)}
+            <td className="py-1 px-1 bg-blue-900 text-amber-300">{fmtCell(totals.cashFlowNet)}</td>
           </tr>
           <tr className="text-slate-600">
-            <td className="p-1.5 text-left sticky left-0 bg-white">Capital restant dû (fin d'année)</td>
-            {rows.map(y => <td key={y.year} className="p-1.5">{fmtCell(y.capitalFin)}</td>)}
-            <td className="p-1.5 font-bold bg-blue-50/50">0</td>
+            <td className="py-1 px-2 text-left bg-white truncate">Capital restant dû (fin d'année)</td>
+            {rows.map(y => <td key={y.year} className="py-1 px-0.5">{fmtCell(y.capitalFin)}</td>)}
+            <td className="py-1 px-1 font-bold bg-blue-50/50">0</td>
           </tr>
           <tr className="bg-amber-50/70 font-black">
-            <td className="p-1.5 text-left text-amber-950 sticky left-0 bg-amber-50">DSCR annuel (CFADS / Annuité)</td>
+            <td className="py-1 px-2 text-left text-amber-950 bg-amber-50 truncate">DSCR annuel (CFADS / Annuité)</td>
             {rows.map(y => (
-              <td key={y.year} className="p-1.5">
+              <td key={y.year} className="py-1 px-0.5">
                 {y.dscr !== null ? (
                   <span className={cn(
-                    "px-1 py-0.2 rounded text-[10.5px]",
+                    "px-0.5 py-0.2 rounded text-[9.5px]",
                     y.dscr >= 1.20 ? "text-emerald-800 font-black" : (y.dscr >= 1.10 ? "text-amber-800 font-bold" : "text-red-700 font-black")
                   )}>
                     {fmt(y.dscr, 2)}x
@@ -1754,8 +1779,8 @@ export function BessCompleteAnnualTable({ model }) {
                 )}
               </td>
             ))}
-            <td className="p-1.5 bg-amber-100 text-amber-950 font-black">
-              {p.isCashMode ? '100% FP' : `${fmt(kpis.dscrAvg, 2)}x (Moy)`}
+            <td className="py-1 px-1 bg-amber-100 text-amber-950 font-black">
+              {p.isCashMode ? '100% FP' : `${fmt(kpis.dscrAvg, 2)}x`}
             </td>
           </tr>
         </tbody>

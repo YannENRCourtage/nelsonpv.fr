@@ -6,7 +6,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   X,
-  MapPin
+  MapPin,
+  Activity
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -18,7 +19,8 @@ import { computeBessFinancials as simulateBessSiteFinancials } from '../../servi
 import { generateBpAcamaPDF } from './BpAcamaPDFGenerator.jsx';
 import {
   BessLender4SummaryCards,
-  BessCleanHorizonChartsSection,
+  BessCleanHorizonMarketChartCard,
+  BessTrajectoryChartCard,
   BessCompleteAnnualTable,
   BessSensitivityMatrixSection,
   fmtEur,
@@ -26,7 +28,7 @@ import {
   fmtPct
 } from './BessUnifiedDashboardComponents.jsx';
 
-function PortfolioLenderHeader({ pageNumber, totalPages = 3, pageTitle, portfolioName, nbSites, totalMw, totalMwh, horizonYears = 20 }) {
+function PortfolioLenderHeader({ pageNumber, totalPages = 4, pageTitle, portfolioName, nbSites, totalMw, totalMwh, horizonYears = 20 }) {
   return (
     <div className="pdf-header flex flex-col w-full mb-3 pb-2 border-b-2 border-slate-200">
       <div className="flex items-center justify-between">
@@ -68,7 +70,7 @@ export default function BessPortfolioLenderModal({
   portfolioModel: externalModel = null,
   portfolioStress: externalStress = null
 }) {
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'page1' | 'page2' | 'page3'
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'page1' | 'page2' | 'page3' | 'page4'
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const nbSites = Math.max(1, Number(sites?.length || consolidatedTotals?.totalSites || 1));
@@ -133,7 +135,7 @@ export default function BessPortfolioLenderModal({
   const totalLoyersAn1 = model.rows[0]?.loyerFoncier || (nbSites * (p.loyerAn1 || 3000));
   const totalEbitdaAn1 = model.rows[0]?.ebitda || (nbSites * 63762);
 
-  // Export du dossier 3 pages PDF
+  // Export du dossier 4 pages PDF
   const handleExportPdf = async () => {
     const prevTab = activeTab;
     try {
@@ -143,7 +145,12 @@ export default function BessPortfolioLenderModal({
         await new Promise(r => setTimeout(r, 150));
       }
       await generateBpAcamaPDF({
-        sections: ['pdf-bess-port-lender-1', 'pdf-bess-port-lender-2', 'pdf-bess-port-lender-3'],
+        sections: [
+          'pdf-bess-port-lender-1',
+          'pdf-bess-port-lender-2',
+          'pdf-bess-port-lender-3',
+          'pdf-bess-port-lender-4'
+        ],
         fileName: `DOSSIER_PRETEUR_PORTEFEUILLE_BESS_${portfolioName}_${nbSites}_SITES.pdf`,
         orientation: 'landscape'
       });
@@ -160,7 +167,7 @@ export default function BessPortfolioLenderModal({
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[64px] z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-5 overflow-hidden animate-in fade-in duration-200">
-      <div className="relative w-full max-w-[1560px] h-[calc(100vh-100px)] max-h-[85vh] bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-[1620px] h-[calc(100vh-100px)] max-h-[85vh] bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
         {/* Header Modal */}
         <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-6 py-3.5 shadow-xs flex flex-wrap items-center justify-between gap-4" data-html2canvas-ignore="true">
           <div className="flex items-center gap-4">
@@ -190,28 +197,35 @@ export default function BessPortfolioLenderModal({
                 onClick={() => setActiveTab('all')}
                 className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'all' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
               >
-                Toutes les pages (3P)
+                Toutes les pages (4P)
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('page1')}
                 className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'page1' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
               >
-                1. Synthèse & Graphiques Clean Horizon
+                1. Synthèse & Structure Marché
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('page2')}
                 className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'page2' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
               >
-                2. Tableau {p.horizonYears} ans & Sensibilités
+                2. Compte de Résultat ({p.horizonYears} ans)
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('page3')}
                 className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'page3' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
               >
-                3. Répertoire des Sites
+                3. Sensibilités & Trajectoire
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('page4')}
+                className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'page4' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
+              >
+                4. Répertoire des Sites
               </button>
             </div>
 
@@ -222,7 +236,7 @@ export default function BessPortfolioLenderModal({
               className="px-4 py-2 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 hover:from-blue-800 hover:to-indigo-900 text-white text-xs font-black rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-2 cursor-pointer"
             >
               <FileDown className="w-4 h-4 text-blue-200" />
-              <span>{isExportingPdf ? 'GÉNÉRATION DU DOSSIER...' : 'TÉLÉCHARGER LE DOSSIER PRÊTEUR (3P)'}</span>
+              <span>{isExportingPdf ? 'GÉNÉRATION DU DOSSIER...' : 'TÉLÉCHARGER LE DOSSIER PRÊTEUR (4P)'}</span>
             </button>
 
             <button
@@ -236,20 +250,20 @@ export default function BessPortfolioLenderModal({
           </div>
         </header>
 
-        {/* Corps défilant contenant les 3 pages imprimables */}
+        {/* Corps défilant contenant les 4 pages imprimables */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-8 flex flex-col items-center">
           {/* ═════════════════════════════════════════════════════════════════════════════ */}
-          {/* PAGE 1 : SYNTHÈSE FINANCIÈRE PRÊTEUR & GRAPHIQUES CLEAN HORIZON 20 ANS      */}
+          {/* PAGE 1 : SYNTHÈSE FINANCIÈRE PRÊTEUR & REVENUS STRUCTURE MARCHÉ (CENTRÉ)     */}
           {/* ═════════════════════════════════════════════════════════════════════════════ */}
           {(activeTab === 'all' || activeTab === 'page1') && (
             <section
               id="pdf-bess-port-lender-1"
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-5 w-full max-w-[1520px] shrink-0"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-5 w-full max-w-[1600px] shrink-0"
             >
               <PortfolioLenderHeader
                 pageNumber={1}
-                totalPages={3}
-                pageTitle="Volet 1 : Synthèse Financière Consolidée, Ventilation CAPEX & Courbes Clean Horizon"
+                totalPages={4}
+                pageTitle="Volet 1 : Synthèse Financière Consolidée & Structure des Revenus de Marché (Clean Horizon)"
                 portfolioName={portfolioName}
                 nbSites={nbSites}
                 totalMw={totalPowerMw}
@@ -302,22 +316,25 @@ export default function BessPortfolioLenderModal({
 
               <BessLender4SummaryCards model={model} />
 
-              <BessCleanHorizonChartsSection model={model} />
+              {/* Graphique Revenus — Structure Marché (Clean Horizon) agrandi et centré horizontalement */}
+              <div className="w-full flex justify-center pt-1">
+                <BessCleanHorizonMarketChartCard model={model} centeredLarge={true} />
+              </div>
             </section>
           )}
 
           {/* ═════════════════════════════════════════════════════════════════════════════ */}
-          {/* PAGE 2 : TABLEAU FINANCIER PRÉVISIONNEL CONSOLIDÉ & MATRICE DE SENSIBILITÉ  */}
+          {/* PAGE 2 : COMPTE DE RÉSULTAT, FLUX DE TRÉSORERIE & SERVICE DE LA DETTE SEUL   */}
           {/* ═════════════════════════════════════════════════════════════════════════════ */}
           {(activeTab === 'all' || activeTab === 'page2') && (
             <section
               id="pdf-bess-port-lender-2"
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-5 w-full max-w-[1520px] shrink-0"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full max-w-[1600px] shrink-0"
             >
               <PortfolioLenderHeader
                 pageNumber={2}
-                totalPages={3}
-                pageTitle={`Volet 2 : Compte d'Exploitation Consolidé (${p.horizonYears} ans), Service de la Dette & Sensibilités`}
+                totalPages={4}
+                pageTitle={`Volet 2 : Compte de Résultat, Flux de Trésorerie & Service de la Dette Consolidé (${p.horizonYears} ans)`}
                 portfolioName={portfolioName}
                 nbSites={nbSites}
                 totalMw={totalPowerMw}
@@ -325,7 +342,7 @@ export default function BessPortfolioLenderModal({
                 horizonYears={p.horizonYears}
               />
 
-              <div className="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+              <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
                     <TableIcon className="w-4 h-4 text-blue-600" />
@@ -341,25 +358,50 @@ export default function BessPortfolioLenderModal({
               </div>
 
               <BessCompleteAnnualTable model={model} />
+            </section>
+          )}
 
-              <div className="pt-3 border-t border-slate-200">
-                <BessSensitivityMatrixSection stress={stress} model={model} />
+          {/* ═════════════════════════════════════════════════════════════════════════════ */}
+          {/* PAGE 3 : MATRICE D'ANALYSE DE SENSIBILITÉ & TRAJECTOIRE FINANCIÈRE           */}
+          {/* ═════════════════════════════════════════════════════════════════════════════ */}
+          {(activeTab === 'all' || activeTab === 'page3') && (
+            <section
+              id="pdf-bess-port-lender-3"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-5 w-full max-w-[1600px] shrink-0"
+            >
+              <PortfolioLenderHeader
+                pageNumber={3}
+                totalPages={4}
+                pageTitle="Volet 3 : Matrice d'Analyse de Sensibilité, Stress-Tests Bancaires & Trajectoire Financière"
+                portfolioName={portfolioName}
+                nbSites={nbSites}
+                totalMw={totalPowerMw}
+                totalMwh={totalCapacityMwh}
+                horizonYears={p.horizonYears}
+              />
+
+              {/* Haut de la Page 3 : Matrice d'analyse de sensibilité & Marges de sécurité */}
+              <BessSensitivityMatrixSection stress={stress} model={model} />
+
+              {/* Bas de la Page 3 : Trajectoire Financière (EBITDA vs Cash-Flow Net & Dette) */}
+              <div className="pt-2">
+                <BessTrajectoryChartCard model={model} compact={true} />
               </div>
             </section>
           )}
 
           {/* ═════════════════════════════════════════════════════════════════════════════ */}
-          {/* PAGE 3 : RÉPERTOIRE FONCIER & RACCORDEMENT HTA DES SITES DU PORTEFEUILLE      */}
+          {/* PAGE 4 : RÉPERTOIRE FONCIER & RACCORDEMENT HTA DES SITES DU PORTEFEUILLE      */}
           {/* ═════════════════════════════════════════════════════════════════════════════ */}
-          {(activeTab === 'all' || activeTab === 'page3') && (
+          {(activeTab === 'all' || activeTab === 'page4') && (
             <section
-              id="pdf-bess-port-lender-3"
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full max-w-[1520px] shrink-0"
+              id="pdf-bess-port-lender-4"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full max-w-[1600px] shrink-0"
             >
               <PortfolioLenderHeader
-                pageNumber={3}
-                totalPages={3}
-                pageTitle="Volet 3 : Répertoire Foncier & Raccordement Réseau HTA des Actifs"
+                pageNumber={4}
+                totalPages={4}
+                pageTitle="Volet 4 : Répertoire Foncier & Raccordement Réseau HTA des Actifs"
                 portfolioName={portfolioName}
                 nbSites={nbSites}
                 totalMw={totalPowerMw}

@@ -226,9 +226,10 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         if (isPortrait) {
                             s.style.width = '1000px'; 
                         } else {
-                            // Détection dynamique du nombre d'années pour garder la même échelle (Image 1)
+                            // Détection dynamique du nombre d'années pour garder la pleine largeur A4 Paysage
                             if (id.startsWith('pdf-bess-page-') || id.startsWith('pdf-bess-port-lender-') || id.startsWith('pdf-pv-port-lender-')) {
-                                s.style.width = (id.includes('page-2') || id.includes('lender-2')) ? '1920px' : '1600px';
+                                s.style.maxWidth = 'none';
+                                s.style.width = '1600px';
                             } else if (id === 'pdf-section-battery') {
                                 const yearThs = s.querySelectorAll('thead tr:first-child th, thead tr:first-child td').length - 1; 
                                 if (yearThs > 12) {

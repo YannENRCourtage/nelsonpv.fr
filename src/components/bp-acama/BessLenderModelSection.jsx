@@ -23,14 +23,15 @@ import {
   BessCapexBreakdownCard,
   BessAssumptions4ColumnsGrid,
   BessLender4SummaryCards,
-  BessCleanHorizonChartsSection,
+  BessCleanHorizonMarketChartCard,
+  BessTrajectoryChartCard,
   BessCompleteAnnualTable,
   BessSensitivityMatrixSection,
   fmtPct
 } from './BessUnifiedDashboardComponents.jsx';
 
 // En-tête imprimé standard pour chaque page PDF
-function BessPDFPageHeader({ pageNumber, totalPages = 2, pageTitle, project, presetKey, horizonYears = 20 }) {
+function BessPDFPageHeader({ pageNumber, totalPages = 3, pageTitle, project, presetKey, horizonYears = 20 }) {
   return (
     <div className="pdf-header hidden flex flex-col w-full mb-3 pb-2 border-b-2 border-slate-200">
       <div className="flex items-center justify-between">
@@ -76,7 +77,7 @@ export default function BessLenderModelSection({
   const [presetKey, setPresetKey] = useState(defaultPresetKey);
   const currentPreset = BESS_PRESETS[presetKey] || BESS_PRESETS['0.50'];
   const [inputs, setInputs] = useState(() => ({ ...(BESS_PRESETS[defaultPresetKey] || BESS_PRESETS['0.50']) }));
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'block1' | 'block3'
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'page1' | 'page2' | 'page3'
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const projectPortfolio = useMemo(() => {
@@ -283,7 +284,7 @@ export default function BessLenderModelSection({
     handleSelectPreset(presetKey);
   };
 
-  // Export du dossier 2 pages PDF
+  // Export du dossier 3 pages PDF
   const handleExportPdf = async () => {
     const prevTab = activeTab;
     try {
@@ -293,7 +294,7 @@ export default function BessLenderModelSection({
         await new Promise(r => setTimeout(r, 150));
       }
       await generateBpAcamaPDF({
-        sections: ['pdf-bess-page-1', 'pdf-bess-page-2'],
+        sections: ['pdf-bess-page-1', 'pdf-bess-page-2', 'pdf-bess-page-3'],
         fileName: `DOSSIER_PRETEUR_BESS_${project?.name || 'PROJET'}_${presetKey}MW_${inputs.horizonYears || 20}ANS.pdf`,
         orientation: 'landscape'
       });
@@ -373,7 +374,7 @@ export default function BessLenderModelSection({
           </button>
         </div>
 
-        {/* Navigation des volets & bouton export 2 pages */}
+        {/* Navigation des volets & bouton export 3 pages */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
             <button
@@ -381,21 +382,28 @@ export default function BessLenderModelSection({
               onClick={() => setActiveTab('all')}
               className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'all' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
             >
-              Tous les volets
+              Tous les volets (3P)
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('block1')}
-              className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'block1' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
+              onClick={() => setActiveTab('page1')}
+              className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'page1' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
             >
-              1. Synthèse, CAPEX & Graphiques
+              1. Synthèse & Structure Marché
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('block3')}
-              className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'block3' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
+              onClick={() => setActiveTab('page2')}
+              className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'page2' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
             >
-              2. Tableau {inputs.horizonYears || 20} ans & Sensibilités
+              2. Compte de Résultat ({inputs.horizonYears || 20} ans)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('page3')}
+              className={cn("px-2.5 py-1 rounded font-bold transition-all cursor-pointer", activeTab === 'page3' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
+            >
+              3. Sensibilités & Trajectoire
             </button>
           </div>
 
@@ -406,21 +414,47 @@ export default function BessLenderModelSection({
             className="px-4 py-2 bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white text-xs font-black rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-2 cursor-pointer"
           >
             <FileDown className="w-4 h-4 text-blue-200" />
-            <span>{isExportingPdf ? 'GÉNÉRATION...' : 'DOSSIER PRÊTEUR BESS (PDF)'}</span>
+            <span>{isExportingPdf ? 'GÉNÉRATION...' : 'DOSSIER PRÊTEUR BESS (3P PDF)'}</span>
           </button>
         </div>
       </div>
 
-      {/* ─── VOLET 1 : SYNTHÈSE, CAPEX, GRAPHIQUES CLEAN HORIZON & HYPOTHÈSES (PAGE 1) ─── */}
-      {(activeTab === 'all' || activeTab === 'block1' || activeTab === 'page1') && (
+      {/* ─── BLOCS INTERACTIFS DE PARAMÉTRAGE (CAPEX DÉTAILLÉ & 4 COLONNES D'HYPOTHÈSES — IGNORÉS AU PDF) ─── */}
+      <div className="space-y-4" data-html2canvas-ignore="true">
+        <BessCapexBreakdownCard
+          capexSummary={model.capexSummary}
+          capexMode={inputs.capexMode || 'COMPTE_PROPRE'}
+          onUpdateCapexField={handleUpdateCapexField}
+          onSelectCapexMode={handleSelectCapexMode}
+          odreRaccordementCost={projectOdreFinancials?.raccordementCost}
+          onApplyOdreRaccordement={(cost) => handleUpdateCapexField('raccordementEnedis', Math.round(cost * (currentPreset.powerMw / 0.50)))}
+          powerMw={currentPreset.powerMw}
+          nbSites={1}
+          fraisCommerciaux={inputs.fraisCommerciaux || 0}
+        />
+
+        <BessAssumptions4ColumnsGrid
+          inputs={inputs}
+          model={model}
+          onUpdateInput={updateInput}
+          onSelectRevenueModel={handleSelectRevenueModel}
+          onSelectHorizonYears={handleSelectHorizonYears}
+          onResetToDefault={handleResetToPreset}
+          powerMw={currentPreset.powerMw}
+          nbSites={1}
+        />
+      </div>
+
+      {/* ─── PAGE 1 : SYNTHÈSE FINANCIÈRE PRÊTEUR & REVENUS STRUCTURE MARCHÉ (CENTRÉ) ─── */}
+      {(activeTab === 'all' || activeTab === 'page1' || activeTab === 'block1') && (
         <section
           id="pdf-bess-page-1"
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md space-y-5"
+          className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-md space-y-5 w-full"
         >
           <BessPDFPageHeader
             pageNumber={1}
-            totalPages={2}
-            pageTitle="Volet 1 : Synthèse Financière Prêteur, Ventilation CAPEX & Courbes Clean Horizon"
+            totalPages={3}
+            pageTitle="Volet 1 : Synthèse Financière Prêteur & Structure des Revenus de Marché (Clean Horizon)"
             project={project}
             presetKey={presetKey}
             horizonYears={inputs.horizonYears || 20}
@@ -485,52 +519,29 @@ export default function BessLenderModelSection({
           {/* 4 Cartes de Synthèse Prêteur */}
           <BessLender4SummaryCards model={model} />
 
-          {/* Ventilation CAPEX Détaillée & Éditable */}
-          <BessCapexBreakdownCard
-            capexSummary={model.capexSummary}
-            capexMode={inputs.capexMode || 'COMPTE_PROPRE'}
-            onUpdateCapexField={handleUpdateCapexField}
-            onSelectCapexMode={handleSelectCapexMode}
-            odreRaccordementCost={projectOdreFinancials?.raccordementCost}
-            onApplyOdreRaccordement={(cost) => handleUpdateCapexField('raccordementEnedis', Math.round(cost * (currentPreset.powerMw / 0.50)))}
-            powerMw={currentPreset.powerMw}
-            nbSites={1}
-            fraisCommerciaux={inputs.fraisCommerciaux || 0}
-          />
-
-          {/* Graphiques Clean Horizon (2027-2046) & Trajectoire EBITDA vs Cash-Flow Net & Dette */}
-          <BessCleanHorizonChartsSection model={model} />
-
-          {/* 4 Colonnes d'Hypothèses Financières & OPEX */}
-          <BessAssumptions4ColumnsGrid
-            inputs={inputs}
-            model={model}
-            onUpdateInput={updateInput}
-            onSelectRevenueModel={handleSelectRevenueModel}
-            onSelectHorizonYears={handleSelectHorizonYears}
-            onResetToDefault={handleResetToPreset}
-            powerMw={currentPreset.powerMw}
-            nbSites={1}
-          />
+          {/* Graphique Revenus — Structure Marché (Clean Horizon) agrandi et centré horizontalement */}
+          <div className="w-full flex justify-center pt-1">
+            <BessCleanHorizonMarketChartCard model={model} centeredLarge={true} />
+          </div>
         </section>
       )}
 
-      {/* ─── VOLET 2 : TABLEAU COMPLET ANNÉE PAR ANNÉE & MATRICE DE SENSIBILITÉ (PAGE 2) ─── */}
-      {(activeTab === 'all' || activeTab === 'block3' || activeTab === 'page2') && (
+      {/* ─── PAGE 2 : COMPTE DE RÉSULTAT COMPLET ANNÉE PAR ANNÉE (PLEINE LARGEUR) ─── */}
+      {(activeTab === 'all' || activeTab === 'page2' || activeTab === 'block3') && (
         <section
           id="pdf-bess-page-2"
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md space-y-5 w-full shrink-0"
+          className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full shrink-0"
         >
           <BessPDFPageHeader
             pageNumber={2}
-            totalPages={2}
-            pageTitle={`Volet 2 : Compte d'Exploitation Détaillé (${inputs.horizonYears || 20} ans), Service de la Dette & Sensibilités`}
+            totalPages={3}
+            pageTitle={`Volet 2 : Compte de Résultat, Flux de Trésorerie & Service de la Dette (${inputs.horizonYears || 20} ans)`}
             project={project}
             presetKey={presetKey}
             horizonYears={inputs.horizonYears || 20}
           />
 
-          <div className="border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="border-b border-slate-100 pb-2 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
                 <TableIcon className="w-5 h-5 text-blue-600" />
@@ -546,10 +557,30 @@ export default function BessLenderModelSection({
           </div>
 
           <BessCompleteAnnualTable model={model} />
+        </section>
+      )}
 
-          {/* Matrice d'Analyse de Sensibilité & Points de Rupture */}
-          <div className="pt-4 border-t border-slate-200">
-            <BessSensitivityMatrixSection stress={stress} model={model} />
+      {/* ─── PAGE 3 : MATRICE D'ANALYSE DE SENSIBILITÉ & TRAJECTOIRE FINANCIÈRE ─── */}
+      {(activeTab === 'all' || activeTab === 'page3' || activeTab === 'block3') && (
+        <section
+          id="pdf-bess-page-3"
+          className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-md space-y-5 w-full shrink-0"
+        >
+          <BessPDFPageHeader
+            pageNumber={3}
+            totalPages={3}
+            pageTitle="Volet 3 : Matrice d'Analyse de Sensibilité, Stress-Tests Bancaires & Trajectoire Financière"
+            project={project}
+            presetKey={presetKey}
+            horizonYears={inputs.horizonYears || 20}
+          />
+
+          {/* Haut de la Page 3 : Matrice d'Analyse de Sensibilité & Marges de Sécurité */}
+          <BessSensitivityMatrixSection stress={stress} model={model} />
+
+          {/* Bas de la Page 3 : Trajectoire Financière (EBITDA vs Cash-Flow Net & Dette) */}
+          <div className="pt-2">
+            <BessTrajectoryChartCard model={model} compact={true} />
           </div>
         </section>
       )}

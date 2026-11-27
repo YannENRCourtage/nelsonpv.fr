@@ -1611,7 +1611,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
               type="button"
               onClick={() => {
                 generateBpAcamaPDF({ 
-                  sections: ['pdf-bess-page-1', 'pdf-bess-page-2'],
+                  sections: ['pdf-bess-page-1', 'pdf-bess-page-2', 'pdf-bess-page-3'],
                   fileName: `DOSSIER_PRETEUR_BESS_${selectedProject?.name || 'PROJET'}.pdf`,
                   orientation: 'landscape'
                 });
