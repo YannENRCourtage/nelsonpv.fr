@@ -190,6 +190,12 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
               className="w-full text-left px-3.5 py-2.5 hover:bg-blue-50 transition-colors flex items-start gap-2.5 border-b last:border-b-0"
               onMouseDown={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
+                handleSelect(feat);
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 handleSelect(feat);
               }}
             >

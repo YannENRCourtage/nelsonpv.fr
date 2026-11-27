@@ -97,12 +97,17 @@ export default function SearchField({ onAddressFound }) {
     onAddressFoundRef.current = onAddressFound;
   }, [onAddressFound]);
 
-  // Empêcher la propagation des clics/scrolls vers la carte Leaflet
+  // Empêcher la propagation des clics/scrolls vers la carte Leaflet sans bloquer les événements React
   useEffect(() => {
-    if (containerRef.current) {
-      L.DomEvent.disableClickPropagation(containerRef.current);
-      L.DomEvent.disableScrollPropagation(containerRef.current);
-    }
+    const el = containerRef.current;
+    if (!el) return;
+    L.DomEvent.disableScrollPropagation(el);
+    L.DomEvent.on(el, "dblclick contextmenu", L.DomEvent.stopPropagation);
+    L.DomEvent.on(el, "click mousedown touchstart", L.DomEvent.fakeStop);
+    return () => {
+      L.DomEvent.off(el, "dblclick contextmenu", L.DomEvent.stopPropagation);
+      L.DomEvent.off(el, "click mousedown touchstart", L.DomEvent.fakeStop);
+    };
   }, []);
 
   // Fermer la liste au clic en dehors
@@ -153,26 +158,54 @@ export default function SearchField({ onAddressFound }) {
     };
   }, [query]);
 
-  const selectSuggestion = (item) => {
+  const selectSuggestion = async (item) => {
     if (!item) return;
     isUserTypingRef.current = false;
-    setQuery(item.label);
+    setQuery(item.label || "");
     setSuggestions([]);
     setIsOpen(false);
     setActiveIndex(-1);
 
-    const { x: lng, y: lat, label, properties } = item;
+    let lng = Number(item.x);
+    let lat = Number(item.y);
+    let label = item.label;
+    let properties = item.properties || {};
+    let raw = item.raw;
+
+    if ((!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) && label) {
+      try {
+        const fallbackResults = await fetchGeoportailSuggestions(label);
+        const firstValid = fallbackResults.find(
+          (r) => Number.isFinite(r.y) && Number.isFinite(r.x) && r.y !== 0 && r.x !== 0
+        );
+        if (firstValid) {
+          lng = Number(firstValid.x);
+          lat = Number(firstValid.y);
+          properties = firstValid.properties || properties;
+          raw = firstValid.raw || raw;
+        }
+      } catch (err) {
+        console.warn("[SearchField] Fallback geocoding error:", err);
+      }
+    }
+
     if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
-      map.setView([lat, lng], Math.max(map.getZoom(), 18), { animate: true });
+      const targetZoom = 18;
+      map.setView([lat, lng], targetZoom, { animate: false });
       onAddressFoundRef.current?.({
         lat,
         lng,
         label,
         properties,
       });
+      window.dispatchEvent(
+        new CustomEvent("map:goto-address", {
+          detail: { lat, lng, zoom: targetZoom },
+        })
+      );
       try {
         map.fireEvent("geosearch/showlocation", {
-          location: { x: lng, y: lat, label, raw: item.raw },
+          location: { x: lng, y: lat, lat, lng, label, raw },
           marker: null,
         });
       } catch {}
@@ -313,6 +346,12 @@ export default function SearchField({ onAddressFound }) {
                 type="button"
                 onMouseDown={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
+                  selectSuggestion(item);
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   selectSuggestion(item);
                 }}
                 onMouseEnter={() => setActiveIndex(idx)}

@@ -166,12 +166,19 @@ export default function ProjectEditor() {
       city: city || props.city || '',
       citycode: citycode || props.citycode || '',
       inseeCode: citycode || props.citycode || '',
-      ...(latFmt && lngFmt ? { gps: `${latFmt}, ${lngFmt}` } : {})
+      ...(latFmt && lngFmt ? {
+        gps: `${latFmt}, ${lngFmt}`,
+        mapView: { center: { lat: latNum, lng: lngNum }, zoom: 18 }
+      } : {})
     });
     activateDefaultSearchLayers();
-    if (lat && lng) {
+    setActiveTab('map');
+    if (hasValidCoords) {
       window.dispatchEvent(new CustomEvent('map:goto-location', {
-        detail: { lat, lng, zoom: 18 }
+        detail: { lat: latNum, lng: lngNum, zoom: 18 }
+      }));
+      window.dispatchEvent(new CustomEvent('map:goto-address', {
+        detail: { lat: latNum, lng: lngNum, zoom: 18 }
       }));
     }
   };
@@ -300,7 +307,7 @@ export default function ProjectEditor() {
 
     const loadProject = async () => {
       // If creating new project, set init state
-      if (projectId === 'new') {
+      if (!projectId || projectId === 'new') {
         const nowIso = new Date().toISOString();
         const emptyProject = {
           id: `proj_${Date.now()}`,
@@ -654,17 +661,20 @@ export default function ProjectEditor() {
   }, [captures, project?.captureTypes, project?.captureLayers, activeLayers, updateProject]);
 
   const handleAddressFound = (location) => {
-    const { label, lat, lng, feature, properties } = location;
+    const { label, lat, lng, feature, properties } = location || {};
     const props = properties || feature?.properties || {};
     const { address, zip, city, citycode } = extractCleanAddressParts(props, label);
 
-    const latNum = Number(lat);
-    const lngNum = Number(lng);
+    const latNum = Number(lat ?? location?.y);
+    const lngNum = Number(lng ?? location?.x);
     const hasValidCoords = !isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0;
 
     const updates = {
       address: address || label || '',
-      ...(hasValidCoords ? { gps: `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}` } : {})
+      ...(hasValidCoords ? {
+        gps: `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}`,
+        mapView: { center: { lat: latNum, lng: lngNum }, zoom: 18 }
+      } : {})
     };
     if (zip) updates.zip = zip;
     if (city) updates.city = city;
@@ -675,17 +685,21 @@ export default function ProjectEditor() {
 
     updateProject(updates);
     activateDefaultSearchLayers();
+    setActiveTab('map');
     if (hasValidCoords) {
-      window.dispatchEvent(new CustomEvent("map:goto-address", { detail: { lat: latNum, lng: lngNum } }));
+      window.dispatchEvent(new CustomEvent("map:goto-address", { detail: { lat: latNum, lng: lngNum, zoom: 18 } }));
+      window.dispatchEvent(new CustomEvent("map:goto-location", { detail: { lat: latNum, lng: lngNum, zoom: 18 } }));
     }
   };
 
   const handleAddressSearched = (location) => {
-    const { lat, lng } = location;
-    const latNum = Number(lat);
-    const lngNum = Number(lng);
+    const latNum = Number(location?.lat ?? location?.y);
+    const lngNum = Number(location?.lng ?? location?.x);
     if (!isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0) {
-      updateProject({ gps: `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}` });
+      updateProject({
+        gps: `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}`,
+        mapView: { center: { lat: latNum, lng: lngNum }, zoom: 18 }
+      });
     }
     activateDefaultSearchLayers();
   };

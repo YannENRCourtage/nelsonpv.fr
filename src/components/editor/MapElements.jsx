@@ -5805,21 +5805,21 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
   const map = useMap();
   const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...', parcelSurface: '', zoning: '...' });
   const [loading, setLoading] = useState(false);
-  const [hasInitializedFromProject, setHasInitializedFromProject] = useState(false);
+  const lastSyncedGpsRef = useRef(null);
 
   // Initialize target: use map center or fallback to 7 rue Gutenberg, Mérignac (siège ENR Courtage)
   const DEFAULT_LAT = 44.82618;
   const DEFAULT_LNG = -0.671985;
 
   useEffect(() => {
-    if (!hasInitializedFromProject && project?.gps && typeof project.gps === 'string') {
+    if (project?.gps && typeof project.gps === 'string' && project.gps !== lastSyncedGpsRef.current) {
       const parts = project.gps.split(',');
       if (parts.length === 2) {
         const plat = parseFloat(parts[0].trim());
         const plng = parseFloat(parts[1].trim());
-        if (!isNaN(plat) && !isNaN(plng)) {
+        if (!isNaN(plat) && !isNaN(plng) && plat !== 0 && plng !== 0) {
+          lastSyncedGpsRef.current = project.gps;
           setTargetPos({ lat: plat, lng: plng });
-          setHasInitializedFromProject(true);
           return;
         }
       }
@@ -5828,7 +5828,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
     if (!targetPos) {
       setTargetPos({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
     }
-  }, [targetPos, project?.gps, hasInitializedFromProject, setTargetPos]);
+  }, [targetPos, project?.gps, setTargetPos]);
 
   useEffect(() => {
     if (hoverInfo) {
@@ -6467,9 +6467,13 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
     // Correction du nom de l'événement écouté
     const handleGotoAddress = (e) => {
-      const { lat, lng } = e.detail;
-      if (lat && lng) {
-        map.setView([lat, lng], 18);
+      const { lat, lng, zoom } = e.detail || {};
+      const latNum = Number(lat);
+      const lngNum = Number(lng);
+      if (Number.isFinite(latNum) && Number.isFinite(lngNum) && latNum !== 0 && lngNum !== 0) {
+        map.setView([latNum, lngNum], zoom || 18, { animate: false });
+        if (setTargetPos) setTargetPos({ lat: latNum, lng: lngNum });
+        if (setShowInfoPanel) setShowInfoPanel(true);
       }
     };
 
@@ -6489,10 +6493,21 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
   }, [map, project, onAddressFound, setTargetPos, setShowInfoPanel, activeLayers]);
 
   useEffect(() => {
-    const handleSearchResult = (e) => { onAddressSearched(e.location); };
+    const handleSearchResult = (e) => {
+      const loc = e?.location;
+      if (!loc) return;
+      const latNum = Number(loc.lat ?? loc.y);
+      const lngNum = Number(loc.lng ?? loc.x);
+      if (Number.isFinite(latNum) && Number.isFinite(lngNum) && latNum !== 0 && lngNum !== 0) {
+        map.setView([latNum, lngNum], 18, { animate: false });
+        if (setTargetPos) setTargetPos({ lat: latNum, lng: lngNum });
+        if (setShowInfoPanel) setShowInfoPanel(true);
+      }
+      if (onAddressSearched) onAddressSearched(loc);
+    };
     map.on('geosearch/showlocation', handleSearchResult);
     return () => { map.off('geosearch/showlocation', handleSearchResult); };
-  }, [map, onAddressSearched]);
+  }, [map, onAddressSearched, setTargetPos, setShowInfoPanel]);
   return null;
 }
 
@@ -6817,11 +6832,10 @@ function MapStateSync({ project, setProject }) {
   const lastSavedViewRef = useRef(null);
   const lastProjectIdRef = useRef(null);
 
-  // 1. RESTAURATION : Force la vue au changement de projet
+  // 1. RESTAURATION : Force la vue uniquement au changement réel de projet
   useEffect(() => {
     if (!project) return;
-    const projectIdentifier = project.id || project._id || project.name || (project.gps ? `gps-${project.gps}` : null);
-    if (!projectIdentifier) return;
+    const projectIdentifier = project.id || project._id || 'draft-project';
 
     // Détection changement de projet
     if (projectIdentifier !== lastProjectIdRef.current) {
@@ -6829,20 +6843,24 @@ function MapStateSync({ project, setProject }) {
       lastProjectIdRef.current = projectIdentifier;
       isRestoringRef.current = true;
 
-      if (project.mapView) {
-        // 1. Vue sauvegardée
-        const { center, zoom } = project.mapView;
-        if (center && typeof center.lat === 'number' && typeof center.lng === 'number' && typeof zoom === 'number') {
-          console.log("Restoring saved MapView:", center, zoom);
-          map.setView(center, zoom, { animate: false });
-        }
-      } else if (project?.gps && typeof project.gps === 'string') {
-        // 2. Pas de vue mais GPS
+      const hasValidGps = (() => {
+        if (!project?.gps || typeof project.gps !== 'string') return null;
         const parts = project.gps.split(',').map(Number);
-        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-          console.log("Restoring from GPS:", parts);
-          map.setView(parts, 18, { animate: false });
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[0] !== 0 && parts[1] !== 0) {
+          return parts;
         }
+        return null;
+      })();
+
+      if (project.mapView && project.mapView.center && typeof project.mapView.center.lat === 'number' && typeof project.mapView.center.lng === 'number' && typeof project.mapView.zoom === 'number' && (!hasValidGps || project.mapView.zoom > 7)) {
+        // 1. Vue sauvegardée pertinente
+        const { center, zoom } = project.mapView;
+        console.log("Restoring saved MapView:", center, zoom);
+        map.setView(center, zoom, { animate: false });
+      } else if (hasValidGps) {
+        // 2. Vue depuis les coordonnées GPS du projet
+        console.log("Restoring from GPS:", hasValidGps);
+        map.setView(hasValidGps, 18, { animate: false });
       } else {
         // 3. Rien : Défaut pour éviter de voir le projet précédent
         console.log("No view/GPS. Resetting to default.");
@@ -6850,7 +6868,7 @@ function MapStateSync({ project, setProject }) {
       }
 
       // Débloquer la persistence après délai
-      setTimeout(() => { isRestoringRef.current = false; }, 800);
+      setTimeout(() => { isRestoringRef.current = false; }, 400);
     }
   }, [project, map]);
 
@@ -6884,15 +6902,19 @@ function MapStateSync({ project, setProject }) {
 
   return null;
 }
-function MapInternalController({ layersRef, activeLayers, setSelectedCompany, setSelectedSubstation, setForceHideFeatures, activeTab }) {
+function MapInternalController({ layersRef, activeLayers, setSelectedCompany, setSelectedSubstation, setForceHideFeatures, activeTab, setTargetPos, setShowInfoPanel }) {
   const map = useMap();
 
   // 1. Navigation and selection handlers
   useEffect(() => {
     const handleGoto = (e) => {
-      const { lat, lng, zoom } = e.detail;
-      if (map) {
-        map.setView([lat, lng], zoom || 18, { animate: true });
+      const { lat, lng, zoom } = e.detail || {};
+      const latNum = Number(lat);
+      const lngNum = Number(lng);
+      if (map && Number.isFinite(latNum) && Number.isFinite(lngNum) && latNum !== 0 && lngNum !== 0) {
+        map.setView([latNum, lngNum], zoom || 18, { animate: false });
+        if (setTargetPos) setTargetPos({ lat: latNum, lng: lngNum });
+        if (setShowInfoPanel) setShowInfoPanel(true);
       }
     };
     const handleSelectCompany = (e) => setSelectedCompany(e.detail.company);
@@ -6928,7 +6950,7 @@ function MapInternalController({ layersRef, activeLayers, setSelectedCompany, se
       window.removeEventListener('map:toggle-features', handleToggleFeatures);
       window.removeEventListener('map:toggle-basemap', handleToggleBasemap);
     };
-  }, [map, setSelectedCompany, setSelectedSubstation, setForceHideFeatures, layersRef]);
+  }, [map, setSelectedCompany, setSelectedSubstation, setForceHideFeatures, layersRef, setTargetPos, setShowInfoPanel]);
 
   // 2. Synchronisation déclarative des calques
   useEffect(() => {
@@ -7542,6 +7564,8 @@ export default function MapElements({
             setSelectedSubstation={setSelectedSubstation} 
             setForceHideFeatures={setForceHideFeatures}
             activeTab={activeTab}
+            setTargetPos={setTargetPos}
+            setShowInfoPanel={setShowInfoPanel}
           />
 
           <div
