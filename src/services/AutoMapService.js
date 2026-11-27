@@ -408,7 +408,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
             ctx.font = 'bold 9px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('🔥 BORNE SDIS', sdisX, by + badgeH / 2);
+            ctx.fillText('🔥 POINT SDIS', sdisX, by + badgeH / 2);
             ctx.restore();
           }
 

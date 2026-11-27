@@ -530,7 +530,7 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
       ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('🔥 BORNE SDIS', sdisPt.x, by + badgeH / 2);
+      ctx.fillText('🔥 POINT SDIS', sdisPt.x, by + badgeH / 2);
       ctx.restore();
     }
 
@@ -9032,10 +9032,10 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                            ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
                                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                                      }`}
-                                     title="Placer ou déplacer la borne incendie SDIS sur la carte"
+                                     title="Placer ou déplacer le point SDIS sur la carte"
                                    >
                                      <Flame className={`w-3.5 h-3.5 ${isPlacingSdis || sdisPoint ? 'text-red-500' : 'text-slate-500'}`} />
-                                     <span>{isPlacingSdis ? 'Cliquer carte...' : (sdisPoint ? 'Borne SDIS' : 'Borne SDIS')}</span>
+                                     <span>{isPlacingSdis ? 'Cliquer carte...' : (sdisPoint ? 'Point SDIS' : 'Point SDIS')}</span>
                                    </button>
 
                                    {sdisPoint && (
@@ -9053,7 +9053,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                          }, 150);
                                        }}
                                        className="p-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
-                                       title="Supprimer la borne SDIS"
+                                       title="Supprimer le point SDIS"
                                      >
                                        <X className="w-3 h-3" />
                                      </button>
